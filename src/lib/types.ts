@@ -76,6 +76,7 @@ export interface Stakeholder {
   relevance: string;
   source: string;
   sourceUrl: string;
+  confidence: "verified" | "likely" | "unverified";
 }
 
 // === Company Data ===

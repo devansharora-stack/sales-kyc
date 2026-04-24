@@ -29,7 +29,8 @@ Search for: "{company} CTO CIO CDO Chief Technology Officer", "{company} VP tech
     "tier": "Decision Maker | Champion | Influencer",
     "relevance": "1-2 sentences on why this person matters for Techolution engagement",
     "source": "Where you found this info (e.g., LinkedIn, press release, company website)",
-    "sourceUrl": "URL to the source"
+    "sourceUrl": "URL to the source",
+    "confidence": "unverified"
   }
 ]
 ```

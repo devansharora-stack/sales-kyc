@@ -452,7 +452,7 @@ export default function CompanyPage() {
         <div className="space-y-6">
           {company.stakeholders?.length > 0 && (
             <Card title="Key Stakeholders" subtitle={`${company.stakeholders.length} contacts identified`}>
-              <div className="flex flex-wrap gap-4 mb-5 pb-4 border-b border-slate-100">
+              <div className="flex flex-wrap gap-4 mb-4 pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-1.5">
                   <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#3289FF]" />
                   <span className="text-xs text-slate-600"><span className="font-semibold">Decision Maker</span> — Budget authority & final sign-off</span>
@@ -465,6 +465,15 @@ export default function CompanyPage() {
                   <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500" />
                   <span className="text-xs text-slate-600"><span className="font-semibold">Influencer</span> — Domain expert shaping decisions</span>
                 </div>
+              </div>
+              <div className="flex flex-wrap gap-3 mb-5 pb-4 border-b border-slate-100">
+                <span className="text-[10px] text-slate-500 font-medium">Confidence:</span>
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Verified</span>
+                <span className="text-[10px] text-slate-400">Name confirmed on source page</span>
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">Likely</span>
+                <span className="text-[10px] text-slate-400">Known executive, source behind paywall</span>
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">Unverified</span>
+                <span className="text-[10px] text-slate-400">Confirm before outreach</span>
               </div>
               {(["Decision Maker", "Champion", "Influencer"] as const).map(tier => {
                 const tierList = company.stakeholders.filter(s => s.tier === tier);
@@ -484,11 +493,22 @@ export default function CompanyPage() {
                             <span className={`text-xs font-medium px-1.5 py-0.5 rounded shrink-0 ${tc.badge}`}>{s.tier}</span>
                           </div>
                           <p className="text-xs text-slate-600 mt-2 leading-relaxed">{s.relevance}</p>
-                          <p className="text-xs text-slate-400 mt-1">
-                            Source: {s.sourceUrl
-                              ? <a href={s.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[#3289FF] hover:underline">{s.source}</a>
-                              : s.source}
-                          </p>
+                          <div className="flex items-center gap-2 mt-1">
+                            <p className="text-xs text-slate-400">
+                              Source: {s.sourceUrl
+                                ? <a href={s.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[#3289FF] hover:underline">{s.source}</a>
+                                : s.source}
+                            </p>
+                            {s.confidence && (
+                              <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
+                                s.confidence === "verified" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
+                                s.confidence === "likely" ? "bg-blue-50 text-blue-700 border border-blue-200" :
+                                "bg-amber-50 text-amber-700 border border-amber-200"
+                              }`}>
+                                {s.confidence === "verified" ? "Verified" : s.confidence === "likely" ? "Likely" : "Unverified"}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>

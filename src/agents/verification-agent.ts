@@ -246,49 +246,100 @@ export async function runVerification(profile: CompanyDetail): Promise<{
   }
 
   // ========================================
-  // Layer 3: Stakeholder verification (HTTP)
+  // Layer 3: Stakeholder verification (HTTP + LLM)
   // ========================================
+  // Instead of removing stakeholders, assign confidence:
+  //   "verified"   — name found on a live source page
+  //   "likely"     — source URL is live but name not found (paywall, JS-rendered)
+  //                  OR well-known exec from a major public company
+  //   "unverified" — source URL dead, no corroboration
 
   if (corrected.stakeholders?.length) {
-    const verifiedStakeholders = [];
-    const removedStakeholders: string[] = [];
+    let verifiedCount = 0;
+    let likelyCount = 0;
+    let unverifiedCount = 0;
 
     for (const stakeholder of corrected.stakeholders) {
-      // Check if sourceUrl is reachable
       if (!stakeholder.sourceUrl) {
-        removedStakeholders.push(`${stakeholder.name} (no source URL)`);
+        stakeholder.confidence = "unverified";
+        unverifiedCount++;
         continue;
       }
 
       const urlCheck = await checkUrl(stakeholder.sourceUrl);
       if (!urlCheck.ok) {
-        removedStakeholders.push(`${stakeholder.name} (source URL dead: ${urlCheck.status})`);
+        // URL dead — but still keep the stakeholder, mark unverified
+        stakeholder.confidence = "unverified";
+        unverifiedCount++;
         continue;
       }
 
-      // Try to verify name appears on the page
+      // URL is live — try to find name on page
       const pageText = await fetchPageText(stakeholder.sourceUrl);
       if (pageText) {
-        // Check for last name at minimum (first names may not appear)
         const nameParts = stakeholder.name.split(" ");
         const lastName = nameParts[nameParts.length - 1];
-        if (lastName.length > 2 && !pageText.toLowerCase().includes(lastName.toLowerCase())) {
-          removedStakeholders.push(`${stakeholder.name} (name not found on source page)`);
+        if (lastName.length > 2 && pageText.toLowerCase().includes(lastName.toLowerCase())) {
+          stakeholder.confidence = "verified";
+          verifiedCount++;
           continue;
         }
       }
-      // If we couldn't fetch the page (403/paywall), keep the stakeholder but note it
-      verifiedStakeholders.push(stakeholder);
+
+      // URL live but couldn't confirm name (paywall, JS page, etc.)
+      stakeholder.confidence = "likely";
+      likelyCount++;
     }
 
-    if (removedStakeholders.length > 0) {
-      corrected.stakeholders = verifiedStakeholders;
-      fixes.push({
-        field: "stakeholders",
-        current: `${profile.stakeholders.length} stakeholders`,
-        corrected: `${verifiedStakeholders.length} stakeholders (${removedStakeholders.length} removed)`,
-        reason: `Removed unverifiable stakeholders: ${removedStakeholders.join("; ")}`,
-      });
+    // Use LLM to cross-check well-known executives (CEO, CFO, CTO of public companies)
+    // This catches cases where the URL is dead but the person is real
+    if (unverifiedCount > 0) {
+      try {
+        const unverifiedNames = corrected.stakeholders
+          .filter((s) => s.confidence === "unverified")
+          .map((s) => ({ name: s.name, title: s.title }));
+
+        const llmCheck = await callClaudeJSON<{
+          assessments: { name: string; realPerson: boolean; reason: string }[];
+        }>({
+          systemPrompt: "You are a fact-checker. Assess whether these people actually hold these positions at the company. Only confirm if you are HIGHLY confident from your training data. If uncertain, say false.",
+          userPrompt: `Company: ${corrected.name} (${corrected.fullName})
+Industry: ${corrected.industry}
+
+Are these people real executives at this company with these titles?
+
+${JSON.stringify(unverifiedNames, null, 2)}
+
+Return JSON: { "assessments": [{ "name": "...", "realPerson": true/false, "reason": "..." }] }
+Only say realPerson: true if you are very confident.`,
+        });
+
+        for (const assessment of llmCheck.assessments || []) {
+          const stakeholder = corrected.stakeholders.find(
+            (s) => s.name === assessment.name && s.confidence === "unverified"
+          );
+          if (stakeholder && assessment.realPerson) {
+            stakeholder.confidence = "likely";
+            likelyCount++;
+            unverifiedCount--;
+          }
+        }
+      } catch {
+        warnings.push("LLM stakeholder cross-check failed");
+      }
+    }
+
+    fixes.push({
+      field: "stakeholders",
+      current: `${corrected.stakeholders.length} stakeholders (no confidence)`,
+      corrected: `${verifiedCount} verified, ${likelyCount} likely, ${unverifiedCount} unverified`,
+      reason: "Assigned confidence levels based on source URL check + name verification + LLM cross-check",
+    });
+
+    if (unverifiedCount > 0) {
+      warnings.push(
+        `${unverifiedCount} stakeholder(s) marked "unverified" — sales rep should confirm before outreach`
+      );
     }
   }
 
@@ -330,7 +381,8 @@ ${JSON.stringify(corrected, null, 2)}`,
 
     // Apply contradiction fixes
     for (const c of crossRefResult.contradictions || []) {
-      warnings.push(`Cross-ref fix: ${c.description}`);
+      const desc = c.description || `${c.field}: "${c.currentValue}" → "${c.correctedValue}"`;
+      warnings.push(`Cross-ref fix: ${desc}`);
     }
 
     // Flag fabricated content
