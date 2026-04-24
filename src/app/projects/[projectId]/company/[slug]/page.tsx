@@ -1,0 +1,676 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { useParams } from "next/navigation";
+import Link from "next/link";
+import type { CompanyDetail, Source, SolutionId } from "@/lib/types";
+import { ALL_SOLUTIONS } from "@/lib/types";
+import RatingBadge from "@/components/company/RatingBadge";
+import GeminiStatusBadge from "@/components/company/GeminiStatusBadge";
+import UrgencyBadge from "@/components/company/UrgencyBadge";
+import ScoreBar from "@/components/company/ScoreBar";
+import Sources from "@/components/company/Sources";
+import TechLandscapePanel from "@/components/company/TechLandscapePanel";
+import NumberedList from "@/components/company/NumberedList";
+import CollapsibleItem from "@/components/company/CollapsibleItem";
+
+const solName = (id: SolutionId | string) =>
+  ALL_SOLUTIONS.find(s => s.id === id)?.name ?? id;
+
+const TABS = [
+  { id: "overview", label: "Overview" },
+  { id: "intelligence", label: "Intelligence" },
+  { id: "gtm", label: "GTM Strategy" },
+  { id: "stakeholders", label: "Stakeholders" },
+  { id: "sources", label: "Sources" },
+];
+
+const categoryBadgeColors: Record<string, string> = {
+  "M&A": "bg-purple-100 text-purple-800",
+  Leadership: "bg-blue-100 text-blue-800",
+  "Earnings Pressure": "bg-red-100 text-red-800",
+  Regulatory: "bg-orange-100 text-orange-800",
+  "Legacy Systems": "bg-amber-100 text-amber-800",
+  "Competitor Pressure": "bg-pink-100 text-pink-800",
+  "Digital Transformation": "bg-emerald-100 text-emerald-800",
+  Workforce: "bg-cyan-100 text-cyan-800",
+};
+
+const severityBadgeColors: Record<string, string> = {
+  Critical: "bg-red-100 text-red-800",
+  High: "bg-orange-100 text-orange-800",
+  Medium: "bg-yellow-100 text-yellow-800",
+};
+
+const tierColors = {
+  "Decision Maker": { bg: "bg-[rgba(50,137,255,0.04)]", border: "border-[#3289FF]/20", badge: "bg-[rgba(50,137,255,0.08)] text-[#3289FF]" },
+  "Champion": { bg: "bg-emerald-50/50", border: "border-emerald-200/60", badge: "bg-emerald-100 text-emerald-800" },
+  "Influencer": { bg: "bg-amber-50/50", border: "border-amber-200/60", badge: "bg-amber-100 text-amber-800" },
+} as const;
+
+export default function CompanyPage() {
+  const params = useParams();
+  const [company, setCompany] = useState<CompanyDetail | null>(null);
+  const [error, setError] = useState(false);
+  const [activeTab, setActiveTab] = useState("overview");
+
+  const projectId = params.projectId as string;
+  const slug = params.slug as string;
+
+  useEffect(() => {
+    if (!projectId || !slug) return;
+    fetch(`/api/projects/${projectId}/companies?slug=${slug}`)
+      .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+      .then(data => {
+        // API returns { profiles, jobs } — find the matching profile
+        const profile = data.profiles?.find((p: { slug: string }) => p.slug === slug);
+        if (!profile) throw new Error("Not found");
+        // Profile data is stored in the `data` JSONB column
+        setCompany(profile.data || profile);
+      })
+      .catch(() => setError(true));
+  }, [projectId, slug]);
+
+  if (error) return (
+    <div className="text-center py-20">
+      <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
+        <span className="text-red-400 text-xl">!</span>
+      </div>
+      <p className="text-sm text-slate-500 mb-3">Company not found.</p>
+      <Link href={`/projects/${projectId}`} className="btn-ghost text-sm">Back to Project</Link>
+    </div>
+  );
+
+  if (!company) return (
+    <div className="animate-fade-in space-y-6">
+      <div className="h-4 w-32 bg-slate-100 rounded animate-pulse" />
+      <div className="card p-0 overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-100">
+          <div className="flex justify-between">
+            <div className="space-y-2">
+              <div className="h-8 w-64 bg-slate-100 rounded animate-pulse" />
+              <div className="h-4 w-48 bg-slate-50 rounded animate-pulse" />
+            </div>
+            <div className="space-y-2 items-end flex flex-col">
+              <div className="h-8 w-16 bg-slate-100 rounded animate-pulse" />
+              <div className="flex gap-2">
+                <div className="h-5 w-20 bg-slate-100 rounded animate-pulse" />
+                <div className="h-5 w-16 bg-slate-100 rounded animate-pulse" />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-4 divide-x divide-slate-100">
+          {[...Array(4)].map((_, i) => (
+            <div key={i} className="px-5 py-3">
+              <div className="h-3 w-14 bg-slate-50 rounded animate-pulse mb-1" />
+              <div className="h-4 w-20 bg-slate-100 rounded animate-pulse" />
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="card p-6 space-y-3">
+        <div className="h-5 w-40 bg-slate-100 rounded animate-pulse" />
+        <div className="h-20 w-full bg-slate-50 rounded animate-pulse" />
+      </div>
+    </div>
+  );
+
+  /* Deduplicated source bibliography */
+  const allSources: Source[] = [];
+  const seen = new Set<string>();
+  const add = (s?: Source[]) => {
+    s?.forEach(src => { if (!seen.has(src.url)) { seen.add(src.url); allSources.push(src); } });
+  };
+  add(company.sources);
+  company.triggerEvents?.forEach(t => add(t.sources));
+  company.painPoints?.forEach(p => add(p.sources));
+  company.solutionMappings?.forEach(m => add(m.sources));
+  add(company.gtm?.sources);
+  add(company.revenue?.sources);
+  add(company.employees?.sources);
+  const tl = company.techLandscape;
+  if (tl) {
+    add(tl.cloudProviders?.sources);
+    add(tl.workspacePlatform?.sources);
+    add(tl.knownAIDeployments?.sources);
+    add(tl.knownVendors?.sources);
+    add(tl.knownSystems?.sources);
+  }
+
+  return (
+    <div className="animate-fade-in">
+      <Link href={`/projects/${projectId}`} className="text-sm text-slate-500 hover:text-[#3289FF] mb-4 inline-flex items-center gap-1 transition-colors">&larr; Back to Project</Link>
+
+      {/* Company Hero Card */}
+      <div className="card p-0 mb-6 overflow-hidden">
+        <div className="bg-gradient-to-r from-[#F8FAFF] to-white px-6 py-5 border-b border-slate-100">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div>
+              <h1 className="heading-display text-3xl mb-1">{company.name}</h1>
+              {company.fullName !== company.name && <p className="text-sm text-slate-500">{company.fullName}</p>}
+              <p className="text-sm text-slate-400 mt-1">{company.industry} &middot; {company.subSector} &middot; {company.hqCity}, {company.state}</p>
+            </div>
+            <div className="flex flex-col items-end gap-2 shrink-0">
+              <div className="flex items-baseline gap-1.5">
+                <span className="stat-value text-3xl">{company.totalScore}</span>
+                <span className="text-slate-400 text-sm">/100</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-2">
+                <RatingBadge rating={company.rating} showLabel size="md" />
+                <GeminiStatusBadge status={company.geminiStatus} />
+                <UrgencyBadge urgency={company.gtm?.urgency || "Medium"} />
+              </div>
+            </div>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 divide-x-0 lg:divide-x divide-slate-100">
+          <div className="px-5 py-3">
+            <p className="text-label">Revenue</p>
+            <p className="text-sm font-medium text-slate-800 mt-0.5">{company.revenue?.value || "N/A"}</p>
+          </div>
+          <div className="px-5 py-3">
+            <p className="text-label">Employees</p>
+            <p className="text-sm font-medium text-slate-800 mt-0.5">{company.employees?.value || "N/A"}</p>
+          </div>
+          <div className="px-5 py-3">
+            <p className="text-label">Triggers</p>
+            <p className="text-sm font-medium text-slate-800 mt-0.5">{company.triggerEvents?.length || 0} events</p>
+          </div>
+          <div className="px-5 py-3">
+            <p className="text-label">Stakeholders</p>
+            <p className="text-sm font-medium text-slate-800 mt-0.5">{company.stakeholders?.length || 0} contacts</p>
+          </div>
+        </div>
+        <div className="px-6 py-3 border-t border-slate-100 bg-white">
+          <ScoreBar scores={company.scores} total={company.totalScore} />
+        </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="sticky top-14 z-30 bg-white/90 backdrop-blur-sm -mx-4 lg:-mx-8 px-4 lg:px-8 mb-6">
+        <div className="flex border-b border-[#E2E8F0] overflow-x-auto no-scrollbar">
+          {TABS.map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+                activeTab === tab.id
+                  ? "border-[#3289FF] text-[#3289FF]"
+                  : "border-transparent text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* TAB: Overview */}
+      {activeTab === "overview" && (
+        <div className="space-y-6">
+          <Card title="Executive Summary">
+            <TruncatedText text={company.execSummary} maxChars={500} className="text-slate-700" />
+          </Card>
+
+          {company.businessDescription && (
+            <Card title="Business Overview">
+              <TruncatedText text={company.businessDescription} maxChars={400} className="text-slate-600" />
+            </Card>
+          )}
+
+          <Card title="Score Breakdown">
+            <ScoringMethodology />
+            <div className="space-y-3">
+              {([
+                ["budgetSignal", "Budget Signal", 25],
+                ["solutionFit", "Solution Fit", 25],
+                ["triggerRecency", "Trigger Recency", 20],
+                ["aiMaturity", "AI Maturity", 15],
+                ["geminiAlignment", "Gemini Alignment", 15],
+              ] as const).map(([key, label, max]) => {
+                const dim = company.scores?.[key];
+                if (!dim) return null;
+                const pct = (dim.points / max) * 100;
+                return (
+                  <div key={key} className="border border-slate-100 rounded-lg p-3">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <span className="text-label">{label}</span>
+                      <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                        pct >= 80 ? "bg-emerald-100 text-emerald-700" :
+                        pct >= 60 ? "bg-[rgba(50,137,255,0.08)] text-[#3289FF]" :
+                        pct >= 40 ? "bg-amber-100 text-amber-700" :
+                        "bg-red-100 text-red-700"
+                      }`}>{dim.points}/{max}</span>
+                    </div>
+                    <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mb-2">
+                      <div className={`h-full rounded-full ${
+                        pct >= 80 ? "bg-emerald-500" : pct >= 60 ? "bg-[#3289FF]" : pct >= 40 ? "bg-amber-500" : "bg-red-500"
+                      }`} style={{ width: `${pct}%` }} />
+                    </div>
+                    <p className="text-sm text-slate-600 leading-relaxed">{dim.reasoning}</p>
+                    <Sources sources={dim.sources} />
+                  </div>
+                );
+              })}
+            </div>
+          </Card>
+
+          {company.techLandscape && (
+            <Card title="Technology Landscape">
+              <TechLandscapePanel tech={company.techLandscape} />
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* TAB: Intelligence */}
+      {activeTab === "intelligence" && (
+        <div className="space-y-6">
+          <Card title="Trigger Events" subtitle={`${company.triggerEvents?.length || 0} events identified`}>
+            <div className="space-y-2">
+              {company.triggerEvents?.map((t, i) => (
+                <CollapsibleItem
+                  key={i}
+                  className="border-l-2 border-[#3289FF]/30 pl-4 py-2"
+                  header={
+                    <div>
+                      <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                        <span className="badge">{t.date}</span>
+                        <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${categoryBadgeColors[t.category] || "bg-slate-100 text-slate-600"}`}>{t.category}</span>
+                      </div>
+                      <p className="text-sm font-semibold text-slate-800">{t.event}</p>
+                    </div>
+                  }
+                >
+                  <p className="text-sm text-slate-600 leading-relaxed mb-2">{t.detail}</p>
+                  <div className="bg-[rgba(50,137,255,0.04)] border border-[#3289FF]/10 rounded px-3 py-2">
+                    <p className="text-sm text-slate-700"><span className="font-semibold text-[#3289FF]">Impact:</span> {t.impact}</p>
+                  </div>
+                  <Sources sources={t.sources} />
+                </CollapsibleItem>
+              ))}
+            </div>
+          </Card>
+
+          <Card title="Pain Points" subtitle={`${company.painPoints?.length || 0} pain points identified`}>
+            <div className="space-y-2">
+              {company.painPoints?.map((p, i) => (
+                <CollapsibleItem
+                  key={i}
+                  className="border-l-2 border-orange-400/40 pl-4 py-2"
+                  header={
+                    <div className="flex items-center gap-2">
+                      <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${severityBadgeColors[p.severity] || ""}`}>{p.severity}</span>
+                      <span className="text-sm font-semibold text-slate-800">{p.title}</span>
+                    </div>
+                  }
+                >
+                  <p className="text-sm text-slate-600 leading-relaxed mb-2">{p.description}</p>
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {p.affectedFunctions?.map(f => (
+                      <span key={f} className="badge">{f}</span>
+                    ))}
+                  </div>
+                  {p.techolutionSolutions?.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      <span className="text-xs text-slate-400">Solutions:</span>
+                      {p.techolutionSolutions.map(s => (
+                        <span key={s} className="text-xs bg-[rgba(50,137,255,0.08)] text-[#3289FF] px-1.5 py-0.5 rounded">{solName(s)}</span>
+                      ))}
+                    </div>
+                  )}
+                  <Sources sources={p.sources} />
+                </CollapsibleItem>
+              ))}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* TAB: GTM Strategy */}
+      {activeTab === "gtm" && company.gtm && (
+        <div className="space-y-6">
+          <div className="bg-[rgba(50,137,255,0.04)] border border-[#3289FF]/15 rounded-lg px-5 py-4 flex gap-3">
+            <span className="text-[#3289FF] text-lg shrink-0">i</span>
+            <p className="text-sm text-slate-600 leading-relaxed">
+              These strategic recommendations represent analytical assessment, inferred from publicly available research, financial reports, and organizational data collected for this company. Expand <strong>&ldquo;Why this recommendation&rdquo;</strong> on any section to see the underlying reasoning and sources.
+            </p>
+          </div>
+
+          <Card title="1-Page GTM Brief">
+            <p className="text-sm text-slate-700 leading-relaxed">{company.gtm.brief}</p>
+          </Card>
+
+          <Card title="Entry Strategy" subtitle="How we get in the door and expand over time.">
+            <div className="bg-[rgba(50,137,255,0.04)] border border-[#3289FF]/15 rounded-lg px-4 py-3 mb-4">
+              <p className="text-label text-[#3289FF] mb-1">Recommended Entry</p>
+              <p className="text-sm font-semibold text-slate-800">{solName(company.gtm.entrySolution)}</p>
+            </div>
+
+            <div className="space-y-2 mb-4">
+              {company.gtm.entryStrategy?.map((s, i) => (
+                <div key={i} className="flex gap-3">
+                  <span className="w-5 h-5 rounded-full bg-[rgba(50,137,255,0.08)] text-[#3289FF] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+                  <p className="text-sm text-slate-700 leading-relaxed">{s}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="bg-orange-50/50 border border-orange-200/60 rounded-lg px-4 py-3 mb-4">
+              <p className="text-label text-orange-600 mb-1">Urgency</p>
+              <div className="flex items-center gap-2 mb-1">
+                <UrgencyBadge urgency={company.gtm.urgency} />
+              </div>
+              <p className="text-sm text-slate-600 leading-relaxed">{company.gtm.urgencyReasoning}</p>
+            </div>
+
+            {company.gtm.expandPath && (
+              <div className="mb-4">
+                <p className="text-label text-purple-600 mb-2">Expansion Path</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  {company.gtm.expandPath.split(/→|->|➜|➡|,|;|\d+\.\s+/).map(s => s.trim()).filter(Boolean).map((step, i, arr) => (
+                    <span key={i} className="flex items-center gap-2">
+                      <span className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium">{step}</span>
+                      {i < arr.length - 1 && <span className="text-slate-400">&rarr;</span>}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="mb-4">
+              <p className="text-label mb-2">Competitive Positioning</p>
+              <div className="bg-slate-50 border border-slate-100 rounded-lg px-4 py-3">
+                <NumberedList text={company.gtm.competitivePositioning} />
+              </div>
+            </div>
+
+            <WhyRecommendation reasoning={company.gtm.entrySolutionReasoning} sources={company.gtm.sources} />
+          </Card>
+
+          <Card title="Solution Mapping" subtitle="Their problem, what we sell, what they get.">
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-left text-label px-3 py-2">Problem</th>
+                    <th className="text-left text-label px-3 py-2">Techolution Capability</th>
+                    <th className="text-left text-label px-3 py-2">Expected Outcome</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {company.solutionMappings?.map((m, i) => (
+                    <tr key={i}>
+                      <td className="px-3 py-3 text-slate-700">{m.painPoint}</td>
+                      <td className="px-3 py-3"><span className="text-[#3289FF] font-medium">{m.solutionName}</span></td>
+                      <td className="px-3 py-3 text-slate-600">{m.value}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {company.solutionMappings?.map((m, i) => (
+              m.reasoning ? (
+                <WhyRecommendation
+                  key={i}
+                  label={`Why ${m.solutionName}`}
+                  reasoning={m.reasoning}
+                  sources={m.sources}
+                />
+              ) : null
+            ))}
+          </Card>
+
+          {company.gtm.pilotStrategy && (
+            <Card title="Pilot Strategy" subtitle="The first project we propose to prove value.">
+              <div className="bg-emerald-50/50 border border-emerald-200/60 rounded-lg p-4">
+                <p className="text-base font-semibold text-emerald-800 mb-3">{company.gtm.pilotStrategy.title}</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {([
+                    ["Scope", company.gtm.pilotStrategy.scope],
+                    ["Duration", company.gtm.pilotStrategy.duration],
+                    ["Success Metric", company.gtm.pilotStrategy.successMetric],
+                    ["Budget", company.gtm.pilotStrategy.estimatedBudget],
+                  ] as const).map(([label, val]) => (
+                    <div key={label}>
+                      <span className="text-label text-emerald-600">{label}:</span>
+                      <span className="text-sm text-slate-700 ml-2">{val}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          )}
+
+          <Sources sources={company.gtm.sources} />
+        </div>
+      )}
+
+      {/* TAB: Stakeholders */}
+      {activeTab === "stakeholders" && (
+        <div className="space-y-6">
+          {company.stakeholders?.length > 0 && (
+            <Card title="Key Stakeholders" subtitle={`${company.stakeholders.length} contacts identified`}>
+              <div className="flex flex-wrap gap-4 mb-5 pb-4 border-b border-slate-100">
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#3289FF]" />
+                  <span className="text-xs text-slate-600"><span className="font-semibold">Decision Maker</span> — Budget authority & final sign-off</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" />
+                  <span className="text-xs text-slate-600"><span className="font-semibold">Champion</span> — Internal advocate driving tech adoption</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500" />
+                  <span className="text-xs text-slate-600"><span className="font-semibold">Influencer</span> — Domain expert shaping decisions</span>
+                </div>
+              </div>
+              {(["Decision Maker", "Champion", "Influencer"] as const).map(tier => {
+                const tierList = company.stakeholders.filter(s => s.tier === tier);
+                if (tierList.length === 0) return null;
+                const tc = tierColors[tier];
+                return (
+                  <div key={tier} className="mb-4 last:mb-0">
+                    <p className="text-label mb-2">{tier}s</p>
+                    <div className="grid md:grid-cols-2 gap-2">
+                      {tierList.map((s, i) => (
+                        <div key={i} className={`${tc.bg} border ${tc.border} rounded-lg p-3`}>
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-slate-800">{s.name}</p>
+                              <p className="text-xs text-slate-500 mt-0.5">{s.title}</p>
+                            </div>
+                            <span className={`text-xs font-medium px-1.5 py-0.5 rounded shrink-0 ${tc.badge}`}>{s.tier}</span>
+                          </div>
+                          <p className="text-xs text-slate-600 mt-2 leading-relaxed">{s.relevance}</p>
+                          <p className="text-xs text-slate-400 mt-1">
+                            Source: {s.sourceUrl
+                              ? <a href={s.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[#3289FF] hover:underline">{s.source}</a>
+                              : s.source}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </Card>
+          )}
+        </div>
+      )}
+
+      {/* TAB: Sources */}
+      {activeTab === "sources" && (
+        <Card title="Sources" subtitle={`${allSources.length} sources referenced`}>
+          <div className="space-y-1.5">
+            {allSources.map((s, i) => (
+              <div key={i} className="text-xs flex gap-2 items-start py-0.5">
+                <span className="text-slate-400 shrink-0 font-mono w-6 text-right">[{i + 1}]</span>
+                <div className="min-w-0">
+                  <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-[#3289FF] hover:underline">{s.label}</a>
+                  <span className="text-slate-400 ml-1">&mdash; {s.type} &mdash; {s.date}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
+
+/* Card component */
+function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+  return (
+    <div className="card p-6">
+      <h2 className="heading-section text-xl mb-0.5">{title}</h2>
+      {subtitle && <p className="text-xs text-slate-400 mb-4">{subtitle}</p>}
+      {!subtitle && <div className="mb-4" />}
+      {children}
+    </div>
+  );
+}
+
+/* Truncated text with Read more */
+function TruncatedText({ text, maxChars, className = "" }: { text: string; maxChars: number; className?: string }) {
+  const [expanded, setExpanded] = useState(false);
+  const needsTruncation = text.length > maxChars;
+  const displayed = !needsTruncation || expanded ? text : text.slice(0, maxChars).replace(/\s+\S*$/, "") + "...";
+  return (
+    <div>
+      <p className={`text-sm leading-relaxed ${className}`}>{displayed}</p>
+      {needsTruncation && (
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className="text-xs text-[#3289FF] hover:underline mt-1 cursor-pointer"
+        >
+          {expanded ? "Show less" : "Read more"}
+        </button>
+      )}
+    </div>
+  );
+}
+
+/* Scoring Methodology (expandable) */
+function ScoringMethodology() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mb-4 bg-[#F8FAFF] border border-slate-100 rounded-lg px-4 py-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="text-[#3289FF] text-sm font-bold">100</span>
+          <p className="text-xs text-slate-600">
+            Each company is scored on a <span className="font-semibold">100-point scale</span> across 5 dimensions.
+            Rating: A (80+) &middot; B (65-79) &middot; C (50-64) &middot; D (&lt;50)
+          </p>
+        </div>
+        <button
+          onClick={() => setOpen(!open)}
+          className="text-xs text-[#3289FF] hover:underline cursor-pointer whitespace-nowrap ml-3"
+        >
+          {open ? "Hide details" : "How scoring works"}
+        </button>
+      </div>
+      {open && (
+        <div className="mt-3 pt-3 border-t border-slate-200 space-y-5">
+          {[
+            {
+              label: "Budget Signal", pts: "25 pts",
+              desc: "Evidence of AI/tech investment from public filings, press releases, and CXO statements.",
+              rubric: [
+                { range: "22-25", criteria: "Disclosed AI/tech budget with specific dollar amounts, active venture arm funding AI startups, public CIO/CTO statements committing to AI transformation." },
+                { range: "16-21", criteria: "General digital transformation commitment in earnings calls, capex increases mentioning technology, AI hiring signals." },
+                { range: "10-15", criteria: "Broad technology mentions in annual reports without specifics, general cloud migration underway." },
+                { range: "0-9", criteria: "No public evidence of tech investment, cost-cutting mode, or insufficient data." },
+              ],
+            },
+            {
+              label: "Solution Fit", pts: "25 pts",
+              desc: "How many Techolution solutions map to the company's pain points, weighted by priority and proof points.",
+              rubric: [
+                { range: "22-25", criteria: "3+ solutions map with Primary priority, same-industry proof points exist, pain points directly match." },
+                { range: "16-21", criteria: "2+ Primary solutions with clear alignment, at least one same-industry case study." },
+                { range: "10-15", criteria: "1-2 solutions map at Primary/Secondary level, adjacent-industry proof points." },
+                { range: "0-9", criteria: "Solutions are a stretch fit, pain points don't clearly align with portfolio." },
+              ],
+            },
+            {
+              label: "Trigger Recency", pts: "20 pts",
+              desc: "How recent and urgent are trigger events (M&A, leadership change, earnings pressure, regulatory deadlines).",
+              rubric: [
+                { range: "17-20", criteria: "Multiple active triggers announced in last 3 months with explicit deadlines." },
+                { range: "12-16", criteria: "Recent triggers (3-6 months old) still in play. Leadership change settling in, M&A integration ongoing." },
+                { range: "6-11", criteria: "Triggers are 6-12 months old. Impact is real but urgency has faded." },
+                { range: "0-5", criteria: "No recent triggers, or triggers 12+ months old and likely addressed." },
+              ],
+            },
+            {
+              label: "AI Maturity", pts: "15 pts",
+              desc: "Current AI adoption level (1-5). Sweet spot is Level 2-3: sophisticated enough to buy, with gaps to fill.",
+              rubric: [
+                { range: "12-15", criteria: "Level 2-3: Active AI exploration/piloting with gaps in Techolution areas." },
+                { range: "8-11", criteria: "Level 3-4: Scaling AI but specific gaps exist in contracts, scheduling, voice, or search." },
+                { range: "4-7", criteria: "Level 1-2: Early stage, limited capability. Or Level 4-5 with few remaining gaps." },
+                { range: "0-3", criteria: "Level 1: No AI adoption. Or Level 5: AI-saturated with no clear gaps." },
+              ],
+            },
+            {
+              label: "Gemini Alignment", pts: "15 pts",
+              desc: "Google Workspace and Gemini Enterprise presence. Determines Gemini Land/Expand opportunity.",
+              rubric: [
+                { range: "12-15", criteria: "Expand target: Google Workspace + Gemini. Or confirmed GWS with strong GE interest." },
+                { range: "8-11", criteria: "Land target: On Google Workspace but no Gemini Enterprise yet." },
+                { range: "4-7", criteria: "Mixed environment or in active evaluation. Gemini possible but uncertain." },
+                { range: "0-3", criteria: "Confirmed Microsoft 365 / non-Google stack. Gemini unlikely." },
+              ],
+            },
+          ].map((d) => (
+            <div key={d.label} className="border border-slate-100 rounded-lg p-3">
+              <div className="flex items-center gap-2 mb-1.5">
+                <span className="text-xs font-bold text-[#3289FF] bg-[rgba(50,137,255,0.08)] px-2 py-0.5 rounded">{d.pts}</span>
+                <p className="text-xs font-semibold text-slate-700">{d.label}</p>
+              </div>
+              <p className="text-xs text-slate-500 mb-2 leading-relaxed">{d.desc}</p>
+              <div className="space-y-1.5">
+                {d.rubric.map((r, i) => (
+                  <div key={r.range} className="flex gap-2">
+                    <span className={`text-[10px] font-bold w-12 shrink-0 text-right mt-0.5 ${
+                      i === 0 ? "text-emerald-600" : i === 1 ? "text-[#3289FF]" : i === 2 ? "text-amber-600" : "text-slate-400"
+                    }`}>{r.range}</span>
+                    <p className="text-[11px] text-slate-600 leading-relaxed">{r.criteria}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Why this recommendation (expandable) */
+function WhyRecommendation({ reasoning, sources, label }: { reasoning: string; sources?: Source[]; label?: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="mt-3 border-t border-slate-100 pt-2">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-[#3289FF] transition-colors cursor-pointer"
+      >
+        <svg className={`w-3 h-3 transition-transform ${open ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+        </svg>
+        {label || "Why this recommendation"}
+      </button>
+      {open && (
+        <div className="mt-2 bg-emerald-50/50 border border-emerald-200/60 rounded-lg px-4 py-3">
+          <p className="text-label text-emerald-600 mb-1">Why This Works</p>
+          <p className="text-sm text-slate-700 leading-relaxed">{reasoning}</p>
+          {sources && <Sources sources={sources} />}
+        </div>
+      )}
+    </div>
+  );
+}

@@ -1,0 +1,152 @@
+import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
+import { createServerClient } from "@/lib/db";
+import { inngest } from "@/lib/inngest";
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ projectId: string }> }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { projectId } = await params;
+  const supabase = createServerClient();
+  const { searchParams } = new URL(request.url);
+  const slug = searchParams.get("slug");
+
+  // If slug is provided, return full profile data for a single company
+  if (slug) {
+    const { data: profile } = await supabase
+      .from("company_profiles")
+      .select("*")
+      .eq("project_id", projectId)
+      .eq("slug", slug)
+      .single();
+
+    if (!profile) {
+      return NextResponse.json({ error: "Company not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({
+      profiles: [profile],
+      jobs: [],
+    });
+  }
+
+  // Get completed company profiles (summary view for list)
+  const { data: profiles } = await supabase
+    .from("company_profiles")
+    .select("id, slug, total_score, rating, industry, urgency, primary_solution, gemini_status, data->name, data->fullName, data->hqCity, data->state, data->execSummary")
+    .eq("project_id", projectId)
+    .order("total_score", { ascending: false });
+
+  // Get active research jobs
+  const { data: jobs } = await supabase
+    .from("research_jobs")
+    .select("*, research_steps(*)")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+
+  return NextResponse.json({
+    profiles: profiles || [],
+    jobs: jobs || [],
+  });
+}
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ projectId: string }> }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { projectId } = await params;
+  const supabase = createServerClient();
+  const body = await request.json();
+  const companyNames: string[] = body.companies || [];
+
+  if (companyNames.length === 0) {
+    return NextResponse.json({ error: "No companies provided" }, { status: 400 });
+  }
+
+  // Get user
+  const { data: user } = await supabase
+    .from("users")
+    .select("id")
+    .eq("email", session.user.email)
+    .single();
+
+  if (!user) {
+    return NextResponse.json({ error: "User not found" }, { status: 404 });
+  }
+
+  // Create research jobs for each company
+  const agentSteps = [
+    { agent_name: "company_profile", phase: 1 },
+    { agent_name: "tech_stack", phase: 1 },
+    { agent_name: "financial_signal", phase: 1 },
+    { agent_name: "trigger_scanner", phase: 2 },
+    { agent_name: "pain_point_analyzer", phase: 2 },
+    { agent_name: "stakeholder_researcher", phase: 2 },
+    { agent_name: "solution_mapper", phase: 3 },
+    { agent_name: "gtm_generator", phase: 3 },
+    { agent_name: "scoring_agent", phase: 3 },
+    { agent_name: "verification", phase: 4 },
+  ];
+
+  const jobs = [];
+  for (const companyName of companyNames) {
+    // Create the research job
+    const { data: job } = await supabase
+      .from("research_jobs")
+      .insert({
+        project_id: projectId,
+        user_id: user.id,
+        company_name: companyName,
+      })
+      .select()
+      .single();
+
+    if (job) {
+      // Create all research steps
+      await supabase.from("research_steps").insert(
+        agentSteps.map((step) => ({
+          job_id: job.id,
+          agent_name: step.agent_name,
+          phase: step.phase,
+        }))
+      );
+
+      // Trigger Inngest pipeline
+      await inngest.send({
+        name: "research/company.start",
+        data: { jobId: job.id, companyName },
+      });
+
+      jobs.push(job);
+    }
+  }
+
+  // Update project company count
+  const { data: currentProject } = await supabase
+    .from("projects")
+    .select("company_count")
+    .eq("id", projectId)
+    .single();
+
+  await supabase
+    .from("projects")
+    .update({
+      company_count: (currentProject?.company_count || 0) + jobs.length,
+      updated_at: new Date().toISOString(),
+    })
+    .eq("id", projectId);
+
+  return NextResponse.json({ jobs, count: jobs.length });
+}
