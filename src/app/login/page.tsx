@@ -13,10 +13,10 @@ function LoginContent() {
       <div className="w-full max-w-sm">
         <div className="card p-8 text-center">
           <div className="w-12 h-12 bg-[rgba(50,137,255,0.08)] rounded-xl flex items-center justify-center mx-auto mb-4">
-            <span className="text-[#3289FF] font-bold text-lg" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>SK</span>
+            <span className="text-[#3289FF] font-bold text-lg" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>KG</span>
           </div>
 
-          <h1 className="text-xl font-semibold text-slate-800 mb-1">Sales KYC</h1>
+          <h1 className="text-xl font-semibold text-slate-800 mb-1">KYC Genie</h1>
           <p className="text-sm text-slate-400 mb-6">AI-powered company research platform</p>
 
           {error && (

@@ -14,11 +14,11 @@ export default function Navigation() {
         <div className="flex items-center justify-between h-14">
           <Link href="/" className="flex items-center gap-3">
             <div className="w-8 h-8 bg-[rgba(50,137,255,0.08)] rounded-lg flex items-center justify-center">
-              <span className="text-[#3289FF] font-bold text-sm" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>SK</span>
+              <span className="text-[#3289FF] font-bold text-sm" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>KG</span>
             </div>
             <span className="hidden sm:inline">
-              <span className="font-semibold text-[#3289FF]" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>Sales</span>
-              <span className="font-medium text-slate-600 ml-1.5">KYC</span>
+              <span className="font-semibold text-[#3289FF]" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>KYC</span>
+              <span className="font-medium text-slate-600 ml-1.5">Genie</span>
             </span>
           </Link>
 

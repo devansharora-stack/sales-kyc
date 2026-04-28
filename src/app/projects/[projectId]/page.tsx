@@ -254,7 +254,7 @@ export default function ProjectDetailPage() {
               const totalSteps = job.research_steps?.length || 10;
               const runningStep = job.research_steps?.find((s) => s.status === "running");
               return (
-                <div key={job.id} className="card p-3">
+                <Link key={job.id} href={`/projects/${projectId}/research/${job.id}`} className="card p-3 block hover:border-[#3289FF]/30 transition-colors">
                   <div className="flex items-center justify-between mb-1">
                     <p className="text-sm font-medium text-slate-700">{job.company_name}</p>
                     <span className="text-[10px] text-[#3289FF] font-medium">{completedSteps}/{totalSteps}</span>
@@ -271,7 +271,7 @@ export default function ProjectDetailPage() {
                       style={{ width: `${(completedSteps / totalSteps) * 100}%` }}
                     />
                   </div>
-                </div>
+                </Link>
               );
             })}
           </div>

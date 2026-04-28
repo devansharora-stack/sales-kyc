@@ -65,7 +65,7 @@ async function fetchPageText(url: string): Promise<string | null> {
     const res = await fetch(url, {
       redirect: "follow",
       signal: AbortSignal.timeout(10000),
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; SalesKYC/1.0)" },
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; KYCGenie/1.0)" },
     });
     if (!res.ok) return null;
     const html = await res.text();

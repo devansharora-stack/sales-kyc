@@ -4,7 +4,7 @@ import SessionProvider from "@/components/SessionProvider";
 import MainLayout from "@/components/MainLayout";
 
 export const metadata: Metadata = {
-  title: "Sales KYC — AI Company Research",
+  title: "KYC Genie — AI Company Research",
   description: "AI-powered company research and GTM intelligence platform",
 };
 
