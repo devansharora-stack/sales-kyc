@@ -387,17 +387,31 @@ function extractRootObject(json: string): string {
 
 function repairTruncatedJSON(json: string): string {
   let s = json;
+
+  // Step 1: If we're inside an unterminated string, cut back to before it started
   let inString = false;
-  let lastGoodIndex = 0;
+  let lastOutsideString = 0;
   for (let i = 0; i < s.length; i++) {
     const ch = s[i];
     if (ch === '"' && (i === 0 || s[i - 1] !== '\\')) {
       inString = !inString;
+      if (inString) lastOutsideString = i; // remember where the string opened
     }
-    if (!inString) lastGoodIndex = i;
+    if (!inString) lastOutsideString = i;
   }
-  if (inString) s = s.substring(0, lastGoodIndex + 1);
+  if (inString) {
+    // Cut back to before this unterminated string started
+    s = s.substring(0, lastOutsideString);
+  }
+
+  // Step 2: Remove trailing incomplete key-value pairs, colons, commas
   s = s.replace(/,\s*$/, "");
+  s = s.replace(/:\s*$/, "");
+  // If we end with a key string (after removing colon), cut the key too
+  s = s.replace(/,?\s*"[^"]*"\s*$/, "");
+  s = s.replace(/,\s*$/, "");
+
+  // Step 3: Count open braces/brackets and close them
   const stack: string[] = [];
   inString = false;
   for (let i = 0; i < s.length; i++) {
@@ -408,6 +422,7 @@ function repairTruncatedJSON(json: string): string {
     else if (ch === '[') stack.push(']');
     else if (ch === '}' || ch === ']') stack.pop();
   }
+
   s = s.replace(/,\s*$/, "");
   while (stack.length > 0) s += stack.pop();
   return s;

@@ -285,55 +285,43 @@ function extractRootObject(json: string): string {
  * Handles: unterminated strings, unclosed arrays/objects, trailing commas.
  */
 function repairTruncatedJSON(json: string): string {
-  // Remove any trailing incomplete key-value pair or string
-  // Find the last complete value by looking for the last proper delimiter
   let s = json;
 
-  // If we're in the middle of a string, close it
+  // Step 1: If we're inside an unterminated string, cut back to before it started
   let inString = false;
-  let lastGoodIndex = 0;
+  let lastOutsideString = 0;
   for (let i = 0; i < s.length; i++) {
     const ch = s[i];
     if (ch === '"' && (i === 0 || s[i - 1] !== '\\')) {
       inString = !inString;
+      if (inString) lastOutsideString = i;
     }
-    if (!inString) {
-      lastGoodIndex = i;
-    }
+    if (!inString) lastOutsideString = i;
   }
-
   if (inString) {
-    // Truncate to before the last opening quote, then find last good break point
-    // Or just close the string
-    s = s.substring(0, lastGoodIndex + 1);
+    s = s.substring(0, lastOutsideString);
   }
 
-  // Remove trailing comma
+  // Step 2: Remove trailing incomplete key-value pairs, colons, commas
+  s = s.replace(/,\s*$/, "");
+  s = s.replace(/:\s*$/, "");
+  s = s.replace(/,?\s*"[^"]*"\s*$/, "");
   s = s.replace(/,\s*$/, "");
 
-  // Count open braces/brackets and close them
+  // Step 3: Count open braces/brackets and close them
   const stack: string[] = [];
   inString = false;
   for (let i = 0; i < s.length; i++) {
     const ch = s[i];
-    if (ch === '"' && (i === 0 || s[i - 1] !== '\\')) {
-      inString = !inString;
-      continue;
-    }
+    if (ch === '"' && (i === 0 || s[i - 1] !== '\\')) { inString = !inString; continue; }
     if (inString) continue;
     if (ch === '{') stack.push('}');
     else if (ch === '[') stack.push(']');
     else if (ch === '}' || ch === ']') stack.pop();
   }
 
-  // Remove trailing comma again after potential string truncation
   s = s.replace(/,\s*$/, "");
-
-  // Close all open structures
-  while (stack.length > 0) {
-    s += stack.pop();
-  }
-
+  while (stack.length > 0) s += stack.pop();
   return s;
 }
 

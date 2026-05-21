@@ -45,6 +45,36 @@ interface ScoringInput {
 }
 
 export async function runScoringAgent(input: ScoringInput): Promise<ScoreBreakdown> {
+  // Strip sources/URLs from intermediate data to keep prompt compact
+  const techSummary = {
+    cloudProviders: input.techLandscape?.cloudProviders?.value || [],
+    workspacePlatform: input.techLandscape?.workspacePlatform?.value || "Unknown",
+    knownAIDeployments: input.techLandscape?.knownAIDeployments?.value || [],
+    knownVendors: input.techLandscape?.knownVendors?.value || [],
+  };
+  const finSummary = {
+    budgetEvidence: input.financialSignals?.budgetEvidence || [],
+    techInvestmentSignals: input.financialSignals?.techInvestmentSignals || [],
+    costPressure: input.financialSignals?.costPressure || [],
+  };
+  const triggerSummary = (input.triggers || []).map((t) => ({
+    event: t.event, date: t.date, category: t.category, impact: t.impact,
+  }));
+  const painSummary = (input.painPoints || []).map((p) => ({
+    title: p.title, severity: p.severity, affectedFunctions: p.affectedFunctions,
+  }));
+  const solutionSummary = (input.solutionMappings || []).map((s) => ({
+    solution: s.solution, solutionName: s.solutionName, priority: s.priority,
+    fitScore: s.fitScore, estimatedImpact: s.estimatedImpact,
+  }));
+  const gtmSummary = {
+    entrySolution: input.gtm?.entrySolution, urgency: input.gtm?.urgency,
+    brief: input.gtm?.brief,
+  };
+  const stakeholderSummary = (input.stakeholders || []).map((s) => ({
+    name: s.name, title: s.title, tier: s.tier,
+  }));
+
   return callClaudeJSON<ScoreBreakdown>({
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
     userPrompt: `Score this company: ${input.companyName}
@@ -56,25 +86,25 @@ Company profile:
 - Description: ${input.profile.businessDescription}
 
 Technology landscape:
-${JSON.stringify(input.techLandscape, null, 2)}
+${JSON.stringify(techSummary, null, 2)}
 
 Financial signals:
-${JSON.stringify(input.financialSignals, null, 2)}
+${JSON.stringify(finSummary, null, 2)}
 
 Trigger events:
-${JSON.stringify(input.triggers, null, 2)}
+${JSON.stringify(triggerSummary, null, 2)}
 
 Pain points:
-${JSON.stringify(input.painPoints, null, 2)}
+${JSON.stringify(painSummary, null, 2)}
 
 Solution mappings:
-${JSON.stringify(input.solutionMappings, null, 2)}
+${JSON.stringify(solutionSummary, null, 2)}
 
 GTM strategy:
-${JSON.stringify(input.gtm, null, 2)}
+${JSON.stringify(gtmSummary, null, 2)}
 
 Stakeholders:
-${JSON.stringify(input.stakeholders, null, 2)}
+${JSON.stringify(stakeholderSummary, null, 2)}
 
 Respond ONLY with the JSON object matching the output schema.`,
   });

@@ -34,6 +34,23 @@ interface PainPointInput {
 }
 
 export async function runPainPointAnalyzer(input: PainPointInput): Promise<PainPoint[]> {
+  // Strip sources/URLs from intermediate data to keep prompt compact
+  const triggerSummary = (input.triggers || []).map((t) => ({
+    event: t.event, date: t.date, category: t.category, detail: t.detail, impact: t.impact,
+  }));
+  const techSummary = {
+    cloudProviders: input.techLandscape?.cloudProviders?.value || [],
+    workspacePlatform: input.techLandscape?.workspacePlatform?.value || "Unknown",
+    knownAIDeployments: input.techLandscape?.knownAIDeployments?.value || [],
+    knownVendors: input.techLandscape?.knownVendors?.value || [],
+    knownSystems: input.techLandscape?.knownSystems?.value || [],
+  };
+  const finSummary = {
+    budgetEvidence: input.financialSignals?.budgetEvidence || [],
+    techInvestmentSignals: input.financialSignals?.techInvestmentSignals || [],
+    costPressure: input.financialSignals?.costPressure || [],
+  };
+
   return callClaudeJSON<PainPoint[]>({
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
     userPrompt: `Analyze pain points for: ${input.companyName}
@@ -45,13 +62,13 @@ Company profile:
 - Description: ${input.profile.businessDescription}
 
 Recent trigger events:
-${JSON.stringify(input.triggers, null, 2)}
+${JSON.stringify(triggerSummary, null, 2)}
 
 Technology landscape:
-${JSON.stringify(input.techLandscape, null, 2)}
+${JSON.stringify(techSummary, null, 2)}
 
 Financial signals:
-${JSON.stringify(input.financialSignals, null, 2)}
+${JSON.stringify(finSummary, null, 2)}
 
 Respond ONLY with a JSON array matching the output schema.`,
   });

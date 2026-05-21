@@ -42,6 +42,25 @@ interface SolutionMapperInput {
 }
 
 export async function runSolutionMapper(input: SolutionMapperInput): Promise<SolutionMapping[]> {
+  // Strip sources/URLs from intermediate data to keep prompt compact
+  const painSummary = (input.painPoints || []).map((p) => ({
+    title: p.title, description: p.description, severity: p.severity,
+    affectedFunctions: p.affectedFunctions, techolutionSolutions: p.techolutionSolutions,
+  }));
+  const techSummary = {
+    cloudProviders: input.techLandscape?.cloudProviders?.value || [],
+    workspacePlatform: input.techLandscape?.workspacePlatform?.value || "Unknown",
+    knownAIDeployments: input.techLandscape?.knownAIDeployments?.value || [],
+    knownVendors: input.techLandscape?.knownVendors?.value || [],
+  };
+  const finSummary = {
+    budgetEvidence: input.financialSignals?.budgetEvidence || [],
+    techInvestmentSignals: input.financialSignals?.techInvestmentSignals || [],
+  };
+  const triggerSummary = (input.triggers || []).map((t) => ({
+    event: t.event, date: t.date, category: t.category, impact: t.impact,
+  }));
+
   return callClaudeJSON<SolutionMapping[]>({
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
     userPrompt: `Create solution mappings for: ${input.companyName}
@@ -53,16 +72,16 @@ Company profile:
 - Description: ${input.profile.businessDescription}
 
 Pain points:
-${JSON.stringify(input.painPoints, null, 2)}
+${JSON.stringify(painSummary, null, 2)}
 
 Technology landscape:
-${JSON.stringify(input.techLandscape, null, 2)}
+${JSON.stringify(techSummary, null, 2)}
 
 Financial signals:
-${JSON.stringify(input.financialSignals, null, 2)}
+${JSON.stringify(finSummary, null, 2)}
 
 Trigger events:
-${JSON.stringify(input.triggers, null, 2)}
+${JSON.stringify(triggerSummary, null, 2)}
 
 ## Techolution Offerings Knowledge Base
 Use ONLY the offerings and case studies below. Every proof point MUST reference a named client from this knowledge base. Do NOT fabricate proof points.

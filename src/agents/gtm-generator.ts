@@ -53,6 +53,32 @@ interface GTMGeneratorInput {
 }
 
 export async function runGTMGenerator(input: GTMGeneratorInput): Promise<GTMStrategy> {
+  // Strip sources/URLs from intermediate data to keep prompt compact
+  const techSummary = {
+    cloudProviders: input.techLandscape?.cloudProviders?.value || [],
+    workspacePlatform: input.techLandscape?.workspacePlatform?.value || "Unknown",
+    knownAIDeployments: input.techLandscape?.knownAIDeployments?.value || [],
+    knownVendors: input.techLandscape?.knownVendors?.value || [],
+  };
+  const finSummary = {
+    budgetEvidence: input.financialSignals?.budgetEvidence || [],
+    techInvestmentSignals: input.financialSignals?.techInvestmentSignals || [],
+    costPressure: input.financialSignals?.costPressure || [],
+  };
+  const triggerSummary = (input.triggers || []).map((t) => ({
+    event: t.event, date: t.date, category: t.category, impact: t.impact,
+  }));
+  const painSummary = (input.painPoints || []).map((p) => ({
+    title: p.title, severity: p.severity, affectedFunctions: p.affectedFunctions,
+  }));
+  const solutionSummary = (input.solutionMappings || []).map((s) => ({
+    solution: s.solution, solutionName: s.solutionName, painPoint: s.painPoint,
+    priority: s.priority, proofPoint: s.proofPoint, estimatedImpact: s.estimatedImpact,
+  }));
+  const stakeholderSummary = (input.stakeholders || []).map((s) => ({
+    name: s.name, title: s.title, tier: s.tier, relevance: s.relevance,
+  }));
+
   return callClaudeJSON<GTMStrategy>({
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
     userPrompt: `Generate a go-to-market strategy for: ${input.companyName}
@@ -65,22 +91,22 @@ Company profile:
 - Description: ${input.profile.businessDescription}
 
 Technology landscape:
-${JSON.stringify(input.techLandscape, null, 2)}
+${JSON.stringify(techSummary, null, 2)}
 
 Financial signals:
-${JSON.stringify(input.financialSignals, null, 2)}
+${JSON.stringify(finSummary, null, 2)}
 
 Trigger events:
-${JSON.stringify(input.triggers, null, 2)}
+${JSON.stringify(triggerSummary, null, 2)}
 
 Pain points:
-${JSON.stringify(input.painPoints, null, 2)}
+${JSON.stringify(painSummary, null, 2)}
 
 Solution mappings:
-${JSON.stringify(input.solutionMappings, null, 2)}
+${JSON.stringify(solutionSummary, null, 2)}
 
 Stakeholders:
-${JSON.stringify(input.stakeholders, null, 2)}
+${JSON.stringify(stakeholderSummary, null, 2)}
 
 ## Techolution Offerings Knowledge Base
 Reference these real offerings, engagement models, and pricing when building pilot strategies. Use named clients from case studies when mentioning proof points.

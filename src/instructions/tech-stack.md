@@ -34,3 +34,7 @@ Search for: "{company} cloud provider AWS Azure Google Cloud", "{company} techno
 - Job postings are valid signals for tech stack (e.g., "Experience with Salesforce" in listings)
 - Pay special attention to Google vs Microsoft workspace — this is critical for Gemini scoring
 - If unknown, use "Unknown" — never guess
+- **Keep each array to max 8 items** — list only the most important/relevant ones
+- **Keep source labels short** (under 80 characters)
+- **Max 3 sources per field** — pick the most authoritative ones
+- **Total response must be under 4,000 characters** — be concise, no explanations outside the JSON
