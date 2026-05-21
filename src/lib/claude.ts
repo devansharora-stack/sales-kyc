@@ -230,26 +230,54 @@ function extractJSON<T>(text: string): T {
 }
 
 /**
- * Attempt JSON.parse, and if it fails with a truncation error,
- * try to repair the JSON by closing open strings, arrays, and objects.
+ * Attempt JSON.parse, and if it fails, try to repair:
+ * - Truncated JSON (missing closers) → repairTruncatedJSON
+ * - Trailing junk (extra braces/text after root closes) → extractRootObject
  */
 function parseWithRepair<T>(json: string): T {
   try {
     return JSON.parse(json) as T;
   } catch (e) {
     const msg = e instanceof Error ? e.message : "";
-    // Only attempt repair for truncation-like errors
-    if (
-      msg.includes("Unterminated string") ||
-      msg.includes("Unexpected end of JSON") ||
-      msg.includes("Expected")
-    ) {
-      console.log(`[claude] Attempting JSON repair for: ${msg}`);
-      const repaired = repairTruncatedJSON(json);
-      return JSON.parse(repaired) as T;
+    console.log(`[claude] JSON parse failed: ${msg}, attempting repair...`);
+
+    // Try 1: Extract just the root object (strip trailing junk)
+    const extracted = extractRootObject(json);
+    if (extracted !== json) {
+      try { return JSON.parse(extracted) as T; } catch { /* fall through */ }
     }
-    throw e;
+
+    // Try 2: Repair truncated JSON
+    try { return JSON.parse(repairTruncatedJSON(json)) as T; } catch { /* fall through */ }
+
+    // Try 3: Extract root then repair
+    try { return JSON.parse(repairTruncatedJSON(extracted)) as T; } catch { throw e; }
   }
+}
+
+/**
+ * Extract just the root JSON object/array by tracking brace depth.
+ * Stops at the point where the root closes — strips trailing junk.
+ */
+function extractRootObject(json: string): string {
+  if (!json || (json[0] !== '{' && json[0] !== '[')) return json;
+  let depth = 0;
+  let inString = false;
+
+  for (let i = 0; i < json.length; i++) {
+    const ch = json[i];
+    if (ch === '"' && (i === 0 || json[i - 1] !== '\\')) {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === '{' || ch === '[') depth++;
+    else if (ch === '}' || ch === ']') {
+      depth--;
+      if (depth === 0) return json.substring(0, i + 1);
+    }
+  }
+  return json;
 }
 
 /**

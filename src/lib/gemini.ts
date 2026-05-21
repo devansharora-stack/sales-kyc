@@ -324,20 +324,65 @@ function extractGeminiJSON<T>(text: string): T {
     // Find first { or [ and parse from there
     const start = cleaned.search(/[\[{]/);
     if (start >= 0) {
+      const jsonCandidate = cleaned.slice(start);
       try {
-        return JSON.parse(cleaned.slice(start)) as T;
+        return JSON.parse(jsonCandidate) as T;
       } catch (e2) {
-        // Attempt repair for truncated JSON
         const msg = e2 instanceof Error ? e2.message : "";
-        if (msg.includes("Unterminated") || msg.includes("Unexpected end") || msg.includes("Expected")) {
-          console.log(`[gemini] Attempting JSON repair for: ${msg}`);
-          return JSON.parse(repairTruncatedJSON(cleaned.slice(start))) as T;
+        console.log(`[gemini] JSON parse failed: ${msg}, attempting repair...`);
+
+        // Try 1: Extract just the root object (strip trailing junk after root closes)
+        const extracted = extractRootObject(jsonCandidate);
+        if (extracted !== jsonCandidate) {
+          try {
+            return JSON.parse(extracted) as T;
+          } catch { /* fall through to truncation repair */ }
         }
-        throw e2;
+
+        // Try 2: Repair truncated JSON (missing closers)
+        try {
+          return JSON.parse(repairTruncatedJSON(jsonCandidate)) as T;
+        } catch { /* fall through */ }
+
+        // Try 3: Extract root then repair (handles both extra + missing)
+        try {
+          return JSON.parse(repairTruncatedJSON(extracted)) as T;
+        } catch {
+          throw e2;
+        }
       }
     }
     throw new Error(`Failed to parse JSON from Gemini response: ${cleaned.slice(0, 200)}`);
   }
+}
+
+/**
+ * Extract just the root JSON object/array by tracking brace depth.
+ * Stops at the point where the root closes — strips trailing junk.
+ */
+function extractRootObject(json: string): string {
+  const opener = json[0];
+  const closer = opener === '{' ? '}' : ']';
+  let depth = 0;
+  let inString = false;
+
+  for (let i = 0; i < json.length; i++) {
+    const ch = json[i];
+    if (ch === '"' && (i === 0 || json[i - 1] !== '\\')) {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === '{' || ch === '[') depth++;
+    else if (ch === '}' || ch === ']') {
+      depth--;
+      if (depth === 0) {
+        return json.substring(0, i + 1);
+      }
+    }
+  }
+  // Never closed — return as-is for truncation repair to handle
+  return json;
 }
 
 function repairTruncatedJSON(json: string): string {

@@ -1,0 +1,26 @@
+name: Sync Inngest after deploy
+
+on:
+  # Runs after Vercel deploys (Vercel deploys on push to main)
+  push:
+    branches: [main]
+
+jobs:
+  sync-inngest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Wait for Vercel deploy to finish
+        run: sleep 120
+
+      - name: Sync Inngest functions
+        run: |
+          echo "Syncing Inngest with production..."
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "${{ vars.DEPLOY_URL }}/api/inngest")
+          echo "Response status: $STATUS"
+          if [ "$STATUS" -ge 200 ] && [ "$STATUS" -lt 300 ]; then
+            echo "Inngest synced successfully"
+          else
+            echo "Inngest sync failed with status $STATUS, retrying in 30s..."
+            sleep 30
+            curl -s -X PUT "${{ vars.DEPLOY_URL }}/api/inngest"
+          fi
