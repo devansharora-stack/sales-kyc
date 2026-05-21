@@ -1,6 +1,7 @@
 /**
  * GTM Strategy Generator Agent — Phase 3 (Synthesis)
- * Uses Claude Opus via Azure AI Foundry (falls back to Gemini).
+ * Uses Claude Opus. Includes offerings KB for realistic
+ * pilot strategies and engagement model references.
  */
 
 import { readFileSync } from "fs";
@@ -23,6 +24,12 @@ const systemPrompt = readFileSync(
 
 const agentPrompt = readFileSync(
   join(process.cwd(), "src/instructions/gtm-generator.md"),
+  "utf-8"
+);
+
+// Load offerings KB for realistic pilot strategies and pricing references
+const offeringsKB = readFileSync(
+  join(process.cwd(), "src/data/offerings-kb.json"),
   "utf-8"
 );
 
@@ -74,6 +81,11 @@ ${JSON.stringify(input.solutionMappings, null, 2)}
 
 Stakeholders:
 ${JSON.stringify(input.stakeholders, null, 2)}
+
+## Techolution Offerings Knowledge Base
+Reference these real offerings, engagement models, and pricing when building pilot strategies. Use named clients from case studies when mentioning proof points.
+
+${offeringsKB}
 
 Respond ONLY with the JSON object matching the output schema.`,
   });

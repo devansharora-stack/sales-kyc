@@ -100,9 +100,55 @@ export async function POST(
     { agent_name: "verification", phase: 4 },
   ];
 
+  const CACHE_MAX_AGE_DAYS = 7;
+  const forceRefresh = body.forceRefresh === true;
+
   const jobs = [];
   for (const companyName of companyNames) {
-    // Create the research job
+    // Normalize slug for cache lookup
+    const normalizedSlug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+
+    // Check for existing cached profile (any project, within 7 days)
+    if (!forceRefresh) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - CACHE_MAX_AGE_DAYS);
+
+      const { data: cached } = await supabase
+        .from("company_profiles")
+        .select("*")
+        .eq("slug", normalizedSlug)
+        .gte("updated_at", cutoffDate.toISOString())
+        .order("updated_at", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (cached) {
+        // Copy cached profile to this project
+        const { error: upsertError } = await supabase.from("company_profiles").upsert(
+          {
+            job_id: cached.job_id,
+            project_id: projectId,
+            user_id: user.id,
+            slug: cached.slug,
+            data: cached.data,
+            total_score: cached.total_score,
+            rating: cached.rating,
+            industry: cached.industry,
+            urgency: cached.urgency,
+            primary_solution: cached.primary_solution,
+            gemini_status: cached.gemini_status,
+          },
+          { onConflict: "project_id,slug" }
+        );
+
+        if (!upsertError) {
+          jobs.push({ id: cached.job_id, cached: true, company_name: companyName, slug: cached.slug });
+          continue;
+        }
+      }
+    }
+
+    // No cache hit — create a new research job
     const { data: job } = await supabase
       .from("research_jobs")
       .insert({

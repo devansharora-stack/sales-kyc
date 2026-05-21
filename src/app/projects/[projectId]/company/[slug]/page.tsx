@@ -3,8 +3,9 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import type { CompanyDetail, Source, SolutionId } from "@/lib/types";
+import type { CompanyDetail, Source, SolutionId, SolutionMapping } from "@/lib/types";
 import { ALL_SOLUTIONS } from "@/lib/types";
+import { generateCompanyPDF } from "@/lib/generate-pdf";
 import RatingBadge from "@/components/company/RatingBadge";
 import GeminiStatusBadge from "@/components/company/GeminiStatusBadge";
 import UrgencyBadge from "@/components/company/UrgencyBadge";
@@ -129,6 +130,9 @@ export default function CompanyPage() {
   add(company.gtm?.sources);
   add(company.revenue?.sources);
   add(company.employees?.sources);
+  if (company.scores) {
+    Object.values(company.scores).forEach((dim: any) => add(dim?.sources));
+  }
   const tl = company.techLandscape;
   if (tl) {
     add(tl.cloudProviders?.sources);
@@ -160,6 +164,16 @@ export default function CompanyPage() {
                 <RatingBadge rating={company.rating} showLabel size="md" />
                 <GeminiStatusBadge status={company.geminiStatus} />
                 <UrgencyBadge urgency={company.gtm?.urgency || "Medium"} />
+                <button
+                  onClick={() => generateCompanyPDF(company)}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-[#3289FF] bg-white border border-slate-200 hover:border-[#3289FF]/30 rounded-lg transition-colors cursor-pointer"
+                  title="Download PDF"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  PDF
+                </button>
               </div>
             </div>
           </div>
@@ -210,12 +224,12 @@ export default function CompanyPage() {
       {activeTab === "overview" && (
         <div className="space-y-6">
           <Card title="Executive Summary">
-            <TruncatedText text={company.execSummary} maxChars={500} className="text-slate-700" />
+            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{company.execSummary}</p>
           </Card>
 
           {company.businessDescription && (
             <Card title="Business Overview">
-              <TruncatedText text={company.businessDescription} maxChars={400} className="text-slate-600" />
+              <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{company.businessDescription}</p>
             </Card>
           )}
 
@@ -389,37 +403,25 @@ export default function CompanyPage() {
             <WhyRecommendation reasoning={company.gtm.entrySolutionReasoning} sources={company.gtm.sources} />
           </Card>
 
-          <Card title="Solution Mapping" subtitle="Their problem, what we sell, what they get.">
+          <Card title="Solution Mapping" subtitle="Their problem, what we sell, what they get." action={<FitScoreMethodology />}>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-slate-200">
+                    <th className="text-center text-label px-3 py-2 w-10">#</th>
                     <th className="text-left text-label px-3 py-2">Problem</th>
                     <th className="text-left text-label px-3 py-2">Techolution Capability</th>
+                    <th className="text-left text-label px-3 py-2 w-32">Fit Score</th>
                     <th className="text-left text-label px-3 py-2">Expected Outcome</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody>
                   {company.solutionMappings?.map((m, i) => (
-                    <tr key={i}>
-                      <td className="px-3 py-3 text-slate-700">{m.painPoint}</td>
-                      <td className="px-3 py-3"><span className="text-[#3289FF] font-medium">{m.solutionName}</span></td>
-                      <td className="px-3 py-3 text-slate-600">{m.value}</td>
-                    </tr>
+                    <SolutionMappingRow key={i} index={i + 1} mapping={m} />
                   ))}
                 </tbody>
               </table>
             </div>
-            {company.solutionMappings?.map((m, i) => (
-              m.reasoning ? (
-                <WhyRecommendation
-                  key={i}
-                  label={`Why ${m.solutionName}`}
-                  reasoning={m.reasoning}
-                  sources={m.sources}
-                />
-              ) : null
-            ))}
           </Card>
 
           {company.gtm.pilotStrategy && (
@@ -541,12 +543,17 @@ export default function CompanyPage() {
 }
 
 /* Card component */
-function Card({ title, subtitle, children }: { title: string; subtitle?: string; children: React.ReactNode }) {
+function Card({ title, subtitle, action, children }: { title: string; subtitle?: string; action?: React.ReactNode; children: React.ReactNode }) {
   return (
     <div className="card p-6">
-      <h2 className="heading-section text-xl mb-0.5">{title}</h2>
-      {subtitle && <p className="text-xs text-slate-400 mb-4">{subtitle}</p>}
-      {!subtitle && <div className="mb-4" />}
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <h2 className="heading-section text-xl mb-0.5">{title}</h2>
+          {subtitle && <p className="text-xs text-slate-400 mb-4">{subtitle}</p>}
+          {!subtitle && <div className="mb-4" />}
+        </div>
+        {action && <div className="shrink-0">{action}</div>}
+      </div>
       {children}
     </div>
   );
@@ -667,6 +674,166 @@ function ScoringMethodology() {
         </div>
       )}
     </div>
+  );
+}
+
+/* Fit Score Methodology (expandable) */
+function FitScoreMethodology() {
+  const [open, setOpen] = useState(false);
+  return (
+    <div>
+      <button
+        onClick={() => setOpen(!open)}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-[#3289FF] border border-slate-200 hover:border-[#3289FF]/30 rounded-lg transition-colors cursor-pointer"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+        How Scoring Works
+      </button>
+      {open && (
+        <div className="mt-3 bg-[#F8FAFF] border border-slate-200 rounded-lg p-5 text-left">
+          <p className="text-sm font-semibold text-slate-700 mb-1">Each solution is scored on a <span className="font-bold">100-point scale</span> across 4 dimensions. Rating: 85+ Strong &middot; 70-84 Good &middot; 55-69 Fair &middot; &lt;55 Weak</p>
+          <div className="border-t border-slate-200 my-3" />
+          <div className="space-y-4">
+            {[
+              { label: "Pain Severity & Specificity", pts: "25 pts", color: "bg-blue-500",
+                rubric: ["22-25 · Acute, quantified pain with clear urgency and executive visibility.", "17-21 · Documented pain with business impact but not yet critical.", "10-16 · Known challenge but vague on severity or timeline.", "0-9 · Generic industry pain, no company-specific evidence."] },
+              { label: "Budget Evidence & Active Need", pts: "25 pts", color: "bg-emerald-500",
+                rubric: ["22-25 · Disclosed budget, active RFP, or confirmed investment timeline.", "17-21 · Earnings call mentions, hiring for related roles, or vendor evaluations.", "10-16 · General digital transformation budget but no specific allocation.", "0-9 · No public evidence of budget or investment intent."] },
+              { label: "Proof Point Relevance", pts: "25 pts", color: "bg-amber-500",
+                rubric: ["22-25 · Same industry, similar scale, matching use case with quantified outcomes.", "17-21 · Adjacent industry or different scale but strong use-case match.", "10-16 · Generic enterprise proof point, loosely applicable.", "0-9 · No directly relevant proof point available."] },
+              { label: "Impact Magnitude", pts: "25 pts", color: "bg-purple-500",
+                rubric: ["22-25 · Transformative impact — 8-figure savings or major competitive advantage.", "17-21 · Significant operational improvement with clear ROI.", "10-16 · Moderate efficiency gains, limited strategic differentiation.", "0-9 · Marginal improvement, hard to quantify value."] },
+            ].map(d => (
+              <div key={d.label} className="border border-slate-100 rounded-lg p-3">
+                <div className="flex items-center gap-2 mb-1.5">
+                  <span className={`w-2.5 h-2.5 rounded-sm ${d.color} shrink-0`} />
+                  <span className="text-xs font-semibold text-slate-700">{d.pts} &middot; {d.label}</span>
+                </div>
+                <div className="ml-[18px] space-y-0.5">
+                  {d.rubric.map((r, i) => (
+                    <p key={i} className={`text-[10px] leading-relaxed ${i === 0 ? "text-emerald-600" : i === 1 ? "text-[#3289FF]" : i === 2 ? "text-amber-600" : "text-slate-400"}`}>{r}</p>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* Fit Score Dimensions */
+const FIT_DIMENSIONS = [
+  { key: "painSeverity" as const, label: "Pain Severity", color: "bg-blue-500" },
+  { key: "budgetEvidence" as const, label: "Budget Evidence", color: "bg-emerald-500" },
+  { key: "proofRelevance" as const, label: "Proof Relevance", color: "bg-amber-500" },
+  { key: "impactMagnitude" as const, label: "Impact", color: "bg-purple-500" },
+];
+
+/* Solution mapping row with expandable reasoning */
+function SolutionMappingRow({ index, mapping: m }: { index: number; mapping: SolutionMapping }) {
+  const [open, setOpen] = useState(false);
+  const barColor = m.fitScore != null
+    ? m.fitScore >= 85 ? "bg-emerald-500" : m.fitScore >= 70 ? "bg-blue-500" : m.fitScore >= 55 ? "bg-amber-500" : "bg-slate-400"
+    : "bg-slate-300";
+  const badgeColor = m.fitScore != null
+    ? m.fitScore >= 85 ? "text-emerald-700" : m.fitScore >= 70 ? "text-blue-700" : m.fitScore >= 55 ? "text-amber-700" : "text-slate-600"
+    : "text-slate-500";
+  const bd = m.fitScoreBreakdown;
+  return (
+    <>
+      <tr
+        className={`border-t border-slate-100 group ${open ? "bg-slate-50/50" : "hover:bg-[rgba(50,137,255,0.03)]"} transition-colors cursor-pointer`}
+        onClick={() => setOpen(!open)}
+      >
+        <td className="px-3 py-3 text-center text-slate-400 text-xs font-medium">{index}</td>
+        <td className="px-3 py-3 text-slate-700">{m.painPoint}</td>
+        <td className="px-3 py-3"><span className="text-[#3289FF] font-medium">{m.solutionName}</span></td>
+        <td className="px-3 py-3">
+          {m.fitScore != null && (
+            <div className="flex items-center gap-2 min-w-[120px]">
+              <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+                <div className={`h-full rounded-full ${barColor}`} style={{ width: `${m.fitScore}%` }} />
+              </div>
+              <span className={`text-xs font-bold w-8 text-right shrink-0 ${badgeColor}`}>{m.fitScore}</span>
+            </div>
+          )}
+          {m.fitScore == null && <span className="text-xs text-slate-400">&mdash;</span>}
+        </td>
+        <td className="px-3 py-3 text-slate-600">
+          <div className="flex items-center justify-between gap-2">
+            <span>{m.value}</span>
+            <span className="flex items-center gap-1 shrink-0">
+              <span className="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+                {open ? "Hide" : "Details"}
+              </span>
+              <svg className={`w-4 h-4 text-slate-400 group-hover:text-[#3289FF] transition-all ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+              </svg>
+            </span>
+          </div>
+        </td>
+      </tr>
+      {open && (
+        <tr>
+          <td colSpan={5} className="px-3 pb-4 pt-0">
+            <div className="bg-[#F8FAFF] border border-slate-200/80 rounded-lg p-4 space-y-3">
+              {bd && (
+                <div>
+                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Fit Score Breakdown</p>
+                  <div className="space-y-1.5 max-w-sm">
+                    {FIT_DIMENSIONS.map(d => {
+                      const pts = bd[d.key] ?? 0;
+                      const pct = (pts / 25) * 100;
+                      return (
+                        <div key={d.key} className="flex items-center gap-2">
+                          <span className="text-[11px] text-slate-500 w-24 shrink-0">{d.label}</span>
+                          <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                            <div className={`h-full rounded-full ${d.color}`} style={{ width: `${pct}%` }} />
+                          </div>
+                          <span className="text-xs font-medium text-slate-600 w-10 text-right">{pts}/25</span>
+                        </div>
+                      );
+                    })}
+                    <div className="flex items-center gap-2 pt-1 border-t border-slate-200/60">
+                      <span className="text-[11px] font-semibold text-slate-600 w-24 shrink-0">Total</span>
+                      <div className="flex-1" />
+                      <span className={`text-sm font-bold ${badgeColor}`}>{m.fitScore}/100</span>
+                    </div>
+                  </div>
+                </div>
+              )}
+              <div>
+                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Why This Solution Fits</p>
+                <p className="text-sm text-slate-700 leading-relaxed">{m.reasoning}</p>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {m.estimatedImpact && (
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Estimated Impact</p>
+                    <p className="text-xs text-slate-600 leading-relaxed">{m.estimatedImpact}</p>
+                  </div>
+                )}
+                {m.proofPoint && (
+                  <div>
+                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Proof Point</p>
+                    <p className="text-xs text-slate-600 leading-relaxed">
+                      <span className="font-medium">{m.proofPoint.client}</span>
+                      {m.proofPoint.relevance && <> &mdash; {m.proofPoint.relevance}</>}
+                      {m.proofPoint.outcome && <><br /><span className="text-emerald-600">{m.proofPoint.outcome}</span></>}
+                    </p>
+                  </div>
+                )}
+              </div>
+              {m.sources && m.sources.length > 0 && <Sources sources={m.sources} />}
+            </div>
+          </td>
+        </tr>
+      )}
+    </>
   );
 }
 

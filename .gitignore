@@ -39,6 +39,25 @@ yarn-error.log*
 # mcp config
 .mcp.json
 
+# GCP service account keys
+gcp-service-account.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# test files
+test-*.ts
+test-output/
+
+# generated reports / data
+*.pdf
+*.xlsx
+*.json
+!package.json
+!package-lock.json
+!tsconfig.json
+!next.config.json
+!components.json
+southwire-report.html
+case studies/

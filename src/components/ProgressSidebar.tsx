@@ -17,6 +17,9 @@ const AGENT_LABELS: Record<string, string> = {
   verification: "Verification",
 };
 
+// Jobs older than 30 min with no progress are considered stale
+const STALE_THRESHOLD_MS = 30 * 60 * 1000;
+
 interface Step {
   id: string;
   agent_name: string;
@@ -29,7 +32,13 @@ interface Job {
   company_name: string;
   status: string;
   progress: number;
+  created_at: string;
+  started_at: string | null;
   research_steps: Step[];
+}
+
+interface CompletedJob extends Job {
+  slug?: string;
 }
 
 function StatusIcon({ status }: { status: string }) {
@@ -45,60 +54,87 @@ function StatusIcon({ status }: { status: string }) {
   }
 }
 
+function isStaleJob(job: Job): boolean {
+  const refTime = job.started_at || job.created_at;
+  if (!refTime) return false;
+  return Date.now() - new Date(refTime).getTime() > STALE_THRESHOLD_MS;
+}
+
 export default function ProgressSidebar() {
   const [collapsed, setCollapsed] = useState(false);
   const [activeJobs, setActiveJobs] = useState<Job[]>([]);
-  const [recentCompleted, setRecentCompleted] = useState<Job[]>([]);
+  const [recentCompleted, setRecentCompleted] = useState<CompletedJob[]>([]);
+  const [dismissing, setDismissing] = useState<string | null>(null);
+
+  async function fetchJobs() {
+    const supabase = createBrowserClient();
+
+    const { data: jobs } = await supabase
+      .from("research_jobs")
+      .select("id, project_id, company_name, status, progress, created_at, started_at, research_steps(id, agent_name, status)")
+      .in("status", ["queued", "running"])
+      .order("created_at", { ascending: false })
+      .limit(10);
+
+    if (jobs) setActiveJobs(jobs as unknown as Job[]);
+
+    // Fetch recently completed — join with company_profiles to get slug
+    const { data: completed } = await supabase
+      .from("research_jobs")
+      .select("id, project_id, company_name, status, progress, created_at, started_at, research_steps(id, agent_name, status)")
+      .eq("status", "completed")
+      .order("completed_at", { ascending: false })
+      .limit(5);
+
+    if (completed) {
+      // Fetch slugs for completed jobs
+      const jobIds = completed.map((j: any) => j.id);
+      const { data: profiles } = await supabase
+        .from("company_profiles")
+        .select("job_id, slug, project_id")
+        .in("job_id", jobIds);
+
+      const slugMap = new Map((profiles || []).map((p: any) => [p.job_id, { slug: p.slug, project_id: p.project_id }]));
+
+      setRecentCompleted(
+        completed.map((j: any) => ({
+          ...j,
+          slug: slugMap.get(j.id)?.slug || j.company_name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
+        })) as CompletedJob[]
+      );
+    }
+  }
+
+  async function handleDismiss(jobId: string) {
+    setDismissing(jobId);
+    try {
+      await fetch(`/api/research/${jobId}`, { method: "DELETE" });
+      // Remove from local state immediately
+      setActiveJobs((prev) => prev.filter((j) => j.id !== jobId));
+    } catch { /* ignore */ }
+    setDismissing(null);
+  }
 
   useEffect(() => {
     const supabase = createBrowserClient();
 
-    // Fetch active jobs on mount
-    async function fetchJobs() {
-      const { data: jobs } = await supabase
-        .from("research_jobs")
-        .select("id, project_id, company_name, status, progress, research_steps(id, agent_name, status)")
-        .in("status", ["queued", "running"])
-        .order("created_at", { ascending: false })
-        .limit(10);
-
-      if (jobs) setActiveJobs(jobs as unknown as Job[]);
-
-      // Also fetch recently completed (last 5)
-      const { data: completed } = await supabase
-        .from("research_jobs")
-        .select("id, project_id, company_name, status, progress, research_steps(id, agent_name, status)")
-        .eq("status", "completed")
-        .order("completed_at", { ascending: false })
-        .limit(5);
-
-      if (completed) setRecentCompleted(completed as unknown as Job[]);
-    }
-
     fetchJobs();
 
-    // Subscribe to research_jobs changes
     const jobChannel = supabase
       .channel("sidebar-jobs")
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "research_jobs" },
-        () => {
-          // Refetch on any change
-          fetchJobs();
-        }
+        () => fetchJobs()
       )
       .subscribe();
 
-    // Subscribe to research_steps changes for progress updates
     const stepChannel = supabase
       .channel("sidebar-steps")
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "research_steps" },
-        () => {
-          fetchJobs();
-        }
+        () => fetchJobs()
       )
       .subscribe();
 
@@ -142,56 +178,70 @@ export default function ProgressSidebar() {
           ) : (
             <div className="space-y-4">
               {/* Active Jobs */}
-              {activeJobs.map((job) => (
-                <div key={job.id} className="card p-3">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="text-xs font-medium text-slate-700 truncate">{job.company_name}</p>
-                    <span className="text-[10px] text-[#3289FF] font-medium">{job.progress}%</span>
+              {activeJobs.map((job) => {
+                const stale = isStaleJob(job);
+                return (
+                  <div key={job.id} className={`card p-3 ${stale ? "border-amber-200 bg-amber-50/30" : ""}`}>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="text-xs font-medium text-slate-700 truncate flex-1">{job.company_name}</p>
+                      <div className="flex items-center gap-1.5">
+                        {stale && (
+                          <span className="text-[9px] text-amber-500 font-medium">Stale</span>
+                        )}
+                        <span className="text-[10px] text-[#3289FF] font-medium">{job.progress}%</span>
+                        <button
+                          onClick={() => handleDismiss(job.id)}
+                          disabled={dismissing === job.id}
+                          className="w-4 h-4 flex items-center justify-center rounded hover:bg-red-50 text-slate-300 hover:text-red-400 text-[10px] cursor-pointer transition-colors"
+                          title="Dismiss"
+                        >
+                          &#10005;
+                        </button>
+                      </div>
+                    </div>
+                    <div className="h-1 bg-slate-100 rounded-full overflow-hidden mb-2">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${stale ? "bg-amber-400" : "bg-[#3289FF]"}`}
+                        style={{ width: `${job.progress}%` }}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      {job.research_steps
+                        ?.sort((a, b) => {
+                          const order = Object.keys(AGENT_LABELS);
+                          return order.indexOf(a.agent_name) - order.indexOf(b.agent_name);
+                        })
+                        .map((step) => (
+                          <div key={step.id} className="flex items-center gap-2">
+                            <StatusIcon status={step.status} />
+                            <span className={`text-[11px] ${
+                              step.status === "completed" ? "text-slate-500" :
+                              step.status === "running" ? "text-[#3289FF] font-medium" :
+                              step.status === "failed" ? "text-red-500" :
+                              "text-slate-300"
+                            }`}>
+                              {AGENT_LABELS[step.agent_name] || step.agent_name}
+                            </span>
+                          </div>
+                        ))}
+                    </div>
                   </div>
-                  <div className="h-1 bg-slate-100 rounded-full overflow-hidden mb-2">
-                    <div
-                      className="h-full bg-[#3289FF] rounded-full transition-all duration-500"
-                      style={{ width: `${job.progress}%` }}
-                    />
-                  </div>
-                  <div className="space-y-1.5">
-                    {job.research_steps
-                      ?.sort((a, b) => {
-                        const order = Object.keys(AGENT_LABELS);
-                        return order.indexOf(a.agent_name) - order.indexOf(b.agent_name);
-                      })
-                      .map((step) => (
-                        <div key={step.id} className="flex items-center gap-2">
-                          <StatusIcon status={step.status} />
-                          <span className={`text-[11px] ${
-                            step.status === "completed" ? "text-slate-500" :
-                            step.status === "running" ? "text-[#3289FF] font-medium" :
-                            step.status === "failed" ? "text-red-500" :
-                            "text-slate-300"
-                          }`}>
-                            {AGENT_LABELS[step.agent_name] || step.agent_name}
-                          </span>
-                        </div>
-                      ))}
-                  </div>
-                </div>
-              ))}
+                );
+              })}
 
               {/* Recently Completed */}
               {recentCompleted.length > 0 && (
                 <>
-                  {activeJobs.length > 0 && (
-                    <div className="flex items-center gap-2 pt-2">
-                      <div className="h-px bg-slate-200 flex-1" />
-                      <span className="text-[10px] text-slate-400 uppercase tracking-wider">Recent</span>
-                      <div className="h-px bg-slate-200 flex-1" />
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 pt-2">
+                    <div className="h-px bg-slate-200 flex-1" />
+                    <span className="text-[10px] text-slate-400 uppercase tracking-wider">Recent</span>
+                    <div className="h-px bg-slate-200 flex-1" />
+                  </div>
                   {recentCompleted.map((job) => (
                     <Link
                       key={job.id}
-                      href={`/projects/${job.project_id}`}
-                      className="card p-3 block hover:border-[#3289FF]/30"
+                      href={`/projects/${job.project_id}/company/${job.slug}`}
+                      className="card p-3 block hover:border-[#3289FF]/30 transition-colors"
                     >
                       <div className="flex items-center justify-between">
                         <p className="text-xs font-medium text-slate-600 truncate">{job.company_name}</p>

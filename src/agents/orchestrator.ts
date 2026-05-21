@@ -99,39 +99,37 @@ export const researchCompany = inngest.createFunction(
 
     try {
       // ============================
-      // Phase 1: Foundation (sequential — free tier rate limits)
+      // Phase 1: Foundation — all 3 Gemini agents run in PARALLEL
+      // (Profile, Tech Stack, Financial Signal are fully independent)
       // ============================
 
-      const [profile, techLandscape, financialSignals] = await step.run(
-        "phase-1-foundation",
-        async () => {
-          const profile = await runAgentStep(jobId, "company_profile", () =>
+      const phase1 = await step.run("phase-1-foundation-parallel", async () => {
+        const [profile, techLandscape, financialSignals] = await Promise.all([
+          runAgentStep(jobId, "company_profile", () =>
             runCompanyProfile(companyName, companyContext)
-          );
-          await updateJobProgress(jobId, 10);
-
-          const techLandscape = await runAgentStep(jobId, "tech_stack", () =>
+          ),
+          runAgentStep(jobId, "tech_stack", () =>
             runTechStack(companyName)
-          );
-          await updateJobProgress(jobId, 20);
-
-          const financialSignals = await runAgentStep(jobId, "financial_signal", () =>
+          ),
+          runAgentStep(jobId, "financial_signal", () =>
             runFinancialSignal(companyName)
-          );
-          await updateJobProgress(jobId, 30);
+          ),
+        ]);
+        await updateJobProgress(jobId, 30);
+        return { profile, techLandscape, financialSignals };
+      });
 
-          return [profile, techLandscape, financialSignals] as const;
-        }
-      );
+      const { profile, techLandscape, financialSignals } = phase1;
 
       // ============================
-      // Phase 2: Intelligence (parallel)
+      // Phase 2: Intelligence
+      // Trigger Scanner + Stakeholders run in PARALLEL (both independent)
+      // Pain Points runs after triggers (it depends on trigger output)
       // ============================
 
-      const [triggers, painPoints, stakeholders] = await step.run(
-        "phase-2-intelligence",
-        async () => {
-          const triggers = await runAgentStep(jobId, "trigger_scanner", () =>
+      const phase2a = await step.run("phase-2a-triggers-and-stakeholders-parallel", async () => {
+        const [triggers, stakeholders] = await Promise.all([
+          runAgentStep(jobId, "trigger_scanner", () =>
             runTriggerScanner({
               companyName,
               profile: {
@@ -141,34 +139,36 @@ export const researchCompany = inngest.createFunction(
                 businessDescription: profile.businessDescription,
               },
             })
-          );
-          await updateJobProgress(jobId, 40);
-
-          const painPoints = await runAgentStep(jobId, "pain_point_analyzer", () =>
-            runPainPointAnalyzer({
-              companyName,
-              profile: {
-                industry: profile.industry,
-                subSector: profile.subSector,
-                revenue: profile.revenue.value,
-                employees: profile.employees.value,
-                businessDescription: profile.businessDescription,
-              },
-              triggers,
-              techLandscape,
-              financialSignals,
-            })
-          );
-          await updateJobProgress(jobId, 50);
-
-          const stakeholders = await runAgentStep(jobId, "stakeholder_researcher", () =>
+          ),
+          runAgentStep(jobId, "stakeholder_researcher", () =>
             runStakeholderResearcher(companyName)
-          );
-          await updateJobProgress(jobId, 60);
+          ),
+        ]);
+        await updateJobProgress(jobId, 45);
+        return { triggers, stakeholders };
+      });
 
-          return [triggers, painPoints, stakeholders] as const;
-        }
-      );
+      const { triggers, stakeholders } = phase2a;
+
+      const painPoints = await step.run("phase-2b-pain-points", async () => {
+        const result = await runAgentStep(jobId, "pain_point_analyzer", () =>
+          runPainPointAnalyzer({
+            companyName,
+            profile: {
+              industry: profile.industry,
+              subSector: profile.subSector,
+              revenue: profile.revenue.value,
+              employees: profile.employees.value,
+              businessDescription: profile.businessDescription,
+            },
+            triggers,
+            techLandscape,
+            financialSignals,
+          })
+        );
+        await updateJobProgress(jobId, 55);
+        return result;
+      });
 
       // ============================
       // Phase 3: Synthesis (sequential — each builds on prior)

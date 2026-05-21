@@ -164,9 +164,12 @@ function CompanyProfilePreview({ data }: { data: StepOutput }) {
 }
 
 function TechStackPreview({ data }: { data: StepOutput }) {
-  const cloud = (data.cloudProviders as { value?: string[] })?.value || [];
-  const workspace = (data.workspacePlatform as { value?: string })?.value || "—";
-  const ai = (data.knownAIDeployments as { value?: string[] })?.value || [];
+  const rawCloud = data.cloudProviders;
+  const cloud = Array.isArray(rawCloud) ? rawCloud : Array.isArray((rawCloud as any)?.value) ? (rawCloud as any).value : [];
+  const rawWs = data.workspacePlatform;
+  const workspace = typeof rawWs === "string" ? rawWs : (rawWs as any)?.value || "—";
+  const rawAi = data.knownAIDeployments;
+  const ai = Array.isArray(rawAi) ? rawAi : Array.isArray((rawAi as any)?.value) ? (rawAi as any).value : [];
   return (
     <div className="space-y-1.5 text-xs">
       <div><span className="text-slate-400">Cloud:</span> <span className="text-slate-600">{cloud.join(", ") || "—"}</span></div>
@@ -177,15 +180,22 @@ function TechStackPreview({ data }: { data: StepOutput }) {
 }
 
 function FinancialSignalPreview({ data }: { data: StepOutput }) {
+  const [expanded, setExpanded] = useState(false);
   const signals = data.signals as { signal: string; evidence: string }[] || [];
+  const visible = expanded ? signals : signals.slice(0, 3);
   return (
     <div className="space-y-1 text-xs">
-      {signals.slice(0, 3).map((s, i) => (
+      {visible.map((s, i) => (
         <div key={i} className="flex items-start gap-1.5">
           <span className="text-emerald-500 mt-0.5">$</span>
           <span className="text-slate-600">{s.signal || s.evidence || JSON.stringify(s).slice(0, 80)}</span>
         </div>
       ))}
+      {signals.length > 3 && (
+        <button onClick={() => setExpanded(!expanded)} className="text-[#3289FF] hover:underline cursor-pointer">
+          {expanded ? "Show less" : `+${signals.length - 3} more`}
+        </button>
+      )}
       {signals.length === 0 && (
         <p className="text-slate-400">Budget signals extracted</p>
       )}
@@ -194,11 +204,13 @@ function FinancialSignalPreview({ data }: { data: StepOutput }) {
 }
 
 function TriggersPreview({ data }: { data: StepOutput }) {
+  const [expanded, setExpanded] = useState(false);
   const events = data as unknown as { event: string; category: string; date: string }[];
   const items = Array.isArray(events) ? events : [];
+  const visible = expanded ? items : items.slice(0, 4);
   return (
     <div className="space-y-1 text-xs">
-      {items.slice(0, 4).map((t, i) => (
+      {visible.map((t, i) => (
         <div key={i} className="flex items-start gap-1.5">
           <span className="text-amber-500 mt-0.5">&#9889;</span>
           <div>
@@ -207,33 +219,45 @@ function TriggersPreview({ data }: { data: StepOutput }) {
           </div>
         </div>
       ))}
-      {items.length > 4 && <p className="text-slate-400">+{items.length - 4} more</p>}
+      {items.length > 4 && (
+        <button onClick={() => setExpanded(!expanded)} className="text-[#3289FF] hover:underline cursor-pointer">
+          {expanded ? "Show less" : `+${items.length - 4} more`}
+        </button>
+      )}
     </div>
   );
 }
 
 function PainPointsPreview({ data }: { data: StepOutput }) {
+  const [expanded, setExpanded] = useState(false);
   const points = data as unknown as { title: string; severity: string }[];
   const items = Array.isArray(points) ? points : [];
+  const visible = expanded ? items : items.slice(0, 4);
   return (
     <div className="space-y-1 text-xs">
-      {items.slice(0, 4).map((p, i) => (
+      {visible.map((p, i) => (
         <div key={i} className="flex items-start gap-1.5">
           <span className={`mt-0.5 ${p.severity === "Critical" ? "text-red-500" : p.severity === "High" ? "text-orange-500" : "text-amber-500"}`}>&#9679;</span>
           <span className="text-slate-600">{p.title}</span>
         </div>
       ))}
-      {items.length > 4 && <p className="text-slate-400">+{items.length - 4} more</p>}
+      {items.length > 4 && (
+        <button onClick={() => setExpanded(!expanded)} className="text-[#3289FF] hover:underline cursor-pointer">
+          {expanded ? "Show less" : `+${items.length - 4} more`}
+        </button>
+      )}
     </div>
   );
 }
 
 function StakeholdersPreview({ data }: { data: StepOutput }) {
+  const [expanded, setExpanded] = useState(false);
   const people = data as unknown as { name: string; title: string; tier: string }[];
   const items = Array.isArray(people) ? people : [];
+  const visible = expanded ? items : items.slice(0, 4);
   return (
     <div className="space-y-1 text-xs">
-      {items.slice(0, 4).map((s, i) => (
+      {visible.map((s, i) => (
         <div key={i} className="flex items-start gap-1.5">
           <span className="text-[#3289FF] mt-0.5">&#9679;</span>
           <div>
@@ -242,17 +266,23 @@ function StakeholdersPreview({ data }: { data: StepOutput }) {
           </div>
         </div>
       ))}
-      {items.length > 4 && <p className="text-slate-400">+{items.length - 4} more</p>}
+      {items.length > 4 && (
+        <button onClick={() => setExpanded(!expanded)} className="text-[#3289FF] hover:underline cursor-pointer">
+          {expanded ? "Show less" : `+${items.length - 4} more`}
+        </button>
+      )}
     </div>
   );
 }
 
 function SolutionMappingPreview({ data }: { data: StepOutput }) {
+  const [expanded, setExpanded] = useState(false);
   const mappings = data as unknown as { solutionName: string; priority: string; painPoint: string }[];
   const items = Array.isArray(mappings) ? mappings : [];
+  const visible = expanded ? items : items.slice(0, 4);
   return (
     <div className="space-y-1 text-xs">
-      {items.slice(0, 4).map((m, i) => (
+      {visible.map((m, i) => (
         <div key={i} className="flex items-start gap-1.5">
           <span className={`text-[10px] px-1 py-0.5 rounded font-medium ${
             m.priority === "Primary" ? "bg-[rgba(50,137,255,0.08)] text-[#3289FF]" :
@@ -262,6 +292,11 @@ function SolutionMappingPreview({ data }: { data: StepOutput }) {
           <span className="text-slate-600">{m.solutionName}</span>
         </div>
       ))}
+      {items.length > 4 && (
+        <button onClick={() => setExpanded(!expanded)} className="text-[#3289FF] hover:underline cursor-pointer">
+          {expanded ? "Show less" : `+${items.length - 4} more`}
+        </button>
+      )}
     </div>
   );
 }
@@ -418,13 +453,24 @@ export default function ResearchProgressPage() {
   // Redirect to profile when completed
   useEffect(() => {
     if (job?.status === "completed" && profileSlug) {
-      // Small delay so user can see the completion state
       const timeout = setTimeout(() => {
         router.push(`/projects/${projectId}/company/${profileSlug}`);
       }, 2000);
       return () => clearTimeout(timeout);
     }
   }, [job?.status, profileSlug, projectId, router]);
+
+  // Fallback: if all steps are done but job status is stale, try fetching the profile slug
+  useEffect(() => {
+    if (!job || job.status === "completed" || job.status === "failed") return;
+    const steps = job.research_steps || [];
+    const allDone = steps.length > 0 && steps.every((s) => s.status === "completed" || s.status === "failed");
+    if (!allDone) return;
+
+    // All steps done but job not marked complete — poll once more after a delay
+    const timeout = setTimeout(() => fetchJob(), 5000);
+    return () => clearTimeout(timeout);
+  }, [job, fetchJob]);
 
   if (loading) {
     return (
@@ -465,6 +511,9 @@ export default function ResearchProgressPage() {
 
   const isComplete = job.status === "completed";
   const isFailed = job.status === "failed";
+  const allStepsDone = steps.length > 0 && steps.every((s) => s.status === "completed");
+  // Derive slug from company name as fallback
+  const derivedSlug = profileSlug || job.company_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
   return (
     <div className="animate-fade-in">
@@ -484,14 +533,16 @@ export default function ResearchProgressPage() {
               ? "Research complete — redirecting to full profile..."
               : isFailed
               ? "Research failed"
+              : allStepsDone
+              ? "All agents finished — saving profile..."
               : "AI research in progress"}
           </p>
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm font-bold text-[#3289FF]">{job.progress}%</span>
-          {isComplete && profileSlug && (
+          {(isComplete || allStepsDone) && (
             <Link
-              href={`/projects/${projectId}/company/${profileSlug}`}
+              href={`/projects/${projectId}/company/${derivedSlug}`}
               className="btn-primary text-xs"
             >
               View Full Profile &rarr;

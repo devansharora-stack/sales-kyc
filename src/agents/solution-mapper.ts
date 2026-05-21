@@ -1,6 +1,7 @@
 /**
  * Solution Mapper Agent — Phase 3 (Synthesis)
- * Uses Claude Opus via Azure AI Foundry (falls back to Gemini).
+ * Uses Claude Opus for reasoning. Injects real Techolution offerings
+ * knowledge base so proof points reference named clients only.
  */
 
 import { readFileSync } from "fs";
@@ -16,6 +17,12 @@ const systemPrompt = readFileSync(
 
 const agentPrompt = readFileSync(
   join(process.cwd(), "src/instructions/solution-mapper.md"),
+  "utf-8"
+);
+
+// Load offerings knowledge base — real case studies with named clients
+const offeringsKB = readFileSync(
+  join(process.cwd(), "src/data/offerings-kb.json"),
   "utf-8"
 );
 
@@ -56,6 +63,11 @@ ${JSON.stringify(input.financialSignals, null, 2)}
 
 Trigger events:
 ${JSON.stringify(input.triggers, null, 2)}
+
+## Techolution Offerings Knowledge Base
+Use ONLY the offerings and case studies below. Every proof point MUST reference a named client from this knowledge base. Do NOT fabricate proof points.
+
+${offeringsKB}
 
 Respond ONLY with a JSON array matching the output schema.`,
   });

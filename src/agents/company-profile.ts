@@ -1,11 +1,11 @@
 /**
  * Company Profile Agent — Phase 1 (Foundation)
- * Uses Claude Opus via Azure AI Foundry.
+ * Uses Gemini Flash with Google Search grounding for research.
  */
 
 import { readFileSync } from "fs";
 import { join } from "path";
-import { callClaudeJSON } from "@/lib/claude";
+import { callGeminiGrounded } from "@/lib/gemini";
 
 const systemPrompt = readFileSync(
   join(process.cwd(), "src/instructions/system-prompt.md"),
@@ -36,8 +36,20 @@ export async function runCompanyProfile(companyName: string, context?: Record<st
     ? `\n\nAdditional context: ${JSON.stringify(context)}`
     : "";
 
-  return callClaudeJSON<CompanyProfileOutput>({
+  const { data } = await callGeminiGrounded<CompanyProfileOutput>({
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
-    userPrompt: `Research and produce the company profile for: ${companyName}${contextStr}\n\nRespond ONLY with the JSON object matching the output schema.`,
+    userPrompt: `Research and produce the company profile for: ${companyName}${contextStr}
+
+Search for real, current information about the company:
+1. Company official website and about page
+2. Recent revenue figures (10-K filings, earnings releases, news)
+3. Employee count (company website, LinkedIn, recent filings)
+4. Headquarters location
+5. Business description and industry classification
+
+For every source you cite, include the URL where you found the information.
+
+Respond ONLY with the JSON object matching the output schema.`,
   });
+  return data;
 }

@@ -52,19 +52,39 @@ export interface ScoreBreakdown {
 // === Solutions ===
 
 export type SolutionId =
+  // BPA 4.0
+  | "bpa-value-finder" | "bpa-100k" | "bpa-full"
+  // Gemini Enterprise
+  | "ge-land-native" | "ge-land-adk" | "ge-expand-agents"
+  | "ge-enablement" | "ge-managed-services"
+  // Managed Services
+  | "managed-services"
+  // Dev
+  | "dev-cloud-migration" | "dev-digital-modernization"
+  | "dev-app-design" | "dev-data-readiness"
+  // Legacy IDs (backwards compatibility with existing profiles)
   | "contract-intelligence" | "scheduling-intelligence" | "contextual-search"
   | "ai-voice-assistants" | "gemini-land" | "gemini-expand"
   | "requirement-ai" | "value-finder";
 
 export const ALL_SOLUTIONS: { id: SolutionId; name: string; shortName: string }[] = [
-  { id: "contract-intelligence", name: "Contract Intelligence", shortName: "Contracts" },
-  { id: "scheduling-intelligence", name: "Scheduling Intelligence", shortName: "Scheduling" },
-  { id: "contextual-search", name: "Contextual Search (Agentspace)", shortName: "Agentspace" },
-  { id: "ai-voice-assistants", name: "AI Voice Assistants", shortName: "Voice AI" },
-  { id: "gemini-land", name: "Gemini Enterprise Land", shortName: "GE Land" },
-  { id: "gemini-expand", name: "Gemini Enterprise Expand", shortName: "GE Expand" },
-  { id: "requirement-ai", name: "Requirement AI", shortName: "Req AI" },
-  { id: "value-finder", name: "Value Finder", shortName: "Value Finder" },
+  // BPA 4.0
+  { id: "bpa-value-finder", name: "BPA 4.0 — Value Finder", shortName: "Value Finder" },
+  { id: "bpa-100k", name: "BPA 4.0 — 100K Challenge", shortName: "100K Challenge" },
+  { id: "bpa-full", name: "BPA 4.0 — Full / Pro", shortName: "BPA Full" },
+  // Gemini Enterprise
+  { id: "ge-land-native", name: "GE Land — Native Connector", shortName: "GE Native" },
+  { id: "ge-land-adk", name: "GE Land — ADK Connector", shortName: "GE ADK" },
+  { id: "ge-expand-agents", name: "GE Expand — Custom Agents", shortName: "GE Agents" },
+  { id: "ge-enablement", name: "GE Enablement", shortName: "GE Enable" },
+  { id: "ge-managed-services", name: "GE Managed Services", shortName: "GE MS" },
+  // Managed Services
+  { id: "managed-services", name: "Managed Services", shortName: "Managed" },
+  // Dev
+  { id: "dev-cloud-migration", name: "Cloud Migration", shortName: "Cloud Mig" },
+  { id: "dev-digital-modernization", name: "Digital Modernization", shortName: "Dig Mod" },
+  { id: "dev-app-design", name: "App Design & Development", shortName: "App Dev" },
+  { id: "dev-data-readiness", name: "AI Data Readiness", shortName: "Data Ready" },
 ];
 
 // === Stakeholders ===
@@ -81,6 +101,13 @@ export interface Stakeholder {
 
 // === Company Data ===
 
+export interface FitScoreBreakdown {
+  painSeverity: number;
+  budgetEvidence: number;
+  proofRelevance: number;
+  impactMagnitude: number;
+}
+
 export interface SolutionMapping {
   solution: SolutionId;
   solutionName: string;
@@ -90,6 +117,8 @@ export interface SolutionMapping {
   priority: "Primary" | "Secondary" | "Tertiary";
   reasoning: string;
   estimatedImpact: string;
+  fitScore?: number;
+  fitScoreBreakdown?: FitScoreBreakdown;
   sources: Source[];
 }
 

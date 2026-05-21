@@ -103,5 +103,15 @@ The sweet spot is Level 2-3 (aware/experimenting). Too low = not ready. Too high
 - Be calibrated: an "A" company (80+) should genuinely be a top sales target. Don't inflate scores.
 - When evidence is ambiguous, score conservatively and note the uncertainty in reasoning
 - The scoring should be reproducible — another analyst reading the same inputs should arrive at a similar score (±5 points)
-- Include sources for every dimension — the sales team needs to verify your scoring
 - If a dimension has no evidence at all, score it at the midpoint of the lowest bracket and note "insufficient data"
+
+## CRITICAL: Source Attribution
+- Every dimension MUST include a `sources` array — the sales team needs to verify your scoring
+- **Copy source objects directly from the input data** (triggers, financial signals, pain points, tech landscape, solution mappings). Do NOT fabricate new URLs.
+- For each dimension, find the most relevant sources from the inputs that support your reasoning:
+  - **Budget Signal**: Use sources from financial signals and trigger events related to investment/spending
+  - **Solution Fit**: Use sources from pain points and solution mappings
+  - **Trigger Recency**: Use sources from trigger events
+  - **AI Maturity**: Use sources from tech landscape, financial signals (AI hiring, AI investment), and trigger events mentioning AI/technology
+  - **Gemini Alignment**: Use sources from tech landscape (workspace platform, cloud providers) and any trigger events mentioning Google/Gemini
+- If you cannot find any relevant source in the input data for a dimension, set `sources` to an empty array `[]` — do NOT invent URLs
