@@ -80,11 +80,12 @@ export default function ProgressSidebar() {
 
     const supabase = createBrowserClient();
 
+    // Fetch ALL jobs for this project (active = queued/running/failed)
     const { data: jobs } = await supabase
       .from("research_jobs")
       .select("id, project_id, company_name, status, progress, created_at, started_at, research_steps(id, agent_name, status)")
       .eq("project_id", projectId)
-      .in("status", ["queued", "running"])
+      .in("status", ["queued", "running", "failed"])
       .order("created_at", { ascending: false })
       .limit(10);
 
@@ -196,15 +197,19 @@ export default function ProgressSidebar() {
               {/* Active Jobs */}
               {activeJobs.map((job) => {
                 const stale = isStaleJob(job);
+                const isFailed = job.status === "failed";
                 return (
-                  <div key={job.id} className={`card p-3 ${stale ? "border-amber-200 bg-amber-50/30" : ""}`}>
+                  <div key={job.id} className={`card p-3 ${isFailed ? "border-red-200 bg-red-50/30" : stale ? "border-amber-200 bg-amber-50/30" : ""}`}>
                     <div className="flex items-center justify-between mb-2">
                       <p className="text-xs font-medium text-slate-700 truncate flex-1">{job.company_name}</p>
                       <div className="flex items-center gap-1.5">
-                        {stale && (
+                        {isFailed && (
+                          <span className="text-[9px] text-red-500 font-medium">Failed</span>
+                        )}
+                        {!isFailed && stale && (
                           <span className="text-[9px] text-amber-500 font-medium">Stale</span>
                         )}
-                        <span className="text-[10px] text-[#3289FF] font-medium">{job.progress}%</span>
+                        <span className={`text-[10px] font-medium ${isFailed ? "text-red-500" : "text-[#3289FF]"}`}>{job.progress}%</span>
                         <button
                           onClick={() => handleDismiss(job.id)}
                           disabled={dismissing === job.id}
@@ -217,7 +222,7 @@ export default function ProgressSidebar() {
                     </div>
                     <div className="h-1 bg-slate-100 rounded-full overflow-hidden mb-2">
                       <div
-                        className={`h-full rounded-full transition-all duration-500 ${stale ? "bg-amber-400" : "bg-[#3289FF]"}`}
+                        className={`h-full rounded-full transition-all duration-500 ${isFailed ? "bg-red-400" : stale ? "bg-amber-400" : "bg-[#3289FF]"}`}
                         style={{ width: `${job.progress}%` }}
                       />
                     </div>

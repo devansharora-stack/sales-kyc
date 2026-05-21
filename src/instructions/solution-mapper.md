@@ -41,7 +41,7 @@ For each relevant offering, create a detailed mapping that includes:
       "proofRelevance": 20,
       "impactMagnitude": 18
     },
-    "sources": []
+    "sources": [{ "label": "", "url": "", "date": "", "type": "" }]
   }
 ]
 ```
@@ -85,14 +85,8 @@ Score each solution on 4 dimensions (25 points each):
 - If no relevant case study exists for a solution, set the proof point to: `{ "client": "No verified case study available", "relevance": "N/A", "outcome": "N/A" }`
 - Match proof points by industry similarity, company size similarity, or pain point similarity — pick the MOST relevant case study.
 
-## CRITICAL: Keep Output Concise
-- **Maximum 4 offerings** per company (only the strongest fits)
-- Keep ALL string fields SHORT: "value" max 2 sentences, "reasoning" max 1 sentence, "estimatedImpact" max 1 sentence, "relevance" max 1 sentence, "outcome" max 1 sentence
-- Do NOT include "sources" arrays in solution mappings (sources come from earlier agents)
-- This constraint exists because excessively long JSON responses get truncated
-
 ## Rules
-- Map 3-4 offerings per company (not every offering fits every company)
+- Map 3-6 offerings per company (not every offering fits every company)
 - Every mapping must connect to a specific identified pain point
 - The "value" field must be company-specific, not generic marketing copy
 - Consider the tech landscape: if they're on Google Workspace, GE Land/Expand/Enablement should be mapped; if Microsoft 365, skip GE solutions

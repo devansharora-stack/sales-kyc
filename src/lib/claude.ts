@@ -40,7 +40,7 @@ export async function callClaude({
 }: ClaudeOptions): Promise<string> {
   const body = {
     model: getModel(),
-    max_tokens: 16384,
+    max_tokens: 32768,
     temperature,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
@@ -85,7 +85,7 @@ export async function callClaudeWithTools<T>(options: ToolUseOptions): Promise<T
 
   const body = {
     model: getModel(),
-    max_tokens: 16384,
+    max_tokens: 32768,
     temperature,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
