@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname } from "next/navigation";
 import { createBrowserClient } from "@/lib/db";
 import Link from "next/link";
 
@@ -61,17 +62,28 @@ function isStaleJob(job: Job): boolean {
 }
 
 export default function ProgressSidebar() {
+  const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const [activeJobs, setActiveJobs] = useState<Job[]>([]);
   const [recentCompleted, setRecentCompleted] = useState<CompletedJob[]>([]);
   const [dismissing, setDismissing] = useState<string | null>(null);
 
+  // Extract projectId from URL path (e.g. /projects/abc-123/...)
+  const projectId = pathname?.match(/\/projects\/([^/]+)/)?.[1] || null;
+
   async function fetchJobs() {
+    if (!projectId) {
+      setActiveJobs([]);
+      setRecentCompleted([]);
+      return;
+    }
+
     const supabase = createBrowserClient();
 
     const { data: jobs } = await supabase
       .from("research_jobs")
       .select("id, project_id, company_name, status, progress, created_at, started_at, research_steps(id, agent_name, status)")
+      .eq("project_id", projectId)
       .in("status", ["queued", "running"])
       .order("created_at", { ascending: false })
       .limit(10);
@@ -82,6 +94,7 @@ export default function ProgressSidebar() {
     const { data: completed } = await supabase
       .from("research_jobs")
       .select("id, project_id, company_name, status, progress, created_at, started_at, research_steps(id, agent_name, status)")
+      .eq("project_id", projectId)
       .eq("status", "completed")
       .order("completed_at", { ascending: false })
       .limit(5);
@@ -120,17 +133,19 @@ export default function ProgressSidebar() {
 
     fetchJobs();
 
+    if (!projectId) return;
+
     const jobChannel = supabase
-      .channel("sidebar-jobs")
+      .channel(`sidebar-jobs-${projectId}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "research_jobs" },
+        { event: "*", schema: "public", table: "research_jobs", filter: `project_id=eq.${projectId}` },
         () => fetchJobs()
       )
       .subscribe();
 
     const stepChannel = supabase
-      .channel("sidebar-steps")
+      .channel(`sidebar-steps-${projectId}`)
       .on(
         "postgres_changes",
         { event: "UPDATE", schema: "public", table: "research_steps" },
@@ -142,7 +157,8 @@ export default function ProgressSidebar() {
       supabase.removeChannel(jobChannel);
       supabase.removeChannel(stepChannel);
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
 
   const hasContent = activeJobs.length > 0 || recentCompleted.length > 0;
 
