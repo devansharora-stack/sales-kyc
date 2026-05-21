@@ -317,12 +317,50 @@ function extractGeminiJSON<T>(text: string): T {
 
   try {
     return JSON.parse(cleaned) as T;
-  } catch {
+  } catch (e) {
     // Find first { or [ and parse from there
     const start = cleaned.search(/[\[{]/);
     if (start >= 0) {
-      return JSON.parse(cleaned.slice(start)) as T;
+      try {
+        return JSON.parse(cleaned.slice(start)) as T;
+      } catch (e2) {
+        // Attempt repair for truncated JSON
+        const msg = e2 instanceof Error ? e2.message : "";
+        if (msg.includes("Unterminated") || msg.includes("Unexpected end") || msg.includes("Expected")) {
+          console.log(`[gemini] Attempting JSON repair for: ${msg}`);
+          return JSON.parse(repairTruncatedJSON(cleaned.slice(start))) as T;
+        }
+        throw e2;
+      }
     }
     throw new Error(`Failed to parse JSON from Gemini response: ${cleaned.slice(0, 200)}`);
   }
+}
+
+function repairTruncatedJSON(json: string): string {
+  let s = json;
+  let inString = false;
+  let lastGoodIndex = 0;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '"' && (i === 0 || s[i - 1] !== '\\')) {
+      inString = !inString;
+    }
+    if (!inString) lastGoodIndex = i;
+  }
+  if (inString) s = s.substring(0, lastGoodIndex + 1);
+  s = s.replace(/,\s*$/, "");
+  const stack: string[] = [];
+  inString = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '"' && (i === 0 || s[i - 1] !== '\\')) { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') stack.push('}');
+    else if (ch === '[') stack.push(']');
+    else if (ch === '}' || ch === ']') stack.pop();
+  }
+  s = s.replace(/,\s*$/, "");
+  while (stack.length > 0) s += stack.pop();
+  return s;
 }

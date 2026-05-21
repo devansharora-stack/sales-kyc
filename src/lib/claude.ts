@@ -40,7 +40,7 @@ export async function callClaude({
 }: ClaudeOptions): Promise<string> {
   const body = {
     model: getModel(),
-    max_tokens: 8192,
+    max_tokens: 16384,
     temperature,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
@@ -202,7 +202,7 @@ function extractJSON<T>(text: string): T {
   // Try 1: Extract from ```json ... ``` code block
   const fenceMatch = text.match(/```(?:json)?\s*\n([\s\S]*?)\n```/i);
   if (fenceMatch) {
-    return JSON.parse(fenceMatch[1].trim()) as T;
+    return parseWithRepair<T>(fenceMatch[1].trim());
   }
 
   // Try 2: Strip leading/trailing fences (response is entirely fenced)
@@ -217,10 +217,90 @@ function extractJSON<T>(text: string): T {
     // Try 3: Find first { or [ and parse from there
     const start = stripped.search(/[\[{]/);
     if (start >= 0) {
-      return JSON.parse(stripped.slice(start)) as T;
+      return parseWithRepair<T>(stripped.slice(start));
     }
     throw new Error(`Failed to parse JSON from Claude response: ${stripped.slice(0, 200)}`);
   }
+}
+
+/**
+ * Attempt JSON.parse, and if it fails with a truncation error,
+ * try to repair the JSON by closing open strings, arrays, and objects.
+ */
+function parseWithRepair<T>(json: string): T {
+  try {
+    return JSON.parse(json) as T;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    // Only attempt repair for truncation-like errors
+    if (
+      msg.includes("Unterminated string") ||
+      msg.includes("Unexpected end of JSON") ||
+      msg.includes("Expected")
+    ) {
+      console.log(`[claude] Attempting JSON repair for: ${msg}`);
+      const repaired = repairTruncatedJSON(json);
+      return JSON.parse(repaired) as T;
+    }
+    throw e;
+  }
+}
+
+/**
+ * Repair truncated JSON by closing open structures.
+ * Handles: unterminated strings, unclosed arrays/objects, trailing commas.
+ */
+function repairTruncatedJSON(json: string): string {
+  // Remove any trailing incomplete key-value pair or string
+  // Find the last complete value by looking for the last proper delimiter
+  let s = json;
+
+  // If we're in the middle of a string, close it
+  let inString = false;
+  let lastGoodIndex = 0;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '"' && (i === 0 || s[i - 1] !== '\\')) {
+      inString = !inString;
+    }
+    if (!inString) {
+      lastGoodIndex = i;
+    }
+  }
+
+  if (inString) {
+    // Truncate to before the last opening quote, then find last good break point
+    // Or just close the string
+    s = s.substring(0, lastGoodIndex + 1);
+  }
+
+  // Remove trailing comma
+  s = s.replace(/,\s*$/, "");
+
+  // Count open braces/brackets and close them
+  const stack: string[] = [];
+  inString = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '"' && (i === 0 || s[i - 1] !== '\\')) {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === '{') stack.push('}');
+    else if (ch === '[') stack.push(']');
+    else if (ch === '}' || ch === ']') stack.pop();
+  }
+
+  // Remove trailing comma again after potential string truncation
+  s = s.replace(/,\s*$/, "");
+
+  // Close all open structures
+  while (stack.length > 0) {
+    s += stack.pop();
+  }
+
+  return s;
 }
 
 async function fetchWithRetry(body: Record<string, unknown>, maxRetries = 3): Promise<Response> {
