@@ -56,6 +56,9 @@ export async function callClaude({
 
 export async function callClaudeJSON<T>(options: ClaudeOptions): Promise<T> {
   const text = await callClaude(options);
+  if (!text || text.trim().length === 0) {
+    throw new Error("Claude returned empty response — cannot parse JSON");
+  }
   return extractJSON<T>(text);
 }
 
@@ -316,7 +319,7 @@ async function fetchWithRetry(body: Record<string, unknown>, maxRetries = 3): Pr
         "anthropic-version": "2023-06-01",
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(300_000), // 5 min timeout per request
+      signal: AbortSignal.timeout(240_000), // 4 min timeout — must fit within Vercel 300s limit
     });
 
     if (response.ok) return response;

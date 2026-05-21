@@ -137,6 +137,9 @@ export async function callGemini(options: GeminiOptions): Promise<string> {
  */
 export async function callGeminiJSON<T>(options: GeminiOptions): Promise<T> {
   const text = await callGemini(options);
+  if (!text || text.trim().length === 0) {
+    throw new Error("Gemini returned empty response — cannot parse JSON");
+  }
   return extractGeminiJSON<T>(text);
 }
 

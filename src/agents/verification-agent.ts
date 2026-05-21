@@ -146,7 +146,8 @@ export async function runVerification(profile: CompanyDetail): Promise<{
   // Layer 2: Source URL liveness (parallel HEAD requests)
   // ========================================
 
-  const allSources: Source[] = corrected.sources || [];
+  // Cap at 20 sources to avoid excessive parallel requests / timeouts
+  const allSources: Source[] = (corrected.sources || []).slice(0, 20);
   if (allSources.length > 0) {
     const liveChecks = await Promise.allSettled(
       allSources.map(async (src) => ({ url: src.url, live: await isUrlLive(src.url) }))

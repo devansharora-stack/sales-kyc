@@ -97,6 +97,10 @@ export const researchCompany = inngest.createFunction(
       .update({ status: "running", started_at: new Date().toISOString() })
       .eq("id", jobId);
 
+    // Safe field accessors — LLM output may omit fields
+    const safe = (val: unknown, fallback = "Unknown") => (val as string) || fallback;
+    const safeNum = (val: unknown, fallback = 0) => (typeof val === "number" ? val : fallback);
+
     try {
       // ============================
       // Phase 1: Foundation — all 3 Gemini agents run in PARALLEL
@@ -133,10 +137,10 @@ export const researchCompany = inngest.createFunction(
             runTriggerScanner({
               companyName,
               profile: {
-                industry: profile.industry,
-                revenue: profile.revenue.value,
-                employees: profile.employees.value,
-                businessDescription: profile.businessDescription,
+                industry: safe(profile.industry),
+                revenue: safe(profile.revenue?.value),
+                employees: safe(profile.employees?.value),
+                businessDescription: safe(profile.businessDescription),
               },
             })
           ),
@@ -155,13 +159,13 @@ export const researchCompany = inngest.createFunction(
           runPainPointAnalyzer({
             companyName,
             profile: {
-              industry: profile.industry,
-              subSector: profile.subSector,
-              revenue: profile.revenue.value,
-              employees: profile.employees.value,
-              businessDescription: profile.businessDescription,
+              industry: safe(profile.industry),
+              subSector: safe(profile.subSector),
+              revenue: safe(profile.revenue?.value),
+              employees: safe(profile.employees?.value),
+              businessDescription: safe(profile.businessDescription),
             },
-            triggers,
+            triggers: Array.isArray(triggers) ? triggers : [],
             techLandscape,
             financialSignals,
           })
@@ -169,6 +173,9 @@ export const researchCompany = inngest.createFunction(
         await updateJobProgress(jobId, 55);
         return result;
       });
+
+      // Ensure painPoints is always an array
+      const safePainPoints = Array.isArray(painPoints) ? painPoints : [];
 
       // ============================
       // Phase 3: Synthesis (sequential — each builds on prior)
@@ -179,40 +186,42 @@ export const researchCompany = inngest.createFunction(
           runSolutionMapper({
             companyName,
             profile: {
-              industry: profile.industry,
-              subSector: profile.subSector,
-              revenue: profile.revenue.value,
-              employees: profile.employees.value,
-              businessDescription: profile.businessDescription,
+              industry: safe(profile.industry),
+              subSector: safe(profile.subSector),
+              revenue: safe(profile.revenue?.value),
+              employees: safe(profile.employees?.value),
+              businessDescription: safe(profile.businessDescription),
             },
-            painPoints,
+            painPoints: safePainPoints,
             techLandscape,
             financialSignals,
-            triggers,
+            triggers: Array.isArray(triggers) ? triggers : [],
           })
         );
         await updateJobProgress(jobId, 70);
         return result;
       });
 
+      const safeSolutionMappings = Array.isArray(solutionMappings) ? solutionMappings : [];
+
       const gtm = await step.run("phase-3b-gtm-generator", async () => {
         const result = await runAgentStep(jobId, "gtm_generator", () =>
           runGTMGenerator({
             companyName,
             profile: {
-              industry: profile.industry,
-              subSector: profile.subSector,
-              revenue: profile.revenue.value,
-              employees: profile.employees.value,
-              hqCity: profile.hqCity,
-              state: profile.state,
-              businessDescription: profile.businessDescription,
+              industry: safe(profile.industry),
+              subSector: safe(profile.subSector),
+              revenue: safe(profile.revenue?.value),
+              employees: safe(profile.employees?.value),
+              hqCity: safe(profile.hqCity),
+              state: safe(profile.state),
+              businessDescription: safe(profile.businessDescription),
             },
             techLandscape,
             financialSignals,
-            triggers,
-            painPoints,
-            solutionMappings,
+            triggers: Array.isArray(triggers) ? triggers : [],
+            painPoints: safePainPoints,
+            solutionMappings: safeSolutionMappings,
             stakeholders,
           })
         );
@@ -225,16 +234,16 @@ export const researchCompany = inngest.createFunction(
           runScoringAgent({
             companyName,
             profile: {
-              industry: profile.industry,
-              revenue: profile.revenue.value,
-              employees: profile.employees.value,
-              businessDescription: profile.businessDescription,
+              industry: safe(profile.industry),
+              revenue: safe(profile.revenue?.value),
+              employees: safe(profile.employees?.value),
+              businessDescription: safe(profile.businessDescription),
             },
             techLandscape,
             financialSignals,
-            triggers,
-            painPoints,
-            solutionMappings,
+            triggers: Array.isArray(triggers) ? triggers : [],
+            painPoints: safePainPoints,
+            solutionMappings: safeSolutionMappings,
             gtm,
             stakeholders,
           })
@@ -248,11 +257,11 @@ export const researchCompany = inngest.createFunction(
       // ============================
 
       const totalScore =
-        scores.budgetSignal.points +
-        scores.solutionFit.points +
-        scores.triggerRecency.points +
-        scores.aiMaturity.points +
-        scores.geminiAlignment.points;
+        safeNum(scores?.budgetSignal?.points) +
+        safeNum(scores?.solutionFit?.points) +
+        safeNum(scores?.triggerRecency?.points) +
+        safeNum(scores?.aiMaturity?.points) +
+        safeNum(scores?.geminiAlignment?.points);
 
       const rating = scoreToRating(totalScore);
 
@@ -272,27 +281,27 @@ export const researchCompany = inngest.createFunction(
       // Collect all sources (cast needed: LLM output has string types, our Source type has literals)
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const allSources: any[] = [
-        ...(profile.revenue.sources || []),
-        ...(profile.employees.sources || []),
-        ...(financialSignals.sources || []),
-        ...triggers.flatMap((t: { sources?: unknown[] }) => t.sources || []),
-        ...painPoints.flatMap((p: { sources?: unknown[] }) => p.sources || []),
-        ...solutionMappings.flatMap((s: { sources?: unknown[] }) => s.sources || []),
-        ...(gtm.sources || []),
-        ...Object.values(scores).flatMap((d: unknown) => {
+        ...(profile.revenue?.sources || []),
+        ...(profile.employees?.sources || []),
+        ...(financialSignals?.sources || []),
+        ...(Array.isArray(triggers) ? triggers : []).flatMap((t: { sources?: unknown[] }) => t.sources || []),
+        ...safePainPoints.flatMap((p: { sources?: unknown[] }) => p.sources || []),
+        ...safeSolutionMappings.flatMap((s: { sources?: unknown[] }) => s.sources || []),
+        ...(gtm?.sources || []),
+        ...Object.values(scores || {}).flatMap((d: unknown) => {
           const dim = d as { sources?: unknown[] };
-          return dim.sources || [];
+          return dim?.sources || [];
         }),
       ];
 
       // Deduplicate sources by URL
       const uniqueSources = Array.from(
-        new Map(allSources.map((s: { url: string }) => [s.url, s])).values()
+        new Map(allSources.filter((s: { url?: string }) => s?.url).map((s: { url: string }) => [s.url, s])).values()
       );
 
       const primarySolution =
-        solutionMappings.find((s: { priority: string }) => s.priority === "Primary")?.solution ||
-        solutionMappings[0]?.solution ||
+        safeSolutionMappings.find((s: { priority: string }) => s.priority === "Primary")?.solution ||
+        safeSolutionMappings[0]?.solution ||
         "value-finder";
 
       // Cast to CompanyDetail — agent outputs match the schema but TS can't verify LLM string literals
@@ -308,11 +317,11 @@ export const researchCompany = inngest.createFunction(
         employees: profile.employees,
         businessDescription: profile.businessDescription,
         execSummary: profile.execSummary,
-        triggerEvents: triggers,
-        painPoints,
+        triggerEvents: Array.isArray(triggers) ? triggers : [],
+        painPoints: safePainPoints,
         techLandscape,
-        solutionMappings,
-        gtm,
+        solutionMappings: safeSolutionMappings,
+        gtm: gtm || {},
         scores,
         totalScore,
         rating,
@@ -359,7 +368,7 @@ export const researchCompany = inngest.createFunction(
             total_score: correctedProfile.totalScore,
             rating: correctedProfile.rating,
             industry: correctedProfile.industry,
-            urgency: correctedProfile.gtm.urgency,
+            urgency: correctedProfile.gtm?.urgency || "medium",
             primary_solution: primarySolution,
             gemini_status: correctedProfile.geminiStatus,
           },

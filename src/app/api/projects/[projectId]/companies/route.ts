@@ -15,6 +15,25 @@ export async function GET(
 
   const { projectId } = await params;
   const supabase = createServerClient();
+
+  // Verify project belongs to this user
+  const { data: userRecord } = await supabase
+    .from("users")
+    .select("id")
+    .eq("email", session.user.email)
+    .single();
+  if (userRecord) {
+    const { data: project } = await supabase
+      .from("projects")
+      .select("id")
+      .eq("id", projectId)
+      .eq("user_id", userRecord.id)
+      .single();
+    if (!project) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+  }
+
   const { searchParams } = new URL(request.url);
   const slug = searchParams.get("slug");
 
@@ -69,10 +88,16 @@ export async function POST(
   const { projectId } = await params;
   const supabase = createServerClient();
   const body = await request.json();
-  const companyNames: string[] = body.companies || [];
+  const rawCompanies = body.companies || [];
+
+  // Validate and sanitize company names
+  const companyNames: string[] = rawCompanies
+    .filter((c: unknown): c is string => typeof c === "string")
+    .map((c: string) => c.trim())
+    .filter((c: string) => c.length > 0 && c.length <= 200);
 
   if (companyNames.length === 0) {
-    return NextResponse.json({ error: "No companies provided" }, { status: 400 });
+    return NextResponse.json({ error: "No valid companies provided" }, { status: 400 });
   }
 
   // Get user
