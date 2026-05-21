@@ -1,0 +1,379 @@
+{
+  "version": "1.0",
+  "lastUpdated": "2026-05-19",
+  "offerings": [
+    {
+      "id": "bpa-value-finder",
+      "category": "BPA 4.0",
+      "categoryId": "1.0",
+      "subType": "Value Finder",
+      "subTypeId": "1.1",
+      "description": "Expert-led workshop (on-site or virtual) to uncover BPA 4.0 bottlenecks and high-impact AI automation opportunities. Delivers a prioritized Value Index and technical roadmap with actionable ROI strategies.",
+      "entryPoint": true,
+      "startingPrice": null,
+      "targetIndustries": ["Manufacturing", "Logistics", "Healthcare", "Retail", "Financial Services"],
+      "targetProfiles": ["Companies with manual-heavy processes", "Orgs exploring AI automation", "Companies with operational inefficiency"],
+      "caseStudies": [
+        {
+          "client": "Darling Ingredients",
+          "engagement": "Value Discovery & Process Automation Workshop",
+          "outcome": "Identified automation opportunities and created prioritized ROI roadmap"
+        }
+      ]
+    },
+    {
+      "id": "bpa-100k",
+      "category": "BPA 4.0",
+      "categoryId": "1.0",
+      "subType": "100K Challenge",
+      "subTypeId": "1.2",
+      "description": "Performance-backed engagement guaranteeing 2x ROI within 100 days by automating high-friction business processes for a fixed $100K fee. Bridges the AI trust gap — from discovery to measurable production-grade results with full financial accountability.",
+      "entryPoint": true,
+      "startingPrice": "$100,000",
+      "targetIndustries": ["Manufacturing", "Healthcare", "Financial Services", "Retail", "Logistics"],
+      "targetProfiles": ["Companies skeptical of AI ROI", "Orgs wanting low-risk AI entry", "Companies with identifiable high-friction processes"],
+      "caseStudies": []
+    },
+    {
+      "id": "bpa-full",
+      "category": "BPA 4.0",
+      "categoryId": "1.0",
+      "subType": "Full / Pro",
+      "subTypeId": "1.3",
+      "description": "Enterprise-wide automation engagement scaling high-precision AI agents across entire departments. Moves beyond simple search to full enterprise automation — AI executes end-to-end workflows delivering 2-50x ROI by modernizing core operational fabric.",
+      "entryPoint": false,
+      "startingPrice": null,
+      "targetIndustries": ["Manufacturing", "Healthcare", "Financial Services", "Logistics", "Energy"],
+      "targetProfiles": ["Large enterprises with multi-department automation needs", "Companies past initial AI pilots"],
+      "caseStudies": [
+        {
+          "client": "Wawa",
+          "engagement": "Predictive inventory optimization with computer vision",
+          "outcome": "Reduced food spoilage by 76%, sales up 2%, $612 savings per store over 28 days, 483kg carbon emissions reduced"
+        },
+        {
+          "client": "Owens & Minor",
+          "engagement": "ASM AI Workstation — AI vision station for product documentation",
+          "outcome": "Reduced product documentation and onboarding time from 4 minutes to 3 seconds"
+        },
+        {
+          "client": "PAM Health",
+          "engagement": "HIPAA-compliant GenAI platform for insurance claims automation",
+          "outcome": "Automated insurance claims extraction from patient medical history, accelerated claim resolution"
+        },
+        {
+          "client": "HarperCollins",
+          "engagement": "AI-driven data platform for POS data automation",
+          "outcome": "Automated ingestion, transformation, mapping, and validation of retailer POS data"
+        },
+        {
+          "client": "HarperCollins",
+          "engagement": "AI-powered book translation assistant",
+          "outcome": "Preserves author style while translating, faster translations via real-time feedback loop"
+        },
+        {
+          "client": "GDOT (Georgia DOT)",
+          "engagement": "AI-powered traffic signal permitting platform",
+          "outcome": "Automated workflows reducing approval delays by 1-2 weeks, instant data retrieval via GenAI"
+        },
+        {
+          "client": "Audacy",
+          "engagement": "AI-driven traffic automation engine for broadcast log review",
+          "outcome": "6x faster log review (4 hours to 40 minutes/day), 19% reduction in violations, 70% faster deployment"
+        },
+        {
+          "client": "Cumulus Media",
+          "engagement": "AI-driven content automation for radio-to-digital repurposing",
+          "outcome": "Automated repurposing of radio broadcasts into digital articles, improved SEO visibility"
+        },
+        {
+          "client": "US Steel",
+          "engagement": "Computer vision for steel quality automation",
+          "outcome": "Saved $150K per line per month, 73% increase in operational efficiency"
+        }
+      ]
+    },
+    {
+      "id": "ge-land-native",
+      "category": "GE Land",
+      "categoryId": "2.0",
+      "subType": "Native Connector",
+      "subTypeId": "2.1",
+      "description": "Seamless, secure integration with Gemini Enterprise's built-in tools (Drive, Gmail, Calendar, People) for enterprise data interaction out-of-the-box. Starting at $25K, this 'Google Pack' eliminates custom coding for rapid, high-adoption productivity gains.",
+      "entryPoint": true,
+      "startingPrice": "$25,000",
+      "targetIndustries": ["Any industry using Google Workspace"],
+      "targetProfiles": ["Google Workspace orgs without Gemini", "Companies wanting quick AI productivity wins"],
+      "caseStudies": []
+    },
+    {
+      "id": "ge-land-adk",
+      "category": "GE Land",
+      "categoryId": "2.0",
+      "subType": "ADK Connector",
+      "subTypeId": "2.2",
+      "description": "Custom-built, programmable bridges enabling AI agents to perform write actions and complex logic within proprietary enterprise systems and legacy APIs. Uses Agent Development Kit for custom schemas and multi-agent orchestration — AI executes end-to-end business tasks autonomously.",
+      "entryPoint": false,
+      "startingPrice": null,
+      "targetIndustries": ["Any industry with legacy systems"],
+      "targetProfiles": ["Companies with proprietary systems needing AI integration", "Orgs wanting autonomous AI task execution"],
+      "caseStudies": []
+    },
+    {
+      "id": "ge-expand-agents",
+      "category": "GE Expand (Agent Dev)",
+      "categoryId": "3.0",
+      "subType": "Custom Agents",
+      "subTypeId": "3.1",
+      "description": "Specialized AI experts built to automate specific, high-friction business workflows (e.g., SKU discovery, marketing intake) with >=99% accuracy. Leverages agent-to-agent frameworks to coordinate complex tasks across departments — manual processes that took days become automated actions in minutes.",
+      "entryPoint": false,
+      "startingPrice": null,
+      "targetIndustries": ["Retail", "Manufacturing", "Healthcare", "Financial Services"],
+      "targetProfiles": ["Existing Gemini users wanting deeper automation", "Companies with cross-department workflow needs"],
+      "caseStudies": [
+        {
+          "client": "Bayer",
+          "engagement": "AI-powered allergy management app on Precision Health Platform",
+          "outcome": "Streamlined health data onboarding, personalized allergen identification and forecasting"
+        },
+        {
+          "client": "American Cancer Society",
+          "engagement": "AI-powered information navigation system",
+          "outcome": "Improved user engagement guiding individuals to accurate cancer-related information"
+        },
+        {
+          "client": "Baptist Health",
+          "engagement": "GenAI-powered bilingual voice assistant for appointment rescheduling",
+          "outcome": "Hands-free, bilingual appointment rescheduling improving patient experience"
+        }
+      ]
+    },
+    {
+      "id": "ge-enablement",
+      "category": "GE Enablement",
+      "categoryId": "4.0",
+      "subType": "Adoption & AI Managed Services",
+      "subTypeId": "4.1",
+      "description": "Strategic partnership where Techolution takes full responsibility for making Gemini a daily habit. Sets up a Center of Excellence (CoE) handling user training, prompt optimization, and platform management to turn basic AI tools into measurable, long-term productivity gains.",
+      "entryPoint": true,
+      "startingPrice": null,
+      "targetIndustries": ["Any industry with Google Workspace + Gemini"],
+      "targetProfiles": ["Companies with low Gemini adoption", "Orgs wanting AI CoE setup"],
+      "caseStudies": [
+        {
+          "client": "Crane",
+          "engagement": "AI Enablement program",
+          "outcome": "Established Gemini adoption and AI Center of Excellence"
+        }
+      ]
+    },
+    {
+      "id": "ge-managed-services",
+      "category": "GE Managed Services",
+      "categoryId": "5.0",
+      "subType": null,
+      "subTypeId": "5.1",
+      "description": "AI-Shoring engagement where Techolution takes full operational responsibility for your AI ecosystem — delivering higher quality at half the cost of traditional teams. Provides 24/7 proactive monitoring and optimization of custom agents ensuring they remain hallucination-free, secure, and aligned with evolving business goals.",
+      "entryPoint": false,
+      "startingPrice": null,
+      "targetIndustries": ["Any industry with deployed AI agents"],
+      "targetProfiles": ["Companies with production AI agents needing 24/7 support", "Orgs wanting to reduce AI ops cost"],
+      "caseStudies": []
+    },
+    {
+      "id": "managed-services",
+      "category": "Managed Services",
+      "categoryId": "6.0",
+      "subType": null,
+      "subTypeId": "6.1",
+      "description": "Outcome-based engagement with full operational responsibility for IT ecosystem — cloud infrastructure, legacy apps, and data pipelines — delivering 24/7 reliability at lower cost. A 'buck stops here' partnership managing end-to-end system health, proactively fixing bugs and optimizing performance.",
+      "entryPoint": false,
+      "startingPrice": null,
+      "targetIndustries": ["Any"],
+      "targetProfiles": ["Companies wanting to outsource IT operations", "Orgs with complex multi-cloud environments"],
+      "caseStudies": [
+        {
+          "client": "Sonic Drive-In",
+          "engagement": "Buck Stops Here managed services + cloud modernization",
+          "outcome": "Mobile & web orders over $1M/day, infinite scalability, reduced wait times"
+        },
+        {
+          "client": "Wendy's",
+          "engagement": "Multi-cloud managed services and GCP foundation",
+          "outcome": "Established Google Cloud foundation, re-architected for multi-cloud readiness"
+        },
+        {
+          "client": "Stryker",
+          "engagement": "Multi-cloud architecture unifying fragmented systems post-acquisitions",
+          "outcome": "Unified ERP, CRM, middleware on Azure + AWS, faster onboarding of acquired entities"
+        }
+      ]
+    },
+    {
+      "id": "dev-cloud-migration",
+      "category": "Dev",
+      "categoryId": "7.0",
+      "subType": "Cloud Migration",
+      "subTypeId": "7.1",
+      "description": "Foundational engagement transitioning legacy infrastructure and applications to cloud with zero business interruption to lower costs and increase agility. Establishes a secure, AI-Ready cloud foundation enabling advanced data platforms and Gemini AI capabilities.",
+      "entryPoint": true,
+      "startingPrice": null,
+      "targetIndustries": ["Any with on-prem infrastructure"],
+      "targetProfiles": ["Companies with on-prem legacy systems", "Orgs planning cloud-first strategy"],
+      "caseStudies": [
+        {
+          "client": "CipherHealth",
+          "engagement": "MongoDB migration to MongoDB Atlas on GCP",
+          "outcome": "Reduced licensing costs, automated deployments, scalable infrastructure"
+        },
+        {
+          "client": "Tiket.com",
+          "engagement": "Full cloud transformation to GCP/GKE",
+          "outcome": "Achieved scalability and high availability for rapid user growth"
+        },
+        {
+          "client": "Blibli.com",
+          "engagement": "Migration of 200+ microservices from on-prem to GCP",
+          "outcome": "Zero downtime migration, near-zero human error with automation"
+        },
+        {
+          "client": "Tiki.vn",
+          "engagement": "Migration of 140 microservices, 40 VMs, 20 DBs to GCP in 12 weeks",
+          "outcome": "Full migration completed before major campaign launch"
+        },
+        {
+          "client": "XL Axiata",
+          "engagement": "GKE setup and cloud modernization with Anthos",
+          "outcome": "Modernized to containers, automated CI/CD with canary releases"
+        },
+        {
+          "client": "AmeriHealth",
+          "engagement": "HIPAA-compliant GCP foundation build",
+          "outcome": "Secure cloud foundation with governance, seamless connectivity, AI-ready environment"
+        },
+        {
+          "client": "iHeartMedia",
+          "engagement": "AI-driven cloud modernization, migrating EOL platforms",
+          "outcome": "Seamless migration with zero disruption to developer workflows"
+        },
+        {
+          "client": "Newscorp",
+          "engagement": "Automated Kubernetes infrastructure modernization",
+          "outcome": "Faster deployment cycles, reduced manual operations"
+        }
+      ]
+    },
+    {
+      "id": "dev-digital-modernization",
+      "category": "Dev",
+      "categoryId": "7.0",
+      "subType": "Digital Modernization",
+      "subTypeId": "7.2",
+      "description": "Transformative engagement refactoring obsolete legacy applications into high-performance, cloud-native architectures at unparalleled speed. Eliminates technical debt and monolithic bottlenecks using AI-driven automation to rebuild core systems — modular, scalable, and ready for advanced AI agents.",
+      "entryPoint": false,
+      "startingPrice": null,
+      "targetIndustries": ["Financial Services", "Healthcare", "Retail", "Media", "Telecom"],
+      "targetProfiles": ["Companies with legacy monolithic applications", "Orgs with technical debt"],
+      "caseStudies": [
+        {
+          "client": "J.Crew",
+          "engagement": "Digital transformation — web/mobile UX + AWS cloud migration",
+          "outcome": "Conversion increased from 2.5% to 9%, over $1B in eCommerce sales, no more Black Friday crashes"
+        },
+        {
+          "client": "DBS Bank",
+          "engagement": "Web & mobile banking modernization",
+          "outcome": "DBS recognized as best digital banking experience in South East Asia"
+        },
+        {
+          "client": "JP Morgan Chase",
+          "engagement": "Monolith-to-cloud-native digital banking transformation",
+          "outcome": "2x increase in customer base, improved user ratings, faster time to market"
+        },
+        {
+          "client": "MCB (Mauritius Commercial Bank)",
+          "engagement": "Digital banking transformation — Juice platform, SME Lending, CIB Lending",
+          "outcome": "Paperless integrated banking, transformed traditional banking experience"
+        },
+        {
+          "client": "Wesco",
+          "engagement": "AppMod — legacy PHP 5.4 to PHP 8.3 migration",
+          "outcome": "Improved performance, security, compliance with minimal manual effort"
+        },
+        {
+          "client": "ADP",
+          "engagement": "Modernized internet banking solution",
+          "outcome": "Modern web & mobile app bringing digital banking features to business customers"
+        }
+      ]
+    },
+    {
+      "id": "dev-app-design",
+      "category": "Dev",
+      "categoryId": "7.0",
+      "subType": "App Design & Development",
+      "subTypeId": "7.3",
+      "description": "End-to-end innovation engagement transforming product vision into production-ready application within weeks at guaranteed price. Combines world-class UI/UX design with rapid agile development to deliver scalable, secure, AI-integrated digital products.",
+      "entryPoint": true,
+      "startingPrice": null,
+      "targetIndustries": ["Any"],
+      "targetProfiles": ["Companies building new digital products", "Startups needing rapid development"],
+      "caseStudies": [
+        {
+          "client": "Main Street Bank",
+          "engagement": "Closed-loop cannabis payment ecosystem — Venu Pay",
+          "outcome": "Full payment ecosystem: mobile app, merchant portal, payment gateway, support dashboard, data warehouse"
+        },
+        {
+          "client": "Relias",
+          "engagement": "AI-powered nurse matching platform on GCP",
+          "outcome": "Net new product from dev to production in 4 months, unified job matching + learning + community"
+        },
+        {
+          "client": "Brooklyn Hospital",
+          "engagement": "AI-powered ICU patient monitoring on Google Cloud",
+          "outcome": "Reduced patient mortality rates, automated alerts to nurses for at-risk patients"
+        },
+        {
+          "client": "Checkout 51",
+          "engagement": "AI-based mobile cashback redemption app",
+          "outcome": "99.8% crash-free, 500K daily active users, 151K receipts redeemed per batch"
+        },
+        {
+          "client": "Cypris (IPCypris)",
+          "engagement": "Online patent marketplace on GCP",
+          "outcome": "Automated market intelligence reports 100% cheaper than market rate"
+        }
+      ]
+    },
+    {
+      "id": "dev-data-readiness",
+      "category": "Dev",
+      "categoryId": "7.0",
+      "subType": "AI Data Readiness (Data Modernization)",
+      "subTypeId": "7.4",
+      "description": "Foundational engagement modernizing and cleansing fragmented enterprise data to create a high-accuracy truth source for AI models. Establishes robust data pipelines and governance protocols ensuring Gemini agents are grounded in secure, organized, hallucination-free information.",
+      "entryPoint": true,
+      "startingPrice": null,
+      "targetIndustries": ["Healthcare", "Financial Services", "Manufacturing", "Retail"],
+      "targetProfiles": ["Companies with fragmented data", "Orgs preparing for AI deployment", "Companies needing data governance"],
+      "caseStudies": [
+        {
+          "client": "Glaukos",
+          "engagement": "AI-powered data platform unifying fragmented data",
+          "outcome": "Centralized cloud-based ecosystem for real-time insights and data-driven decisions"
+        },
+        {
+          "client": "Globus Medical",
+          "engagement": "Looker dashboards on GCP for quality reporting",
+          "outcome": "Modernized DHR and NCMR quality reporting with interactive drill-down analytics"
+        },
+        {
+          "client": "RRS (Revolution Retail Systems)",
+          "engagement": "IoT asset monitoring — Azure Cloud migration with real-time dashboard",
+          "outcome": "$50M savings, 73% improved efficiency, 5x reduction in support resolution, real-time from 7-day reporting"
+        }
+      ]
+    }
+  ]
+}

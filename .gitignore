@@ -53,11 +53,6 @@ test-output/
 # generated reports / data
 *.pdf
 *.xlsx
-*.json
-!package.json
-!package-lock.json
-!tsconfig.json
-!next.config.json
-!components.json
+southwire-profile.json
 southwire-report.html
 case studies/
