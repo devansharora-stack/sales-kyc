@@ -48,6 +48,9 @@ export async function callClaude({
 
   const response = await fetchWithRetry(body);
   const data = await response.json();
+  if (data.stop_reason === "max_tokens") {
+    console.warn(`[claude] Response truncated by max_tokens (${body.max_tokens}). Output may be incomplete.`);
+  }
   return data.content?.[0]?.text || "";
 }
 
