@@ -25,13 +25,6 @@ interface VerificationResult {
  * Trusted grounding URLs (vertexaisearch.*) are auto-approved.
  */
 async function isUrlLive(url: string): Promise<boolean> {
-  if (
-    url.includes("vertexaisearch.cloud.google.com") ||
-    url.includes("vertexaisearch.cloud.com") ||
-    url.includes("vertexaisearch.google.com")
-  ) {
-    return true;
-  }
   try {
     const res = await fetch(url, {
       method: "HEAD",
@@ -41,6 +34,20 @@ async function isUrlLive(url: string): Promise<boolean> {
     });
     return res.ok || res.status === 403 || res.status === 401;
   } catch {
+    // For Vertex AI redirect URLs, try GET as fallback (some reject HEAD)
+    if (url.includes("vertexaisearch.cloud.google.com")) {
+      try {
+        const res = await fetch(url, {
+          method: "GET",
+          redirect: "follow",
+          signal: AbortSignal.timeout(8000),
+          headers: { "User-Agent": "Mozilla/5.0 (compatible; KYCGenie/1.0)" },
+        });
+        return res.ok || res.status === 403 || res.status === 401;
+      } catch {
+        return false;
+      }
+    }
     return false;
   }
 }
@@ -146,26 +153,44 @@ export async function runVerification(profile: CompanyDetail): Promise<{
   // Layer 2: Source URL liveness (parallel HEAD requests)
   // ========================================
 
-  // Cap at 20 sources to avoid excessive parallel requests / timeouts
-  const allSources: Source[] = (corrected.sources || []).slice(0, 20);
-  if (allSources.length > 0) {
-    const liveChecks = await Promise.allSettled(
-      allSources.map(async (src) => ({ url: src.url, live: await isUrlLive(src.url) }))
-    );
+  // Collect ALL unique source URLs from every section (not just top-level)
+  const allUrlSet = new Set<string>();
+  const collectUrls = (sources: Source[] | undefined) => {
+    for (const s of sources || []) if (s.url) allUrlSet.add(s.url);
+  };
+  collectUrls(corrected.sources);
+  for (const t of corrected.triggerEvents || []) collectUrls(t.sources);
+  for (const p of corrected.painPoints || []) collectUrls(p.sources);
+  for (const s of corrected.solutionMappings || []) collectUrls(s.sources);
+  if (corrected.gtm?.sources) collectUrls(corrected.gtm.sources);
+  for (const dim of Object.values(corrected.scores)) {
+    const d = dim as { sources?: Source[] };
+    if (d?.sources) collectUrls(d.sources);
+  }
 
+  const allUniqueUrls = Array.from(allUrlSet);
+  if (allUniqueUrls.length > 0) {
+    // Check in batches of 15 to avoid overwhelming the network
     const deadUrls = new Set<string>();
-    for (const check of liveChecks) {
-      if (check.status === "fulfilled" && !check.value.live) {
-        deadUrls.add(check.value.url);
+    const BATCH_SIZE = 15;
+    for (let i = 0; i < allUniqueUrls.length; i += BATCH_SIZE) {
+      const batch = allUniqueUrls.slice(i, i + BATCH_SIZE);
+      const liveChecks = await Promise.allSettled(
+        batch.map(async (url) => ({ url, live: await isUrlLive(url) }))
+      );
+      for (const check of liveChecks) {
+        if (check.status === "fulfilled" && !check.value.live) {
+          deadUrls.add(check.value.url);
+        }
       }
     }
 
     if (deadUrls.size > 0) {
-      // Strip dead sources from all sections
+      // Strip dead sources from ALL sections
       const stripDead = (sources: Source[] | undefined): Source[] =>
         (sources || []).filter((s) => !deadUrls.has(s.url));
 
-      corrected.sources = stripDead(allSources);
+      corrected.sources = stripDead(corrected.sources);
       for (const t of corrected.triggerEvents || []) t.sources = stripDead(t.sources);
       for (const p of corrected.painPoints || []) p.sources = stripDead(p.sources);
       for (const s of corrected.solutionMappings || []) s.sources = stripDead(s.sources);
@@ -177,8 +202,8 @@ export async function runVerification(profile: CompanyDetail): Promise<{
 
       fixes.push({
         field: "sources",
-        current: `${allSources.length} sources`,
-        corrected: `${allSources.length - deadUrls.size} live, ${deadUrls.size} dead stripped`,
+        current: `${allUniqueUrls.length} unique URLs checked`,
+        corrected: `${allUniqueUrls.length - deadUrls.size} live, ${deadUrls.size} dead stripped`,
         reason: "Stripped dead source URLs",
       });
       warnings.push(`${deadUrls.size} dead source URL(s) removed`);
