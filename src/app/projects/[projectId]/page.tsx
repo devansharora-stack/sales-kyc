@@ -227,7 +227,7 @@ export default function ProjectDetailPage() {
           <input
             type="text"
             className="input-field flex-1"
-            placeholder="Add companies (comma-separated)"
+            placeholder="Add companies or paste URLs (comma-separated)"
             value={newCompanies}
             onChange={(e) => setNewCompanies(e.target.value)}
             onKeyDown={(e) => {
