@@ -203,6 +203,37 @@ export async function callGeminiGrounded<T>(options: Omit<GeminiOptions, "useGro
         }
       }
 
+      // Resolve redirect URLs to real destinations (before they expire)
+      const redirectMap = new Map<string, string>();
+      const redirectUrls = groundingSources
+        .filter((s) => s.url.includes("vertexaisearch.cloud.google.com/grounding-api-redirect"))
+        .map((s) => s.url);
+
+      if (redirectUrls.length > 0) {
+        const BATCH = 10;
+        for (let i = 0; i < redirectUrls.length; i += BATCH) {
+          const batch = redirectUrls.slice(i, i + BATCH);
+          const resolved = await Promise.allSettled(
+            batch.map(async (url) => {
+              const real = await resolveRedirectUrl(url);
+              return { redirect: url, real };
+            })
+          );
+          for (const r of resolved) {
+            if (r.status === "fulfilled" && r.value.real) {
+              redirectMap.set(r.value.redirect, r.value.real);
+            }
+          }
+        }
+        console.log(`[gemini] Resolved ${redirectMap.size}/${redirectUrls.length} redirect URLs`);
+      }
+
+      // Replace redirect URLs with real URLs in grounding sources
+      for (const src of groundingSources) {
+        const real = redirectMap.get(src.url);
+        if (real) src.url = real;
+      }
+
       // Deduplicate sources by URL
       const seenUrls = new Set<string>();
       const uniqueSources = groundingSources.filter((s) => {
@@ -212,6 +243,11 @@ export async function callGeminiGrounded<T>(options: Omit<GeminiOptions, "useGro
       });
 
       const data = extractGeminiJSON<T>(text);
+
+      // Replace redirect URLs in the parsed JSON output too
+      if (redirectMap.size > 0) {
+        replaceRedirectUrls(data, redirectMap);
+      }
 
       // Inject grounding sources into the parsed output
       // Walk the object and validate any source URLs against grounding results
@@ -272,6 +308,48 @@ function injectGroundingSources(obj: any, groundingSources: GroundingSource[]): 
 
   for (const val of Object.values(obj)) {
     injectGroundingSources(val, groundingSources);
+  }
+}
+
+/**
+ * Follow a Vertex AI redirect URL to get the real destination URL.
+ * Must be done soon after Gemini returns — these redirects expire.
+ */
+async function resolveRedirectUrl(redirectUrl: string): Promise<string | null> {
+  try {
+    const res = await fetch(redirectUrl, {
+      method: "GET",
+      redirect: "manual", // Don't follow — just get the Location header
+      signal: AbortSignal.timeout(8000),
+      headers: { "User-Agent": "Mozilla/5.0 (compatible; KYCGenie/1.0)" },
+    });
+    // 3xx redirect — Location header has the real URL
+    const location = res.headers.get("location");
+    if (location && location.startsWith("http")) return location;
+    // Some redirects return 200 with a meta refresh or JS redirect
+    // In that case, try following the redirect normally
+    if (res.ok) return null; // Got a page, not a redirect
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Recursively replace redirect URLs with resolved real URLs in parsed output.
+ */
+function replaceRedirectUrls(obj: any, redirectMap: Map<string, string>): void {
+  if (!obj || typeof obj !== "object") return;
+  if (Array.isArray(obj)) {
+    for (const item of obj) replaceRedirectUrls(item, redirectMap);
+    return;
+  }
+  for (const key of Object.keys(obj)) {
+    if (typeof obj[key] === "string" && redirectMap.has(obj[key])) {
+      obj[key] = redirectMap.get(obj[key])!;
+    } else if (typeof obj[key] === "object") {
+      replaceRedirectUrls(obj[key], redirectMap);
+    }
   }
 }
 
