@@ -24,31 +24,43 @@ interface VerificationResult {
  * Quick URL liveness check — HEAD request with short timeout.
  * Trusted grounding URLs (vertexaisearch.*) are auto-approved.
  */
-async function isUrlLive(url: string): Promise<boolean> {
+/**
+ * URL liveness result:
+ * - "live"    → confirmed reachable (2xx, 403, 401)
+ * - "dead"    → confirmed dead (404, 410)
+ * - "unknown" → can't determine (timeout, SSL error, connection refused)
+ *               These are kept — don't strip URLs just because a server blocks bots.
+ */
+type UrlStatus = "live" | "dead" | "unknown";
+
+async function checkUrlStatus(url: string): Promise<UrlStatus> {
   try {
     const res = await fetch(url, {
       method: "HEAD",
       redirect: "follow",
       signal: AbortSignal.timeout(8000),
-      headers: { "User-Agent": "Mozilla/5.0 (compatible; KYCGenie/1.0)" },
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
     });
-    return res.ok || res.status === 403 || res.status === 401;
+    // Confirmed dead
+    if (res.status === 404 || res.status === 410) return "dead";
+    // Confirmed live (including 403/401 — site is up, just auth-gated)
+    return "live";
   } catch {
-    // For Vertex AI redirect URLs, try GET as fallback (some reject HEAD)
-    if (url.includes("vertexaisearch.cloud.google.com")) {
-      try {
-        const res = await fetch(url, {
-          method: "GET",
-          redirect: "follow",
-          signal: AbortSignal.timeout(8000),
-          headers: { "User-Agent": "Mozilla/5.0 (compatible; KYCGenie/1.0)" },
-        });
-        return res.ok || res.status === 403 || res.status === 401;
-      } catch {
-        return false;
-      }
+    // HEAD failed — try GET for Vertex AI redirects and other sites that reject HEAD
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        redirect: "follow",
+        signal: AbortSignal.timeout(8000),
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+      });
+      if (res.status === 404 || res.status === 410) return "dead";
+      return "live";
+    } catch {
+      // Timeout, SSL error, DNS failure, connection refused — can't determine
+      // Don't strip these — the URL may be perfectly valid
+      return "unknown";
     }
-    return false;
   }
 }
 
@@ -161,8 +173,79 @@ export async function runVerification(profile: CompanyDetail): Promise<{
   collectUrls(corrected.sources);
   for (const t of corrected.triggerEvents || []) collectUrls(t.sources);
   for (const p of corrected.painPoints || []) collectUrls(p.sources);
-  for (const s of corrected.solutionMappings || []) collectUrls(s.sources);
+  for (const s of corrected.solutionMappings || []) {
+    collectUrls(s.sources);
+    if (s.estimatedImpact && typeof s.estimatedImpact === "object") collectUrls(s.estimatedImpact.sources);
+  }
   if (corrected.gtm?.sources) collectUrls(corrected.gtm.sources);
+  collectUrls(corrected.gtm?.briefSources);
+  collectUrls(corrected.gtm?.entrySolutionSources);
+  collectUrls(corrected.gtm?.urgencySources);
+  collectUrls(corrected.gtm?.competitiveSources);
+  for (const dim of Object.values(corrected.scores)) {
+    const d = dim as { sources?: Source[] };
+    if (d?.sources) collectUrls(d.sources);
+  }
+
+  // Pre-filter: strip any Vertex AI redirect/grounding URLs that weren't resolved
+  // These are Google-internal URLs useless to end users
+  const isVertexUrl = (url: string) =>
+    url.includes("vertexaisearch.cloud.google.com/grounding-api-redirect") ||
+    url.includes("vertexaisearch.google.com/grounding");
+
+  const stripVertex = (sources: Source[] | undefined): Source[] =>
+    (sources || []).filter((s) => !isVertexUrl(s.url));
+
+  let vertexStripped = 0;
+  const countAndStrip = (sources: Source[] | undefined): Source[] => {
+    const filtered = stripVertex(sources);
+    vertexStripped += (sources || []).length - filtered.length;
+    return filtered;
+  };
+
+  corrected.sources = countAndStrip(corrected.sources);
+  for (const t of corrected.triggerEvents || []) t.sources = countAndStrip(t.sources);
+  for (const p of corrected.painPoints || []) p.sources = countAndStrip(p.sources);
+  for (const s of corrected.solutionMappings || []) {
+    s.sources = countAndStrip(s.sources);
+    if (s.estimatedImpact && typeof s.estimatedImpact === "object") {
+      s.estimatedImpact.sources = countAndStrip(s.estimatedImpact.sources);
+    }
+  }
+  if (corrected.gtm?.sources) corrected.gtm.sources = countAndStrip(corrected.gtm.sources);
+  if (corrected.gtm?.briefSources) corrected.gtm.briefSources = countAndStrip(corrected.gtm.briefSources);
+  if (corrected.gtm?.entrySolutionSources) corrected.gtm.entrySolutionSources = countAndStrip(corrected.gtm.entrySolutionSources);
+  if (corrected.gtm?.urgencySources) corrected.gtm.urgencySources = countAndStrip(corrected.gtm.urgencySources);
+  if (corrected.gtm?.competitiveSources) corrected.gtm.competitiveSources = countAndStrip(corrected.gtm.competitiveSources);
+  for (const dim of Object.values(corrected.scores)) {
+    const d = dim as { sources?: Source[] };
+    if (d?.sources) d.sources = countAndStrip(d.sources);
+  }
+  // Also strip from stakeholder sourceUrl
+  for (const s of corrected.stakeholders || []) {
+    if (s.sourceUrl && isVertexUrl(s.sourceUrl)) {
+      s.sourceUrl = "";
+      vertexStripped++;
+    }
+  }
+  if (vertexStripped > 0) {
+    warnings.push(`${vertexStripped} unresolved Vertex AI redirect URL(s) stripped`);
+  }
+
+  // Rebuild URL set after Vertex stripping
+  allUrlSet.clear();
+  collectUrls(corrected.sources);
+  for (const t of corrected.triggerEvents || []) collectUrls(t.sources);
+  for (const p of corrected.painPoints || []) collectUrls(p.sources);
+  for (const s of corrected.solutionMappings || []) {
+    collectUrls(s.sources);
+    if (s.estimatedImpact && typeof s.estimatedImpact === "object") collectUrls(s.estimatedImpact.sources);
+  }
+  if (corrected.gtm?.sources) collectUrls(corrected.gtm.sources);
+  collectUrls(corrected.gtm?.briefSources);
+  collectUrls(corrected.gtm?.entrySolutionSources);
+  collectUrls(corrected.gtm?.urgencySources);
+  collectUrls(corrected.gtm?.competitiveSources);
   for (const dim of Object.values(corrected.scores)) {
     const d = dim as { sources?: Source[] };
     if (d?.sources) collectUrls(d.sources);
@@ -172,29 +255,44 @@ export async function runVerification(profile: CompanyDetail): Promise<{
   if (allUniqueUrls.length > 0) {
     // Check in batches of 15 to avoid overwhelming the network
     const deadUrls = new Set<string>();
+    const unknownUrls = new Set<string>();
     const BATCH_SIZE = 15;
     for (let i = 0; i < allUniqueUrls.length; i += BATCH_SIZE) {
       const batch = allUniqueUrls.slice(i, i + BATCH_SIZE);
-      const liveChecks = await Promise.allSettled(
-        batch.map(async (url) => ({ url, live: await isUrlLive(url) }))
+      const checks = await Promise.allSettled(
+        batch.map(async (url) => ({ url, status: await checkUrlStatus(url) }))
       );
-      for (const check of liveChecks) {
-        if (check.status === "fulfilled" && !check.value.live) {
-          deadUrls.add(check.value.url);
+      for (const check of checks) {
+        if (check.status === "fulfilled") {
+          if (check.value.status === "dead") deadUrls.add(check.value.url);
+          else if (check.value.status === "unknown") unknownUrls.add(check.value.url);
         }
       }
     }
 
+    if (unknownUrls.size > 0) {
+      warnings.push(`${unknownUrls.size} source URL(s) could not be verified (timeout/SSL) — kept as-is`);
+    }
+
     if (deadUrls.size > 0) {
-      // Strip dead sources from ALL sections
+      // Strip ONLY confirmed dead sources (404/410) from ALL sections
       const stripDead = (sources: Source[] | undefined): Source[] =>
         (sources || []).filter((s) => !deadUrls.has(s.url));
 
       corrected.sources = stripDead(corrected.sources);
       for (const t of corrected.triggerEvents || []) t.sources = stripDead(t.sources);
       for (const p of corrected.painPoints || []) p.sources = stripDead(p.sources);
-      for (const s of corrected.solutionMappings || []) s.sources = stripDead(s.sources);
+      for (const s of corrected.solutionMappings || []) {
+        s.sources = stripDead(s.sources);
+        if (s.estimatedImpact && typeof s.estimatedImpact === "object") {
+          s.estimatedImpact.sources = stripDead(s.estimatedImpact.sources);
+        }
+      }
       if (corrected.gtm?.sources) corrected.gtm.sources = stripDead(corrected.gtm.sources);
+      if (corrected.gtm?.briefSources) corrected.gtm.briefSources = stripDead(corrected.gtm.briefSources);
+      if (corrected.gtm?.entrySolutionSources) corrected.gtm.entrySolutionSources = stripDead(corrected.gtm.entrySolutionSources);
+      if (corrected.gtm?.urgencySources) corrected.gtm.urgencySources = stripDead(corrected.gtm.urgencySources);
+      if (corrected.gtm?.competitiveSources) corrected.gtm.competitiveSources = stripDead(corrected.gtm.competitiveSources);
       for (const dim of Object.values(corrected.scores)) {
         const d = dim as { sources?: Source[] };
         if (d?.sources) d.sources = stripDead(d.sources);
@@ -203,8 +301,8 @@ export async function runVerification(profile: CompanyDetail): Promise<{
       fixes.push({
         field: "sources",
         current: `${allUniqueUrls.length} unique URLs checked`,
-        corrected: `${allUniqueUrls.length - deadUrls.size} live, ${deadUrls.size} dead stripped`,
-        reason: "Stripped dead source URLs",
+        corrected: `${allUniqueUrls.length - deadUrls.size} kept, ${deadUrls.size} confirmed dead stripped, ${unknownUrls.size} unverifiable kept`,
+        reason: "Stripped confirmed dead (404/410) source URLs",
       });
       warnings.push(`${deadUrls.size} dead source URL(s) removed`);
     }
@@ -218,29 +316,36 @@ export async function runVerification(profile: CompanyDetail): Promise<{
     const stakeholderChecks = await Promise.allSettled(
       corrected.stakeholders.map(async (s) => ({
         name: s.name,
-        live: s.sourceUrl ? await isUrlLive(s.sourceUrl) : false,
+        status: s.sourceUrl ? await checkUrlStatus(s.sourceUrl) : "unknown" as UrlStatus,
       }))
     );
 
     let verifiedCount = 0;
-    let unverifiedCount = 0;
+    let strippedCount = 0;
     for (let i = 0; i < corrected.stakeholders.length; i++) {
       const check = stakeholderChecks[i];
-      const live = check.status === "fulfilled" && check.value.live;
-      corrected.stakeholders[i].confidence = live ? "verified" : "likely";
-      if (live) verifiedCount++;
-      else unverifiedCount++;
+      const status = check.status === "fulfilled" ? check.value.status : "unknown";
+      if (status === "live") {
+        corrected.stakeholders[i].confidence = "verified";
+        verifiedCount++;
+      } else {
+        // Can't confirm URL works — clear it so users never see a broken link
+        // The stakeholder data (name, title, tier) is still valuable without the URL
+        corrected.stakeholders[i].confidence = "likely";
+        corrected.stakeholders[i].sourceUrl = "";
+        strippedCount++;
+      }
     }
 
-    if (unverifiedCount > 0) {
-      warnings.push(`${unverifiedCount} stakeholder source URL(s) not reachable — marked as "likely"`);
+    if (strippedCount > 0) {
+      warnings.push(`${strippedCount} unverifiable stakeholder URL(s) cleared`);
     }
 
     fixes.push({
       field: "stakeholders",
       current: `${corrected.stakeholders.length} stakeholders`,
-      corrected: `${verifiedCount} verified, ${unverifiedCount} likely`,
-      reason: "Checked stakeholder source URL liveness",
+      corrected: `${verifiedCount} verified, ${strippedCount} URLs cleared`,
+      reason: "Checked stakeholder source URL liveness — cleared unverifiable URLs",
     });
   }
 

@@ -7,7 +7,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { callClaudeJSON } from "@/lib/claude";
-import type { SolutionMapping, PainPoint, TechLandscape, TriggerEvent } from "@/lib/types";
+import type { SolutionMapping, PainPoint, TechLandscape, TriggerEvent, Source } from "@/lib/types";
 import type { FinancialSignalOutput } from "./financial-signal";
 
 const systemPrompt = readFileSync(
@@ -61,7 +61,7 @@ export async function runSolutionMapper(input: SolutionMapperInput): Promise<Sol
     event: t.event, date: t.date, category: t.category, impact: t.impact,
   }));
 
-  return callClaudeJSON<SolutionMapping[]>({
+  const mappings = await callClaudeJSON<SolutionMapping[]>({
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
     userPrompt: `Create solution mappings for: ${input.companyName}
 
@@ -88,6 +88,45 @@ Use ONLY the offerings and case studies below. Every proof point MUST reference 
 
 ${offeringsKB}
 
-Respond ONLY with a JSON array matching the output schema.`,
+Respond ONLY with a JSON array matching the output schema. Set sources to empty arrays — sources will be injected programmatically.`,
   });
+
+  // Inject REAL sources from upstream grounded data (Claude has no web access)
+  // Build a map of pain point title → sources for lookup
+  const painSourceMap = new Map<string, Source[]>();
+  for (const pp of input.painPoints || []) {
+    painSourceMap.set(pp.title.toLowerCase(), pp.sources || []);
+  }
+
+  // Collect all upstream sources for general fallback
+  const allUpstreamSources: Source[] = [];
+  const seenUrls = new Set<string>();
+  const addUnique = (sources: Source[] | undefined) => {
+    for (const s of sources || []) {
+      if (s.url && !seenUrls.has(s.url)) { seenUrls.add(s.url); allUpstreamSources.push(s); }
+    }
+  };
+  for (const pp of input.painPoints || []) addUnique(pp.sources);
+  for (const t of input.triggers || []) addUnique(t.sources);
+  addUnique((input.financialSignals?.sources as Source[]) || []);
+  const tl = input.techLandscape;
+  if (tl) {
+    for (const field of [tl.cloudProviders, tl.workspacePlatform, tl.knownAIDeployments, tl.knownVendors, tl.knownSystems]) {
+      addUnique(field?.sources);
+    }
+  }
+
+  for (const m of mappings) {
+    // Match mapping to its pain point and inherit sources
+    const ppSources = painSourceMap.get(m.painPoint?.toLowerCase()) || [];
+    m.sources = ppSources.length > 0 ? ppSources.slice(0, 3) : allUpstreamSources.slice(0, 2);
+
+    // estimatedImpact sources: use financial signal sources (budget evidence)
+    if (m.estimatedImpact && typeof m.estimatedImpact === "object") {
+      const finSources = ((input.financialSignals?.sources as Source[]) || []).slice(0, 2);
+      m.estimatedImpact.sources = finSources.length > 0 ? finSources : allUpstreamSources.slice(0, 2);
+    }
+  }
+
+  return mappings;
 }

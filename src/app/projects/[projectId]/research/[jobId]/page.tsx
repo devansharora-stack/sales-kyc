@@ -512,8 +512,8 @@ export default function ResearchProgressPage() {
   const isComplete = job.status === "completed";
   const isFailed = job.status === "failed";
   const allStepsDone = steps.length > 0 && steps.every((s) => s.status === "completed");
-  // Derive slug from company name as fallback
-  const derivedSlug = profileSlug || job.company_name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  // Only use the real profile slug from DB — never guess from company name
+  const derivedSlug = profileSlug;
 
   return (
     <div className="animate-fade-in">
@@ -540,7 +540,7 @@ export default function ResearchProgressPage() {
         </div>
         <div className="flex items-center gap-3">
           <span className="text-sm font-bold text-[#3289FF]">{job.progress}%</span>
-          {(isComplete || allStepsDone) && (
+          {(isComplete || allStepsDone) && derivedSlug && (
             <Link
               href={`/projects/${projectId}/company/${derivedSlug}`}
               className="btn-primary text-xs"

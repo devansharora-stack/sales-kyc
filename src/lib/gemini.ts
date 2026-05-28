@@ -117,7 +117,11 @@ export async function callGemini(options: GeminiOptions): Promise<string> {
           error.message.includes("RESOURCE_EXHAUSTED") ||
           error.message.includes("503") ||
           error.message.includes("UNAVAILABLE") ||
-          error.message.includes("overloaded"));
+          error.message.includes("overloaded") ||
+          error.message.includes("fetch failed") ||
+          error.message.includes("ETIMEDOUT") ||
+          error.message.includes("TimeoutError") ||
+          error.message.includes("network"));
 
       if (isRetryable && attempt < maxRetries - 1) {
         const backoff = (attempt + 1) * 20000; // 20s, 40s, 60s, 80s
@@ -186,8 +190,7 @@ export async function callGeminiGrounded<T>(options: Omit<GeminiOptions, "useGro
       if (!text) throw new Error("Gemini returned no text");
 
       // Extract grounding sources from metadata
-      // Vertex AI returns redirect URLs (vertexaisearch.cloud.google.com/grounding-api-redirect/...)
-      // These are valid grounding references — Gemini also uses these in its JSON output
+      // Extract grounding sources from metadata
       const groundingSources: GroundingSource[] = [];
       const candidates = (response as any).candidates || [];
       for (const candidate of candidates) {
@@ -206,7 +209,7 @@ export async function callGeminiGrounded<T>(options: Omit<GeminiOptions, "useGro
       // Resolve redirect URLs to real destinations (before they expire)
       const redirectMap = new Map<string, string>();
       const redirectUrls = groundingSources
-        .filter((s) => s.url.includes("vertexaisearch.cloud.google.com/grounding-api-redirect"))
+        .filter((s) => isVertexRedirectUrl(s.url))
         .map((s) => s.url);
 
       if (redirectUrls.length > 0) {
@@ -234,24 +237,93 @@ export async function callGeminiGrounded<T>(options: Omit<GeminiOptions, "useGro
         if (real) src.url = real;
       }
 
+      const data = extractGeminiJSON<T>(text);
+
+      // Replace redirect URLs in the parsed JSON output using chunk redirectMap
+      if (redirectMap.size > 0) {
+        replaceRedirectUrls(data, redirectMap);
+      }
+
+      // Find any REMAINING Vertex redirect URLs in the parsed output
+      // (Gemini uses different tokens in text vs metadata — chunk map won't cover all)
+      const remainingRedirects = collectVertexUrls(data);
+      if (remainingRedirects.length > 0) {
+        console.log(`[gemini] Found ${remainingRedirects.length} additional Vertex redirect URL(s) in output — resolving...`);
+        const extraMap = new Map<string, string>();
+        const BATCH = 10;
+        for (let i = 0; i < remainingRedirects.length; i += BATCH) {
+          const batch = remainingRedirects.slice(i, i + BATCH);
+          const resolved = await Promise.allSettled(
+            batch.map(async (url) => {
+              const real = await resolveRedirectUrl(url);
+              return { redirect: url, real };
+            })
+          );
+          for (const r of resolved) {
+            if (r.status === "fulfilled" && r.value.real) {
+              extraMap.set(r.value.redirect, r.value.real);
+              // Also add to main redirectMap for grounding source replacement
+              redirectMap.set(r.value.redirect, r.value.real);
+            }
+          }
+        }
+        if (extraMap.size > 0) {
+          replaceRedirectUrls(data, extraMap);
+          console.log(`[gemini] Resolved ${extraMap.size}/${remainingRedirects.length} additional redirect URL(s)`);
+        }
+      }
+
+      // Final pass: strip any STILL unresolved Vertex URLs (domain doesn't exist, can't resolve)
+      // Build domain fallback map from grounding chunks (we know the domain even if redirect fails)
+      const domainFallbacks = new Map<string, string>();
+      for (const src of groundingSources) {
+        if (isVertexRedirectUrl(src.url) && src.domain) {
+          domainFallbacks.set(src.url, `https://www.${src.domain}`);
+        }
+      }
+      // Apply domain fallbacks to grounding sources
+      for (const src of groundingSources) {
+        if (isVertexRedirectUrl(src.url)) {
+          const fallback = domainFallbacks.get(src.url);
+          if (fallback) src.url = fallback;
+        }
+      }
+      // Strip any remaining unresolvable Vertex URLs from output and grounding sources
+      stripUnresolvedRedirects(data);
+      const resolvedSources = groundingSources.filter((s) => !isVertexRedirectUrl(s.url));
+      if (resolvedSources.length < groundingSources.length) {
+        console.log(`[gemini] Stripped ${groundingSources.length - resolvedSources.length} unresolvable Vertex URL(s) from grounding sources`);
+      }
+
       // Deduplicate sources by URL
       const seenUrls = new Set<string>();
-      const uniqueSources = groundingSources.filter((s) => {
+      const uniqueSources = resolvedSources.filter((s) => {
         if (seenUrls.has(s.url)) return false;
         seenUrls.add(s.url);
         return true;
       });
 
-      const data = extractGeminiJSON<T>(text);
-
-      // Replace redirect URLs in the parsed JSON output too
-      if (redirectMap.size > 0) {
-        replaceRedirectUrls(data, redirectMap);
+      // Verify ungrounded URLs: quick liveness check, strip only confirmed dead
+      const ungroundedUrls = [...new Set(collectUngroundedUrls(data, uniqueSources))];
+      if (ungroundedUrls.length > 0) {
+        const deadUrls = new Set<string>();
+        const BATCH = 10;
+        for (let i = 0; i < ungroundedUrls.length; i += BATCH) {
+          const batch = ungroundedUrls.slice(i, i + BATCH);
+          const checks = await Promise.allSettled(
+            batch.map(async (url) => ({ url, live: await isUrlReachable(url) }))
+          );
+          for (const c of checks) {
+            if (c.status === "fulfilled" && !c.value.live) deadUrls.add(c.value.url);
+          }
+        }
+        if (deadUrls.size > 0) {
+          const stripped = stripDeadUrls(data, deadUrls);
+          console.log(`[gemini] Verified ${ungroundedUrls.length} ungrounded URL(s): ${deadUrls.size} dead stripped, ${ungroundedUrls.length - deadUrls.size} live kept`);
+        } else {
+          console.log(`[gemini] Verified ${ungroundedUrls.length} ungrounded URL(s): all live`);
+        }
       }
-
-      // Inject grounding sources into the parsed output
-      // Walk the object and validate any source URLs against grounding results
-      injectGroundingSources(data, uniqueSources);
 
       return { data, groundingSources: uniqueSources };
     } catch (error: unknown) {
@@ -261,7 +333,11 @@ export async function callGeminiGrounded<T>(options: Omit<GeminiOptions, "useGro
           error.message.includes("RESOURCE_EXHAUSTED") ||
           error.message.includes("503") ||
           error.message.includes("UNAVAILABLE") ||
-          error.message.includes("overloaded"));
+          error.message.includes("overloaded") ||
+          error.message.includes("fetch failed") ||
+          error.message.includes("ETIMEDOUT") ||
+          error.message.includes("TimeoutError") ||
+          error.message.includes("network"));
 
       if (isRetryable && attempt < maxRetries - 1) {
         const backoff = (attempt + 1) * 20000;
@@ -276,38 +352,93 @@ export async function callGeminiGrounded<T>(options: Omit<GeminiOptions, "useGro
 }
 
 /**
- * Walk the parsed JSON output and validate source URLs against grounding.
- *
- * Vertex AI returns redirect URLs (vertexaisearch.cloud.google.com/grounding-api-redirect/...).
- * Gemini puts these SAME redirect URLs in its JSON output.
- * So we match on: exact redirect URL, or same domain (from chunk metadata).
+ * Collect all ungrounded URLs from the parsed output for batch verification.
+ * Returns a list of { url, path } so we can trace back where to strip.
  */
-function injectGroundingSources(obj: any, groundingSources: GroundingSource[]): void {
-  if (!obj || typeof obj !== "object") return;
+function collectUngroundedUrls(obj: any, groundingSources: GroundingSource[]): string[] {
+  const urls: string[] = [];
+  if (!obj || typeof obj !== "object") return urls;
 
   if (Array.isArray(obj)) {
-    for (const item of obj) injectGroundingSources(item, groundingSources);
-    return;
-  }
-
-  // Source-like object with url field
-  if (typeof obj.url === "string" && obj.url.startsWith("http") && ("label" in obj || "type" in obj)) {
-    obj._grounded = isGroundedUrl(obj.url, groundingSources);
-    if (!obj._grounded) {
-      console.log(`[gemini] Ungrounded source URL from domain: ${extractDomain(obj.url)}`);
+    for (const item of obj) {
+      if (item && typeof item === "object" && typeof item.url === "string" && item.url.startsWith("http") && ("label" in item || "type" in item)) {
+        if (!isGroundedUrl(item.url, groundingSources)) urls.push(item.url);
+      } else {
+        urls.push(...collectUngroundedUrls(item, groundingSources));
+      }
     }
+    return urls;
   }
 
-  // Stakeholder-like object with sourceUrl field
   if (typeof obj.sourceUrl === "string" && obj.sourceUrl.startsWith("http")) {
-    obj._grounded = isGroundedUrl(obj.sourceUrl, groundingSources);
-    if (!obj._grounded) {
-      console.log(`[gemini] Ungrounded stakeholder sourceUrl from domain: ${extractDomain(obj.sourceUrl)}`);
-    }
+    if (!isGroundedUrl(obj.sourceUrl, groundingSources)) urls.push(obj.sourceUrl);
   }
 
   for (const val of Object.values(obj)) {
-    injectGroundingSources(val, groundingSources);
+    urls.push(...collectUngroundedUrls(val, groundingSources));
+  }
+  return urls;
+}
+
+/**
+ * Strip confirmed-dead URLs from the parsed output.
+ * Only removes URLs that are in the deadUrls set.
+ * Returns count of stripped URLs.
+ */
+function stripDeadUrls(obj: any, deadUrls: Set<string>): number {
+  if (!obj || typeof obj !== "object") return 0;
+  let stripped = 0;
+
+  if (Array.isArray(obj)) {
+    for (let i = obj.length - 1; i >= 0; i--) {
+      const item = obj[i];
+      if (item && typeof item === "object" && typeof item.url === "string" && deadUrls.has(item.url)) {
+        obj.splice(i, 1);
+        stripped++;
+      } else {
+        stripped += stripDeadUrls(item, deadUrls);
+      }
+    }
+    return stripped;
+  }
+
+  if (typeof obj.sourceUrl === "string" && deadUrls.has(obj.sourceUrl)) {
+    obj.sourceUrl = "";
+    stripped++;
+  }
+
+  for (const val of Object.values(obj)) {
+    stripped += stripDeadUrls(val, deadUrls);
+  }
+  return stripped;
+}
+
+/**
+ * Quick URL liveness check — HEAD with short timeout, GET fallback.
+ * Returns true if URL is reachable (any non-404/410 status).
+ */
+async function isUrlReachable(url: string): Promise<boolean> {
+  try {
+    const res = await fetch(url, {
+      method: "HEAD",
+      redirect: "follow",
+      signal: AbortSignal.timeout(5000),
+      headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+    });
+    return res.status !== 404 && res.status !== 410;
+  } catch {
+    try {
+      const res = await fetch(url, {
+        method: "GET",
+        redirect: "follow",
+        signal: AbortSignal.timeout(5000),
+        headers: { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" },
+      });
+      return res.status !== 404 && res.status !== 410;
+    } catch {
+      // Can't reach — treat as dead to be safe (Gemini may have hallucinated it)
+      return false;
+    }
   }
 }
 
@@ -332,6 +463,52 @@ async function resolveRedirectUrl(redirectUrl: string): Promise<string | null> {
     return null;
   } catch {
     return null;
+  }
+}
+
+/**
+ * Recursively collect all Vertex AI redirect URLs found in parsed output.
+ */
+function collectVertexUrls(obj: any, found: string[] = []): string[] {
+  if (!obj || typeof obj !== "object") return found;
+  if (Array.isArray(obj)) {
+    for (const item of obj) collectVertexUrls(item, found);
+    return found;
+  }
+  for (const val of Object.values(obj)) {
+    if (typeof val === "string" && isVertexRedirectUrl(val)) {
+      found.push(val);
+    } else if (typeof val === "object") {
+      collectVertexUrls(val, found);
+    }
+  }
+  return found;
+}
+
+/**
+ * Recursively strip any unresolved Vertex AI redirect/grounding URLs from parsed output.
+ * These are useless to end users — they're Google-internal URLs that may expire.
+ */
+function stripUnresolvedRedirects(obj: any): void {
+  if (!obj || typeof obj !== "object") return;
+  if (Array.isArray(obj)) {
+    // Remove source-like objects with Vertex redirect URLs
+    for (let i = obj.length - 1; i >= 0; i--) {
+      const item = obj[i];
+      if (item && typeof item === "object" && typeof item.url === "string" && isVertexRedirectUrl(item.url)) {
+        obj.splice(i, 1);
+      } else {
+        stripUnresolvedRedirects(item);
+      }
+    }
+    return;
+  }
+  // For sourceUrl fields (stakeholders), clear to empty string
+  if (typeof obj.sourceUrl === "string" && isVertexRedirectUrl(obj.sourceUrl)) {
+    obj.sourceUrl = "";
+  }
+  for (const val of Object.values(obj)) {
+    stripUnresolvedRedirects(val);
   }
 }
 
@@ -365,9 +542,9 @@ function replaceRedirectUrls(obj: any, redirectMap: Map<string, string>): void {
  * - Regular URLs are matched against grounding source domains
  */
 function isGroundedUrl(url: string, groundingSources: GroundingSource[]): boolean {
-  // All Vertex AI redirect URLs are grounded by definition —
+  // All Vertex AI redirect/grounding URLs are grounded by definition —
   // Gemini can only generate these from actual search results
-  if (url.includes("vertexaisearch.cloud.google.com/grounding-api-redirect")) {
+  if (isVertexRedirectUrl(url)) {
     return true;
   }
 
@@ -386,6 +563,17 @@ function extractDomain(url: string): string {
   } catch {
     return "";
   }
+}
+
+/**
+ * Check if a URL is a Vertex AI grounding redirect/reference URL.
+ * Google uses multiple domains and path patterns:
+ * - vertexaisearch.cloud.google.com/grounding-api-redirect/...
+ * - vertexaisearch.google.com/grounding/...
+ */
+function isVertexRedirectUrl(url: string): boolean {
+  return url.includes("vertexaisearch.cloud.google.com/grounding-api-redirect") ||
+    url.includes("vertexaisearch.google.com/grounding");
 }
 
 // ─── Shared utilities ───

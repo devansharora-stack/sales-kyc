@@ -108,6 +108,12 @@ export interface FitScoreBreakdown {
   impactMagnitude: number;
 }
 
+export interface EstimatedImpact {
+  summary: string;
+  reasoning: string[];
+  sources?: Source[];
+}
+
 export interface SolutionMapping {
   solution: SolutionId;
   solutionName: string;
@@ -116,7 +122,7 @@ export interface SolutionMapping {
   proofPoint: { client: string; relevance: string; outcome: string };
   priority: "Primary" | "Secondary" | "Tertiary";
   reasoning: string;
-  estimatedImpact: string;
+  estimatedImpact: string | EstimatedImpact;
   fitScore?: number;
   fitScoreBreakdown?: FitScoreBreakdown;
   sources: Source[];
@@ -158,14 +164,18 @@ export interface PilotStrategy {
 
 export interface GTMStrategy {
   brief: string;
+  briefSources?: Source[];
   entrySolution: SolutionId;
   entrySolutionReasoning: string;
+  entrySolutionSources?: Source[];
   entryStrategy: string[];
   pilotStrategy: PilotStrategy;
   expandPath: string;
   competitivePositioning: string;
+  competitiveSources?: Source[];
   urgency: "Very High" | "High" | "Medium" | "Low";
   urgencyReasoning: string;
+  urgencySources?: Source[];
   sources: Source[];
 }
 

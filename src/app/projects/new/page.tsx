@@ -147,7 +147,7 @@ export default function NewProjectPage() {
         <div className="flex gap-2">
           <textarea
             className="input-field flex-1"
-            placeholder="Enter company names (one per line, or comma-separated)"
+            placeholder="Enter company names or paste URLs (one per line, or comma-separated)"
             rows={2}
             value={manualInput}
             onChange={(e) => setManualInput(e.target.value)}

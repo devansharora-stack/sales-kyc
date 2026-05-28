@@ -6,7 +6,7 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { callClaudeJSON } from "@/lib/claude";
-import type { PainPoint, TriggerEvent, TechLandscape } from "@/lib/types";
+import type { PainPoint, TriggerEvent, TechLandscape, Source } from "@/lib/types";
 import type { FinancialSignalOutput } from "./financial-signal";
 
 const systemPrompt = readFileSync(
@@ -51,7 +51,7 @@ export async function runPainPointAnalyzer(input: PainPointInput): Promise<PainP
     costPressure: input.financialSignals?.costPressure || [],
   };
 
-  return callClaudeJSON<PainPoint[]>({
+  const painPoints = await callClaudeJSON<PainPoint[]>({
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
     userPrompt: `Analyze pain points for: ${input.companyName}
 
@@ -70,6 +70,45 @@ ${JSON.stringify(techSummary, null, 2)}
 Financial signals:
 ${JSON.stringify(finSummary, null, 2)}
 
-Respond ONLY with a JSON array matching the output schema.`,
+Respond ONLY with a JSON array matching the output schema. Set sources to an empty array — sources will be injected programmatically.`,
   });
+
+  // Inject REAL sources from upstream grounded data (Claude has no web access)
+  const allUpstreamSources: Source[] = [];
+  for (const t of input.triggers || []) {
+    for (const s of t.sources || []) if (s.url) allUpstreamSources.push(s);
+  }
+  for (const s of (input.financialSignals?.sources as Source[]) || []) {
+    if (s.url) allUpstreamSources.push(s);
+  }
+  const tl = input.techLandscape;
+  if (tl) {
+    for (const field of [tl.cloudProviders, tl.workspacePlatform, tl.knownAIDeployments, tl.knownVendors, tl.knownSystems]) {
+      for (const s of field?.sources || []) if (s.url) allUpstreamSources.push(s);
+    }
+  }
+
+  // Deduplicate
+  const seen = new Set<string>();
+  const uniqueSources = allUpstreamSources.filter((s) => {
+    if (seen.has(s.url)) return false;
+    seen.add(s.url);
+    return true;
+  });
+
+  // For each pain point, find the most relevant upstream sources by keyword matching
+  for (const pp of painPoints) {
+    const keywords = (pp.title + " " + pp.description).toLowerCase().split(/\s+/);
+    const scored = uniqueSources.map((src) => {
+      const srcText = (src.label || "").toLowerCase();
+      const matches = keywords.filter((kw) => kw.length > 3 && srcText.includes(kw)).length;
+      return { src, matches };
+    });
+    scored.sort((a, b) => b.matches - a.matches);
+    // Take top 3 matching sources; if none match, take the first 2 general sources
+    const matched = scored.filter((s) => s.matches > 0).slice(0, 3).map((s) => s.src);
+    pp.sources = matched.length > 0 ? matched : uniqueSources.slice(0, 2);
+  }
+
+  return painPoints;
 }

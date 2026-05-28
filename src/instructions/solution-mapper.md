@@ -33,7 +33,15 @@ For each relevant offering, create a detailed mapping that includes:
     },
     "priority": "Primary | Secondary | Tertiary",
     "reasoning": "Why this priority ranking",
-    "estimatedImpact": "Quantified or described expected impact",
+    "estimatedImpact": {
+      "summary": "$300K-$500K in annual efficiency gains across CRM maintenance and support",
+      "reasoning": [
+        "CRM integration maintenance currently requires ~3 FTEs at $180K avg = $540K/yr — automation could reduce by 60% = ~$324K savings",
+        "Customer support ticket routing takes ~40hrs/week manual triage — AI automation recovers ~$80K-$120K annually",
+        "15-20% operational cost recovery based on industry benchmarks for similar-sized services companies"
+      ],
+      "sources": []
+    },
     "fitScore": 78,
     "fitScoreBreakdown": {
       "painSeverity": 22,
@@ -41,7 +49,7 @@ For each relevant offering, create a detailed mapping that includes:
       "proofRelevance": 20,
       "impactMagnitude": 18
     },
-    "sources": [{ "label": "", "url": "", "date": "", "type": "" }]
+    "sources": []
   }
 ]
 ```
@@ -91,7 +99,11 @@ Score each solution on 4 dimensions (25 points each):
 - The "value" field must be company-specific, not generic marketing copy
 - Consider the tech landscape: if they're on Google Workspace, GE Land/Expand/Enablement should be mapped; if Microsoft 365, skip GE solutions
 - If budget signals are weak, prioritize BPA Value Finder (1.1) as it helps build the business case
-- estimatedImpact should use concrete terms: "reduce contract review time by 60%", "save $2M annually in scheduling labor costs"
+- estimatedImpact MUST be a structured object with:
+  - `summary`: The headline impact (e.g., "$300K-$500K in annual efficiency gains")
+  - `reasoning`: An array of 2-4 strings, each showing ONE component of how the number was derived. Show your math: reference headcount, hourly costs, industry benchmarks, or process volumes. Each line should be independently verifiable.
+  - `sources`: Set to empty array `[]` — sources are injected programmatically from upstream financial data
+- Never state a dollar figure without showing the calculation behind it
 - For companies with on-prem legacy systems, consider Cloud Migration (7.1) or Digital Modernization (7.2)
 - For companies with fragmented data, consider AI Data Readiness (7.4)
 - For companies wanting quick AI wins on Google Workspace, start with GE Land Native Connector (2.1)

@@ -82,7 +82,7 @@ async function runAgentStep<T>(
 export const researchCompany = inngest.createFunction(
   {
     id: "research-company",
-    retries: 2,
+    retries: 0,
     concurrency: [{ limit: 5 }],
     triggers: [{ event: "research/company.start" }],
   },
@@ -278,16 +278,40 @@ export const researchCompany = inngest.createFunction(
         geminiStatus = "none";
       }
 
-      // Collect all sources (cast needed: LLM output has string types, our Source type has literals)
+      // Collect ALL sources from every section
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const allSources: any[] = [
+        // Company profile
         ...(profile.revenue?.sources || []),
         ...(profile.employees?.sources || []),
+        // Financial signals
         ...(financialSignals?.sources || []),
+        // Tech landscape (all 5 fields)
+        ...(techLandscape?.cloudProviders?.sources || []),
+        ...(techLandscape?.workspacePlatform?.sources || []),
+        ...(techLandscape?.knownAIDeployments?.sources || []),
+        ...(techLandscape?.knownVendors?.sources || []),
+        ...(techLandscape?.knownSystems?.sources || []),
+        // Triggers
         ...(Array.isArray(triggers) ? triggers : []).flatMap((t: { sources?: unknown[] }) => t.sources || []),
+        // Pain points
         ...safePainPoints.flatMap((p: { sources?: unknown[] }) => p.sources || []),
-        ...safeSolutionMappings.flatMap((s: { sources?: unknown[] }) => s.sources || []),
+        // Solution mappings (including estimatedImpact sources)
+        ...safeSolutionMappings.flatMap((s: { sources?: unknown[]; estimatedImpact?: unknown }) => {
+          const sources = [...(s.sources || [])];
+          if (s.estimatedImpact && typeof s.estimatedImpact === "object") {
+            const imp = s.estimatedImpact as { sources?: unknown[] };
+            sources.push(...(imp.sources || []));
+          }
+          return sources;
+        }),
+        // GTM (all section sources)
         ...(gtm?.sources || []),
+        ...(gtm?.briefSources || []),
+        ...(gtm?.entrySolutionSources || []),
+        ...(gtm?.urgencySources || []),
+        ...(gtm?.competitiveSources || []),
+        // Scores
         ...Object.values(scores || {}).flatMap((d: unknown) => {
           const dim = d as { sources?: unknown[] };
           return dim?.sources || [];

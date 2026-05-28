@@ -12,6 +12,7 @@ async function extractCompanyFromUrl(url: string): Promise<string> {
   try {
     const parsed = new URL(url.startsWith("http") ? url : `https://${url}`);
     const domain = parsed.hostname.replace(/^www\./, "");
+    const domainBase = domain.split(".")[0].toLowerCase();
 
     // Try fetching the page to get the title
     const res = await fetch(parsed.href, {
@@ -23,26 +24,54 @@ async function extractCompanyFromUrl(url: string): Promise<string> {
 
     if (res.ok) {
       const html = await res.text();
-      // Extract <title> tag
+
+      function decodeEntities(s: string): string {
+        return s
+          .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+          .replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)))
+          .replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">")
+          .replace(/&quot;/g, '"').replace(/&apos;/g, "'")
+          .replace(/[®™©]/g, "").trim();
+      }
+
+      // Priority 1: og:site_name — almost always the real company name
+      const ogSiteName = html.match(/<meta[^>]+property=["']og:site_name["'][^>]+content=["']([^"']+)["']/i)
+        || html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:site_name["']/i);
+      if (ogSiteName) {
+        const name = decodeEntities(ogSiteName[1]);
+        if (name.length >= 2 && name.length <= 100) {
+          return name;
+        }
+      }
+
+      // Priority 2: <title> tag with smarter parsing
       const titleMatch = html.match(/<title[^>]*>([^<]+)<\/title>/i);
       if (titleMatch) {
-        let title = titleMatch[1].trim();
-        // Decode HTML entities
-        title = title.replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
-        title = title.replace(/&#x([0-9a-f]+);/gi, (_, n) => String.fromCharCode(parseInt(n, 16)));
-        title = title.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&apos;/g, "'");
-        // Clean common suffixes: "Company Name | Official Site", "Company - Home"
-        title = title.split(/\s*[|\-–—:]\s*/)[0].trim();
-        // Remove trademark symbols
-        title = title.replace(/[®™©]/g, "").trim();
-        if (title.length >= 2 && title.length <= 100) {
-          return title;
+        const title = decodeEntities(titleMatch[1]);
+        const parts = title.split(/\s*[|\-–—:]\s*/).map(p => p.trim()).filter(Boolean);
+
+        if (parts.length > 1) {
+          // If any part resembles the domain name, prefer that (e.g., "NextEra Energy" from nexteraenergy.com)
+          const domainMatch = parts.find(p => domainBase.includes(p.toLowerCase().replace(/\s+/g, "")));
+          if (domainMatch && domainMatch.length >= 2 && domainMatch.length <= 100) return domainMatch;
+
+          // Otherwise, the company name is usually the shortest part (taglines are longer)
+          const sorted = [...parts].sort((a, b) => a.length - b.length);
+          const shortest = sorted[0];
+          if (shortest.length >= 2 && shortest.length <= 100) return shortest;
+        }
+
+        // Single-part title — check if it looks like a tagline (4+ words, all lowercase style)
+        const wordCount = parts[0]?.split(/\s+/).length || 0;
+        if (wordCount <= 4 && parts[0].length >= 2 && parts[0].length <= 100) {
+          return parts[0];
         }
       }
     }
 
-    // Fallback: use domain name, capitalize it
-    const name = domain.split(".")[0];
+    // Fallback: capitalize domain name (e.g., "nexteraenergy" → "Nexteraenergy")
+    // Try to split camelCase or known patterns
+    const name = domainBase.replace(/([a-z])([A-Z])/g, "$1 $2");
     return name.charAt(0).toUpperCase() + name.slice(1);
   } catch {
     // Last resort: clean the URL into something usable

@@ -14,6 +14,7 @@ import type {
   PainPoint,
   SolutionMapping,
   Stakeholder,
+  Source,
 } from "@/lib/types";
 import type { FinancialSignalOutput } from "./financial-signal";
 
@@ -67,19 +68,22 @@ export async function runGTMGenerator(input: GTMGeneratorInput): Promise<GTMStra
   };
   const triggerSummary = (input.triggers || []).map((t) => ({
     event: t.event, date: t.date, category: t.category, impact: t.impact,
+    sources: (t.sources || []).slice(0, 2).map((s) => ({ label: s.label, url: s.url, date: s.date, type: s.type })),
   }));
   const painSummary = (input.painPoints || []).map((p) => ({
     title: p.title, severity: p.severity, affectedFunctions: p.affectedFunctions,
+    sources: (p.sources || []).slice(0, 2).map((s) => ({ label: s.label, url: s.url, date: s.date, type: s.type })),
   }));
   const solutionSummary = (input.solutionMappings || []).map((s) => ({
     solution: s.solution, solutionName: s.solutionName, painPoint: s.painPoint,
     priority: s.priority, proofPoint: s.proofPoint, estimatedImpact: s.estimatedImpact,
+    sources: (s.sources || []).slice(0, 2).map((src) => ({ label: src.label, url: src.url, date: src.date, type: src.type })),
   }));
   const stakeholderSummary = (input.stakeholders || []).map((s) => ({
     name: s.name, title: s.title, tier: s.tier, relevance: s.relevance,
   }));
 
-  return callClaudeJSON<GTMStrategy>({
+  const gtm = await callClaudeJSON<GTMStrategy>({
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
     userPrompt: `Generate a go-to-market strategy for: ${input.companyName}
 
@@ -113,6 +117,42 @@ Reference these real offerings, engagement models, and pricing when building pil
 
 ${offeringsKB}
 
-Respond ONLY with the JSON object matching the output schema.`,
+Respond ONLY with the JSON object matching the output schema. For per-section sources, reuse the source URLs provided in the input data. Do NOT fabricate URLs.`,
   });
+
+  // Backfill any empty per-section sources from upstream grounded data
+  const triggerSources: Source[] = (input.triggers || []).flatMap((t) => (t.sources || []).slice(0, 2));
+  const finSources: Source[] = ((input.financialSignals?.sources as Source[]) || []).slice(0, 3);
+  const solutionSources: Source[] = (input.solutionMappings || []).flatMap((s) => (s.sources || []).slice(0, 2));
+  const techSources: Source[] = [
+    ...(input.techLandscape?.cloudProviders?.sources || []),
+    ...(input.techLandscape?.workspacePlatform?.sources || []),
+    ...(input.techLandscape?.knownAIDeployments?.sources || []),
+    ...(input.techLandscape?.knownVendors?.sources || []),
+  ];
+
+  // Validate and backfill: only keep sources that have real URLs from upstream
+  const allUpstreamUrls = new Set<string>();
+  for (const s of [...triggerSources, ...finSources, ...solutionSources, ...techSources]) {
+    if (s.url) allUpstreamUrls.add(s.url);
+  }
+
+  // Strip any source Claude generated that doesn't exist in upstream data
+  const filterValid = (sources: Source[] | undefined): Source[] =>
+    (sources || []).filter((s) => s.url && allUpstreamUrls.has(s.url));
+
+  gtm.sources = filterValid(gtm.sources);
+  gtm.briefSources = filterValid(gtm.briefSources);
+  gtm.entrySolutionSources = filterValid(gtm.entrySolutionSources);
+  gtm.urgencySources = filterValid(gtm.urgencySources);
+  gtm.competitiveSources = filterValid(gtm.competitiveSources);
+
+  // Backfill empty sections
+  if (!gtm.briefSources?.length) gtm.briefSources = [...triggerSources.slice(0, 2), ...finSources.slice(0, 1)];
+  if (!gtm.entrySolutionSources?.length) gtm.entrySolutionSources = solutionSources.slice(0, 3);
+  if (!gtm.urgencySources?.length) gtm.urgencySources = triggerSources.slice(0, 3);
+  if (!gtm.competitiveSources?.length) gtm.competitiveSources = techSources.slice(0, 3);
+  if (!gtm.sources?.length) gtm.sources = [...triggerSources.slice(0, 1), ...finSources.slice(0, 1), ...solutionSources.slice(0, 1)];
+
+  return gtm;
 }

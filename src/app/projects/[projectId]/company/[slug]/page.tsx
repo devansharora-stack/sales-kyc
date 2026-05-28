@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import type { CompanyDetail, Source, SolutionId, SolutionMapping } from "@/lib/types";
+import type { CompanyDetail, Source, SolutionId, SolutionMapping, EstimatedImpact } from "@/lib/types";
 import { ALL_SOLUTIONS } from "@/lib/types";
 import { generateCompanyPDF } from "@/lib/generate-pdf";
 import RatingBadge from "@/components/company/RatingBadge";
@@ -126,8 +126,15 @@ export default function CompanyPage() {
   add(company.sources);
   company.triggerEvents?.forEach(t => add(t.sources));
   company.painPoints?.forEach(p => add(p.sources));
-  company.solutionMappings?.forEach(m => add(m.sources));
+  company.solutionMappings?.forEach(m => {
+    add(m.sources);
+    if (m.estimatedImpact && typeof m.estimatedImpact === "object") add(m.estimatedImpact.sources);
+  });
   add(company.gtm?.sources);
+  add(company.gtm?.briefSources);
+  add(company.gtm?.entrySolutionSources);
+  add(company.gtm?.urgencySources);
+  add(company.gtm?.competitiveSources);
   add(company.revenue?.sources);
   add(company.employees?.sources);
   if (company.scores) {
@@ -354,6 +361,7 @@ export default function CompanyPage() {
 
           <Card title="1-Page GTM Brief">
             <p className="text-sm text-slate-700 leading-relaxed">{company.gtm.brief}</p>
+            {company.gtm.briefSources && company.gtm.briefSources.length > 0 && <Sources sources={company.gtm.briefSources} />}
           </Card>
 
           <Card title="Entry Strategy" subtitle="How we get in the door and expand over time.">
@@ -377,6 +385,7 @@ export default function CompanyPage() {
                 <UrgencyBadge urgency={company.gtm.urgency} />
               </div>
               <p className="text-sm text-slate-600 leading-relaxed">{company.gtm.urgencyReasoning}</p>
+              {company.gtm.urgencySources && company.gtm.urgencySources.length > 0 && <Sources sources={company.gtm.urgencySources} />}
             </div>
 
             {company.gtm.expandPath && (
@@ -397,10 +406,11 @@ export default function CompanyPage() {
               <p className="text-label mb-2">Competitive Positioning</p>
               <div className="bg-slate-50 border border-slate-100 rounded-lg px-4 py-3">
                 <NumberedList text={company.gtm.competitivePositioning} />
+                {company.gtm.competitiveSources && company.gtm.competitiveSources.length > 0 && <Sources sources={company.gtm.competitiveSources} />}
               </div>
             </div>
 
-            <WhyRecommendation reasoning={company.gtm.entrySolutionReasoning} sources={company.gtm.sources} />
+            <WhyRecommendation reasoning={company.gtm.entrySolutionReasoning} sources={company.gtm.entrySolutionSources || company.gtm.sources} />
           </Card>
 
           <Card title="Solution Mapping" subtitle="Their problem, what we sell, what they get." action={<FitScoreMethodology />}>
@@ -812,10 +822,7 @@ function SolutionMappingRow({ index, mapping: m }: { index: number; mapping: Sol
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {m.estimatedImpact && (
-                  <div>
-                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Estimated Impact</p>
-                    <p className="text-xs text-slate-600 leading-relaxed">{m.estimatedImpact}</p>
-                  </div>
+                  <ImpactSection impact={m.estimatedImpact} />
                 )}
                 {m.proofPoint && (
                   <div>
@@ -834,6 +841,53 @@ function SolutionMappingRow({ index, mapping: m }: { index: number; mapping: Sol
         </tr>
       )}
     </>
+  );
+}
+
+/* Estimated Impact — supports both legacy string and structured object */
+function ImpactSection({ impact }: { impact: string | EstimatedImpact }) {
+  const [showReasoning, setShowReasoning] = useState(false);
+
+  // Legacy: plain string
+  if (typeof impact === "string") {
+    return (
+      <div>
+        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Estimated Impact</p>
+        <p className="text-xs text-slate-600 leading-relaxed">{impact}</p>
+      </div>
+    );
+  }
+
+  // Structured: summary + reasoning breakdown
+  return (
+    <div className="col-span-full">
+      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Estimated Impact</p>
+      <p className="text-sm font-medium text-slate-700 mb-1">{impact.summary}</p>
+      {impact.reasoning?.length > 0 && (
+        <>
+          <button
+            onClick={() => setShowReasoning(!showReasoning)}
+            className="flex items-center gap-1 text-xs text-[#3289FF] hover:underline cursor-pointer mb-1"
+          >
+            <svg className={`w-3 h-3 transition-transform ${showReasoning ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+            </svg>
+            How we got this number
+          </button>
+          {showReasoning && (
+            <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-3 space-y-1.5">
+              {impact.reasoning.map((line, i) => (
+                <div key={i} className="flex gap-2 items-start">
+                  <span className="text-[10px] text-slate-400 font-mono mt-0.5 shrink-0">{i + 1}.</span>
+                  <p className="text-xs text-slate-600 leading-relaxed">{line}</p>
+                </div>
+              ))}
+              {impact.sources && impact.sources.length > 0 && <Sources sources={impact.sources} />}
+            </div>
+          )}
+        </>
+      )}
+    </div>
   );
 }
 

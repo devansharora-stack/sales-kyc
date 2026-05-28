@@ -7,6 +7,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { callClaudeJSON } from "@/lib/claude";
 import type {
+  Source,
   ScoreBreakdown,
   TechLandscape,
   TriggerEvent,
@@ -75,7 +76,7 @@ export async function runScoringAgent(input: ScoringInput): Promise<ScoreBreakdo
     name: s.name, title: s.title, tier: s.tier,
   }));
 
-  return callClaudeJSON<ScoreBreakdown>({
+  const scores = await callClaudeJSON<ScoreBreakdown>({
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
     userPrompt: `Score this company: ${input.companyName}
 
@@ -108,4 +109,35 @@ ${JSON.stringify(stakeholderSummary, null, 2)}
 
 Respond ONLY with the JSON object matching the output schema.`,
   });
+
+  // Inject upstream sources into score dimensions (the scoring LLM doesn't have URLs)
+  type SourceLike = { sources?: Source[] };
+  const take = (arr: SourceLike[], n = 3): Source[] =>
+    arr.flatMap((a) => (a.sources || []).slice(0, 2)).slice(0, n);
+
+  if (scores.budgetSignal && (!scores.budgetSignal.sources || scores.budgetSignal.sources.length === 0)) {
+    scores.budgetSignal.sources = ((input.financialSignals?.sources || []) as Source[]).slice(0, 3);
+  }
+  if (scores.solutionFit && (!scores.solutionFit.sources || scores.solutionFit.sources.length === 0)) {
+    scores.solutionFit.sources = take(input.solutionMappings || []);
+  }
+  if (scores.triggerRecency && (!scores.triggerRecency.sources || scores.triggerRecency.sources.length === 0)) {
+    scores.triggerRecency.sources = take(input.triggers || []);
+  }
+  if (scores.aiMaturity && (!scores.aiMaturity.sources || scores.aiMaturity.sources.length === 0)) {
+    const techSources = [
+      ...(input.techLandscape?.knownAIDeployments?.sources || []),
+      ...(input.techLandscape?.knownVendors?.sources || []),
+    ];
+    scores.aiMaturity.sources = techSources.slice(0, 3);
+  }
+  if (scores.geminiAlignment && (!scores.geminiAlignment.sources || scores.geminiAlignment.sources.length === 0)) {
+    const geminiSources = [
+      ...(input.techLandscape?.workspacePlatform?.sources || []),
+      ...(input.techLandscape?.cloudProviders?.sources || []),
+    ];
+    scores.geminiAlignment.sources = geminiSources.slice(0, 3);
+  }
+
+  return scores;
 }

@@ -25,8 +25,10 @@ A complete GTM strategy document with:
 ```json
 {
   "brief": "3-4 sentence executive summary of the opportunity",
+  "briefSources": [{ "label": "", "url": "", "date": "", "type": "" }],
   "entrySolution": "contract-intelligence",
   "entrySolutionReasoning": "2-3 sentences on why this is the best entry point",
+  "entrySolutionSources": [{ "label": "", "url": "", "date": "", "type": "" }],
   "entryStrategy": [
     "Step 1: Specific outreach action",
     "Step 2: Next step",
@@ -41,11 +43,21 @@ A complete GTM strategy document with:
   },
   "expandPath": "2-3 sentences on how to grow from pilot success to broader engagement",
   "competitivePositioning": "2-3 sentences on how Techolution differentiates (Google partnership, speed, industry expertise)",
+  "competitiveSources": [{ "label": "", "url": "", "date": "", "type": "" }],
   "urgency": "Very High | High | Medium | Low",
   "urgencyReasoning": "1-2 sentences explaining the urgency level",
+  "urgencySources": [{ "label": "", "url": "", "date": "", "type": "" }],
   "sources": [{ "label": "", "url": "", "date": "", "type": "" }]
 }
 ```
+
+## Per-Section Source Guidelines
+- `briefSources`: Cite the triggers, financial signals, or press releases that make this opportunity compelling NOW
+- `entrySolutionSources`: Cite pain point evidence and tech landscape data that justify the entry solution choice
+- `urgencySources`: Cite specific trigger events with dates — news articles, earnings calls, or regulatory deadlines
+- `competitiveSources`: Cite tech landscape evidence (current vendors, platforms) and any competitive intelligence
+- `sources`: Overall GTM sources that don't fit a specific section above
+- Each section should have 1-3 sources. Reuse sources from the input data — do NOT fabricate URLs
 
 ## Urgency Criteria
 - **Very High**: Active buying cycle + strong budget signal + recent trigger (e.g., new CTO + digital transformation announced + named AI budget)

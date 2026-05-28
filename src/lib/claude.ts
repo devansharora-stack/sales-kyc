@@ -327,16 +327,29 @@ function repairTruncatedJSON(json: string): string {
 
 async function fetchWithRetry(body: Record<string, unknown>, maxRetries = 3): Promise<Response> {
   for (let attempt = 0; attempt < maxRetries; attempt++) {
-    const response = await fetch(getFoundryUrl(), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-api-key": getFoundryKey(),
-        "anthropic-version": "2023-06-01",
-      },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(240_000), // 4 min timeout — must fit within Vercel 300s limit
-    });
+    let response: Response;
+    try {
+      response = await fetch(getFoundryUrl(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": getFoundryKey(),
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(240_000), // 4 min timeout — must fit within Vercel 300s limit
+      });
+    } catch (err) {
+      // Network errors, timeouts (AbortSignal), DNS failures — all retryable
+      if (attempt < maxRetries - 1) {
+        const backoff = (attempt + 1) * 10000;
+        const msg = err instanceof Error ? err.message : String(err);
+        console.log(`[claude] Network error: ${msg}, retrying in ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries})`);
+        await new Promise((resolve) => setTimeout(resolve, backoff));
+        continue;
+      }
+      throw err;
+    }
 
     if (response.ok) return response;
 

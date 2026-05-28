@@ -36,9 +36,7 @@ export async function runCompanyProfile(companyName: string, context?: Record<st
     ? `\n\nAdditional context: ${JSON.stringify(context)}`
     : "";
 
-  const { data } = await callGeminiGrounded<CompanyProfileOutput>({
-    systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
-    userPrompt: `Research and produce the company profile for: ${companyName}${contextStr}
+  const prompt = `Research and produce the company profile for: ${companyName}${contextStr}
 
 Search for real, current information about the company:
 1. Company official website and about page
@@ -49,7 +47,35 @@ Search for real, current information about the company:
 
 For every source you cite, include the URL where you found the information.
 
-Respond ONLY with the JSON object matching the output schema.`,
-  });
-  return data;
+IMPORTANT: Keep your JSON response concise. businessDescription should be 2-3 sentences max. execSummary should be 3-4 sentences max. Do NOT include lengthy text — this prevents JSON truncation.
+
+Respond ONLY with the JSON object matching the output schema.`;
+
+  const REQUIRED_FIELDS: (keyof CompanyProfileOutput)[] = [
+    "slug", "name", "industry", "businessDescription", "execSummary",
+  ];
+
+  // Retry up to 2 times if Gemini truncation loses critical fields
+  for (let attempt = 0; attempt < 3; attempt++) {
+    const { data } = await callGeminiGrounded<CompanyProfileOutput>({
+      systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
+      userPrompt: prompt,
+    });
+
+    const missing = REQUIRED_FIELDS.filter((f) => !data[f]);
+    if (missing.length === 0) return data;
+
+    if (attempt < 2) {
+      console.log(
+        `[company-profile] Missing fields (${missing.join(", ")}) — retrying (attempt ${attempt + 2}/3)`
+      );
+    } else {
+      console.log(
+        `[company-profile] Still missing fields after 3 attempts: ${missing.join(", ")}`
+      );
+      return data;
+    }
+  }
+
+  throw new Error("Unreachable");
 }

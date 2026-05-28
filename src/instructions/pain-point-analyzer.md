@@ -39,10 +39,12 @@ You are a business analyst specializing in identifying operational challenges an
     "severity": "Critical | High | Medium",
     "affectedFunctions": ["Operations", "Legal", "Customer Service"],
     "techolutionSolutions": ["contract-intelligence", "ai-voice-assistants"],
-    "sources": [{ "label": "", "url": "", "date": "", "type": "" }]
+    "sources": []
   }
 ]
 ```
+
+Note: Set sources to an empty array. Sources are injected programmatically from upstream grounded data after your response.
 
 ## Severity Criteria
 - **Critical**: Directly threatens revenue, compliance, or competitive position. Likely being discussed at board level.
@@ -57,8 +59,6 @@ You are a business analyst specializing in identifying operational challenges an
 - Prioritize pain points where the company has shown awareness (earnings calls, job postings, press releases)
 - Include the "affectedFunctions" field to help sales understand who to talk to
 
-## CRITICAL: Source Attribution
-- Every pain point MUST include a `sources` array
-- **Copy source objects directly from the input data** (trigger events, financial signals, tech landscape). Do NOT fabricate new URLs.
-- Each pain point should reference the specific trigger events, financial signals, or tech landscape data that supports it
-- If a pain point is inferred from industry context rather than a specific source, set `sources` to an empty array `[]` — do NOT invent URLs
+## Sources
+- Set `sources` to an empty array `[]` for every pain point
+- Sources are injected automatically from upstream research data after your response — do NOT generate URLs

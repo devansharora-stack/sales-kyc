@@ -194,7 +194,10 @@ export function generateCompanyPDF(company: CompanyDetail) {
         labelValue("Proof Point", `${m.proofPoint.client} — ${m.proofPoint.outcome || ""}`);
       }
       if (m.estimatedImpact) {
-        labelValue("Est. Impact", m.estimatedImpact);
+        const impactText = typeof m.estimatedImpact === "string"
+          ? m.estimatedImpact
+          : m.estimatedImpact.summary + (m.estimatedImpact.reasoning?.length ? "\n    " + m.estimatedImpact.reasoning.join("\n    ") : "");
+        labelValue("Est. Impact", impactText);
       }
       body(m.reasoning, 4);
       y += 2;

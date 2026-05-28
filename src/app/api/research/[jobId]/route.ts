@@ -20,16 +20,15 @@ export async function GET(
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
-  // If completed, find the profile slug
+  // Find the profile slug (check even before job is marked completed —
+  // the profile may be saved before the job status is updated)
   let profileSlug: string | null = null;
-  if (job.status === "completed") {
-    const { data: profile } = await supabase
-      .from("company_profiles")
-      .select("slug")
-      .eq("job_id", jobId)
-      .single();
-    profileSlug = profile?.slug || null;
-  }
+  const { data: profile } = await supabase
+    .from("company_profiles")
+    .select("slug")
+    .eq("job_id", jobId)
+    .single();
+  profileSlug = profile?.slug || null;
 
   return NextResponse.json({ job, profileSlug });
 }
