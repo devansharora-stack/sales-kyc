@@ -337,11 +337,15 @@ export async function callGeminiGrounded<T>(options: Omit<GeminiOptions, "useGro
           error.message.includes("fetch failed") ||
           error.message.includes("ETIMEDOUT") ||
           error.message.includes("TimeoutError") ||
-          error.message.includes("network"));
+          error.message.includes("network") ||
+          error.message.includes("JSON") ||
+          error.message.includes("parse"));
 
       if (isRetryable && attempt < maxRetries - 1) {
-        const backoff = (attempt + 1) * 20000;
-        console.log(`[gemini] Retryable error, waiting ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries})`);
+        const backoff = error.message.includes("JSON") || error.message.includes("parse")
+          ? 2000 // JSON parse errors: quick retry (Gemini non-deterministic)
+          : (attempt + 1) * 20000;
+        console.log(`[gemini] Retryable error, waiting ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries}): ${error.message.slice(0, 100)}`);
         await new Promise((resolve) => setTimeout(resolve, backoff));
         continue;
       }
@@ -597,6 +601,14 @@ function extractGeminiJSON<T>(text: string): T {
         const msg = e2 instanceof Error ? e2.message : "";
         console.log(`[gemini] JSON parse failed: ${msg}, attempting repair...`);
 
+        // Try 0: Sanitize control characters inside JSON strings
+        const sanitized = sanitizeJsonStrings(jsonCandidate);
+        if (sanitized !== jsonCandidate) {
+          try {
+            return JSON.parse(sanitized) as T;
+          } catch { /* fall through */ }
+        }
+
         // Try 1: Extract just the root object (strip trailing junk after root closes)
         const extracted = extractRootObject(jsonCandidate);
         if (extracted !== jsonCandidate) {
@@ -610,7 +622,12 @@ function extractGeminiJSON<T>(text: string): T {
           return JSON.parse(repairTruncatedJSON(jsonCandidate)) as T;
         } catch { /* fall through */ }
 
-        // Try 3: Extract root then repair (handles both extra + missing)
+        // Try 3: Sanitize + repair combined
+        try {
+          return JSON.parse(repairTruncatedJSON(sanitizeJsonStrings(extracted))) as T;
+        } catch { /* fall through */ }
+
+        // Try 4: Extract root then repair (handles both extra + missing)
         try {
           return JSON.parse(repairTruncatedJSON(extracted)) as T;
         } catch {
@@ -620,6 +637,33 @@ function extractGeminiJSON<T>(text: string): T {
     }
     throw new Error(`Failed to parse JSON from Gemini response: ${cleaned.slice(0, 200)}`);
   }
+}
+
+/**
+ * Sanitize control characters and unescaped special chars inside JSON string values.
+ * Gemini sometimes emits raw newlines, tabs, or unescaped quotes within strings.
+ */
+function sanitizeJsonStrings(json: string): string {
+  let result = "";
+  let inString = false;
+  for (let i = 0; i < json.length; i++) {
+    const ch = json[i];
+    const prev = i > 0 ? json[i - 1] : "";
+    if (ch === '"' && prev !== '\\') {
+      inString = !inString;
+      result += ch;
+      continue;
+    }
+    if (inString) {
+      if (ch === '\n') { result += '\\n'; continue; }
+      if (ch === '\r') { result += '\\r'; continue; }
+      if (ch === '\t') { result += '\\t'; continue; }
+      const code = ch.charCodeAt(0);
+      if (code < 0x20) { result += '\\u' + code.toString(16).padStart(4, '0'); continue; }
+    }
+    result += ch;
+  }
+  return result;
 }
 
 /**

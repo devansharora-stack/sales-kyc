@@ -55,12 +55,24 @@ Respond ONLY with the JSON object matching the output schema.`;
     "slug", "name", "industry", "businessDescription", "execSummary",
   ];
 
-  // Retry up to 2 times if Gemini truncation loses critical fields
+  // Retry up to 2 times on missing fields or JSON parse errors
+  let lastError: Error | null = null;
   for (let attempt = 0; attempt < 3; attempt++) {
-    const { data } = await callGeminiGrounded<CompanyProfileOutput>({
-      systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
-      userPrompt: prompt,
-    });
+    let data: CompanyProfileOutput;
+    try {
+      const result = await callGeminiGrounded<CompanyProfileOutput>({
+        systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
+        userPrompt: prompt,
+      });
+      data = result.data;
+    } catch (err) {
+      lastError = err instanceof Error ? err : new Error(String(err));
+      if (attempt < 2) {
+        console.log(`[company-profile] Error on attempt ${attempt + 1}/3: ${lastError.message.slice(0, 120)} — retrying...`);
+        continue;
+      }
+      throw lastError;
+    }
 
     const missing = REQUIRED_FIELDS.filter((f) => !data[f]);
     if (missing.length === 0) return data;
@@ -77,5 +89,6 @@ Respond ONLY with the JSON object matching the output schema.`;
     }
   }
 
+  if (lastError) throw lastError;
   throw new Error("Unreachable");
 }
