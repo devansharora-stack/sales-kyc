@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import type { CompanyDetail, Source, SolutionId, SolutionMapping, EstimatedImpact } from "@/lib/types";
+import type { CompanyDetail, Source, SolutionId, SolutionMapping, EstimatedImpact, SalesMotionType } from "@/lib/types";
 import { ALL_SOLUTIONS } from "@/lib/types";
 import { generateCompanyPDF } from "@/lib/generate-pdf";
 import RatingBadge from "@/components/company/RatingBadge";
@@ -226,6 +226,65 @@ export default function CompanyPage() {
           ))}
         </div>
       </div>
+
+      {/* Sales Intelligence Panel — always visible above tabs */}
+      {company.salesIntelligence && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+          {/* Opportunity Value */}
+          <div className="card p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-700">Opportunity Value</h3>
+              <div className="flex items-center gap-1.5">
+                <span className={`text-lg font-bold ${
+                  company.salesIntelligence.opportunityValue.score >= 7 ? "text-emerald-600" :
+                  company.salesIntelligence.opportunityValue.score >= 5 ? "text-[#3289FF]" :
+                  "text-amber-600"
+                }`}>{company.salesIntelligence.opportunityValue.score}</span>
+                <span className="text-xs text-slate-400">/10</span>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">First Year</span>
+                <span className="font-medium text-slate-700">{company.salesIntelligence.opportunityValue.estimatedFirstYear}</span>
+              </div>
+              <div className="flex justify-between text-xs">
+                <span className="text-slate-500">Expansion</span>
+                <span className="font-medium text-slate-700">{company.salesIntelligence.opportunityValue.estimatedExpansion}</span>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 mt-3 leading-relaxed">{company.salesIntelligence.opportunityValue.reasoning}</p>
+          </div>
+
+          {/* Sales Motion */}
+          <div className="card p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-semibold text-slate-700">Sales Motion</h3>
+              <div className="flex items-center gap-1.5">
+                <span className={`text-lg font-bold ${
+                  company.salesIntelligence.salesMotion.score >= 7 ? "text-emerald-600" :
+                  company.salesIntelligence.salesMotion.score >= 5 ? "text-[#3289FF]" :
+                  "text-amber-600"
+                }`}>{company.salesIntelligence.salesMotion.score}</span>
+                <span className="text-xs text-slate-400">/10</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 mb-3">
+              <SalesMotionBadge motion={company.salesIntelligence.salesMotion.motion} />
+              <span className="text-xs text-slate-400">{company.salesIntelligence.salesMotion.cycleLength}</span>
+            </div>
+            <div className="flex justify-between text-xs mb-2">
+              <span className="text-slate-500">Build vs Buy Risk</span>
+              <span className={`font-medium ${
+                company.salesIntelligence.salesMotion.buildVsBuyRisk === "Low" ? "text-emerald-600" :
+                company.salesIntelligence.salesMotion.buildVsBuyRisk === "Medium" ? "text-amber-600" :
+                "text-red-600"
+              }`}>{company.salesIntelligence.salesMotion.buildVsBuyRisk}</span>
+            </div>
+            <p className="text-xs text-slate-500 mt-2 leading-relaxed">{company.salesIntelligence.salesMotion.reasoning}</p>
+          </div>
+        </div>
+      )}
 
       {/* TAB: Overview */}
       {activeTab === "overview" && (
@@ -888,6 +947,22 @@ function ImpactSection({ impact }: { impact: string | EstimatedImpact }) {
         </>
       )}
     </div>
+  );
+}
+
+/* Sales Motion Badge */
+const MOTION_STYLES: Record<SalesMotionType, string> = {
+  "Quick Win": "bg-emerald-100 text-emerald-800 border-emerald-200",
+  "Land & Expand": "bg-blue-100 text-blue-800 border-blue-200",
+  "Strategic Sale": "bg-amber-100 text-amber-800 border-amber-200",
+  "Long Cycle": "bg-red-100 text-red-800 border-red-200",
+};
+
+function SalesMotionBadge({ motion }: { motion: SalesMotionType }) {
+  return (
+    <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${MOTION_STYLES[motion] || "bg-slate-100 text-slate-600"}`}>
+      {motion}
+    </span>
   );
 }
 

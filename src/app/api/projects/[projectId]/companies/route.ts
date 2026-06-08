@@ -139,7 +139,7 @@ export async function GET(
   // Get completed company profiles (summary view for list)
   const { data: profiles } = await supabase
     .from("company_profiles")
-    .select("id, slug, total_score, rating, industry, urgency, primary_solution, gemini_status, data->name, data->fullName, data->hqCity, data->state, data->execSummary")
+    .select("id, slug, total_score, rating, industry, urgency, primary_solution, gemini_status, data->name, data->fullName, data->hqCity, data->state, data->execSummary, data->salesIntelligence")
     .eq("project_id", projectId)
     .order("total_score", { ascending: false });
 
@@ -214,6 +214,7 @@ export async function POST(
     { agent_name: "solution_mapper", phase: 3 },
     { agent_name: "gtm_generator", phase: 3 },
     { agent_name: "scoring_agent", phase: 3 },
+    { agent_name: "sales_intelligence", phase: 3 },
     { agent_name: "verification", phase: 4 },
   ];
 
