@@ -49,6 +49,28 @@ export interface ScoreBreakdown {
   geminiAlignment: DimensionScore;
 }
 
+export interface OpportunityValue {
+  score: number;
+  estimatedFirstYear: string;
+  estimatedExpansion: string;
+  reasoning: string;
+}
+
+export type SalesMotionType = "Quick Win" | "Land & Expand" | "Strategic Sale" | "Long Cycle";
+
+export interface SalesMotion {
+  score: number;
+  motion: SalesMotionType;
+  cycleLength: string;
+  buildVsBuyRisk: "Low" | "Medium" | "High";
+  reasoning: string;
+}
+
+export interface SalesIntelligence {
+  opportunityValue: OpportunityValue;
+  salesMotion: SalesMotion;
+}
+
 // === Solutions ===
 
 export type SolutionId =
@@ -203,6 +225,7 @@ export interface CompanyDetail {
   rating: Rating;
   geminiStatus: GeminiStatus;
   stakeholders: Stakeholder[];
+  salesIntelligence?: SalesIntelligence;
   relatedCompanies: { slug: string; name: string; relationship: string }[];
   sources: Source[];
   generatedDate: string;

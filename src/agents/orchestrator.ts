@@ -23,6 +23,7 @@ import { runSolutionMapper } from "./solution-mapper";
 import { runGTMGenerator } from "./gtm-generator";
 import { runScoringAgent } from "./scoring-agent";
 import { runVerification } from "./verification-agent";
+import { runSalesIntelligence } from "./sales-intelligence";
 
 // Helper: update a research step's status in Supabase
 async function updateStep(
@@ -229,28 +230,46 @@ export const researchCompany = inngest.createFunction(
         return result;
       });
 
-      const scores = await step.run("phase-3c-scoring", async () => {
-        const result = await runAgentStep(jobId, "scoring_agent", () =>
-          runScoringAgent({
-            companyName,
-            profile: {
-              industry: safe(profile.industry),
-              revenue: safe(profile.revenue?.value),
-              employees: safe(profile.employees?.value),
-              businessDescription: safe(profile.businessDescription),
-            },
-            techLandscape,
-            financialSignals,
-            triggers: Array.isArray(triggers) ? triggers : [],
-            painPoints: safePainPoints,
-            solutionMappings: safeSolutionMappings,
-            gtm,
-            stakeholders,
-          })
-        );
+      const phase3c = await step.run("phase-3c-scoring-and-sales-intel", async () => {
+        const [scores, salesIntelligence] = await Promise.all([
+          runAgentStep(jobId, "scoring_agent", () =>
+            runScoringAgent({
+              companyName,
+              profile: {
+                industry: safe(profile.industry),
+                revenue: safe(profile.revenue?.value),
+                employees: safe(profile.employees?.value),
+                businessDescription: safe(profile.businessDescription),
+              },
+              techLandscape,
+              financialSignals,
+              triggers: Array.isArray(triggers) ? triggers : [],
+              painPoints: safePainPoints,
+              solutionMappings: safeSolutionMappings,
+              gtm,
+              stakeholders,
+            })
+          ),
+          runAgentStep(jobId, "sales_intelligence", () =>
+            runSalesIntelligence({
+              companyName,
+              profile: {
+                industry: safe(profile.industry),
+                revenue: safe(profile.revenue?.value),
+                employees: safe(profile.employees?.value),
+                businessDescription: safe(profile.businessDescription),
+              },
+              solutionMappings: safeSolutionMappings,
+              gtm,
+              stakeholders,
+            })
+          ),
+        ]);
         await updateJobProgress(jobId, 90);
-        return result;
+        return { scores, salesIntelligence };
       });
+
+      const { scores, salesIntelligence } = phase3c;
 
       // ============================
       // Phase 4: Verification + Assembly
@@ -351,6 +370,7 @@ export const researchCompany = inngest.createFunction(
         rating,
         geminiStatus,
         stakeholders,
+        salesIntelligence: salesIntelligence || undefined,
         relatedCompanies: [],
         sources: uniqueSources,
         generatedDate: new Date().toISOString(),

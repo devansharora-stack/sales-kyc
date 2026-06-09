@@ -1,6 +1,6 @@
 {
-  "version": "1.0",
-  "lastUpdated": "2026-05-19",
+  "version": "2.1",
+  "lastUpdated": "2026-06-09",
   "offerings": [
     {
       "id": "bpa-value-finder",
@@ -8,9 +8,10 @@
       "categoryId": "1.0",
       "subType": "Value Finder",
       "subTypeId": "1.1",
-      "description": "Expert-led workshop (on-site or virtual) to uncover BPA 4.0 bottlenecks and high-impact AI automation opportunities. Delivers a prioritized Value Index and technical roadmap with actionable ROI strategies.",
+      "description": "The Value Finder is an expert-led workshop, conducted on-site or virtually, designed to uncover BPA 4.0 bottlenecks and high-impact AI automation opportunities.\n\nWe deliver a prioritized Value Index and a technical roadmap, providing actionable ROI strategies to transform manual leaks into predictable revenue drivers.",
       "entryPoint": true,
       "startingPrice": null,
+      "template": "Value Finder Workshop Template",
       "targetIndustries": ["Manufacturing", "Logistics", "Healthcare", "Retail", "Financial Services"],
       "targetProfiles": ["Companies with manual-heavy processes", "Orgs exploring AI automation", "Companies with operational inefficiency"],
       "caseStudies": [
@@ -27,9 +28,10 @@
       "categoryId": "1.0",
       "subType": "100K Challenge",
       "subTypeId": "1.2",
-      "description": "Performance-backed engagement guaranteeing 2x ROI within 100 days by automating high-friction business processes for a fixed $100K fee. Bridges the AI trust gap — from discovery to measurable production-grade results with full financial accountability.",
+      "description": "The 100k Challenge is a performance-backed engagement that guarantees a 2x ROI within 100 days by automating high-friction business processes for a fixed $100k fee.\n\nIt is an entry point designed to bridge the AI trust gap, moving enterprises from discovery to measurable production-grade results with full financial accountability.",
       "entryPoint": true,
       "startingPrice": "$100,000",
+      "template": null,
       "targetIndustries": ["Manufacturing", "Healthcare", "Financial Services", "Retail", "Logistics"],
       "targetProfiles": ["Companies skeptical of AI ROI", "Orgs wanting low-risk AI entry", "Companies with identifiable high-friction processes"],
       "caseStudies": []
@@ -40,9 +42,10 @@
       "categoryId": "1.0",
       "subType": "Full / Pro",
       "subTypeId": "1.3",
-      "description": "Enterprise-wide automation engagement scaling high-precision AI agents across entire departments. Moves beyond simple search to full enterprise automation — AI executes end-to-end workflows delivering 2-50x ROI by modernizing core operational fabric.",
+      "description": "BPA 4.0 (Full/Pro) is an enterprise-wide automation engagement that scales high-precision AI agents across entire departments to solve complex business challenges.\n\nIt moves beyond simple search to \"Full Enterprise Automation,\" enabling AI to execute end-to-end workflows and deliver 2-50x ROI by modernizing your core operational fabric.",
       "entryPoint": false,
       "startingPrice": null,
+      "template": "BPA 4.0 Template",
       "targetIndustries": ["Manufacturing", "Healthcare", "Financial Services", "Logistics", "Energy"],
       "targetProfiles": ["Large enterprises with multi-department automation needs", "Companies past initial AI pilots"],
       "caseStudies": [
@@ -90,6 +93,41 @@
           "client": "US Steel",
           "engagement": "Computer vision for steel quality automation",
           "outcome": "Saved $150K per line per month, 73% increase in operational efficiency"
+        },
+        {
+          "client": "Mediverse",
+          "engagement": "Mediverse Command Center for Indonesia's medical supply chain with AI-driven demand forecasting",
+          "outcome": "Accurate demand forecasting, improved patient outcomes, and enhanced supply-chain efficiency across logistics"
+        },
+        {
+          "client": "Skymatics",
+          "engagement": "Drone + computer vision automation for crop loss analysis and insurance claims",
+          "outcome": "Automated identification, measurement, and on-demand reporting of crop loss, cutting cost and time for insurers and farmers"
+        },
+        {
+          "client": "Convenience Store (USA)",
+          "engagement": "Computer vision fast-food & drink stock monitoring on IP cameras",
+          "outcome": "Predicted fast-moving stock from sales patterns with an audio-visual dashboard and out-of-stock alerts, eliminating ad-hoc stocking and boosting sales"
+        },
+        {
+          "client": "Regional Airport Authority (USA)",
+          "engagement": "Computer vision smart parking management on existing CCTV",
+          "outcome": "Real-time full/vacant parking-spot detection and illegal-parking identification via a web app with custom reporting"
+        },
+        {
+          "client": "Food Processing Company (USA)",
+          "engagement": "Computer vision smart manufacturing for yogurt flavor quantification",
+          "outcome": "Real-time, localized process control with vision cameras and sensors, reducing yield losses with global visibility of production lines"
+        },
+        {
+          "client": "Sports Ministry (South East Asia)",
+          "engagement": "Computer vision swimmer detection and fitness pose estimation",
+          "outcome": "Detected swimmers and captured velocity/acceleration, plus DNN-based activity recognition to count and track movements (push-ups, swim strokes, sprints)"
+        },
+        {
+          "client": "City Council (South East Asia)",
+          "engagement": "Computer vision vehicle & license plate detection on CCTV",
+          "outcome": "Parking-violation identification and automated toll-booth billing built on the existing CCTV network with real-time monitoring"
         }
       ]
     },
@@ -99,9 +137,10 @@
       "categoryId": "2.0",
       "subType": "Native Connector",
       "subTypeId": "2.1",
-      "description": "Seamless, secure integration with Gemini Enterprise's built-in tools (Drive, Gmail, Calendar, People) for enterprise data interaction out-of-the-box. Starting at $25K, this 'Google Pack' eliminates custom coding for rapid, high-adoption productivity gains.",
+      "description": "Seamless, secure integration with Gemini Enterprise's built-in tools (Drive, Gmail, Calendar, People) to interact with enterprise data out-of-the-box.\n\nStarting at $25k, this \"Google Pack\" eliminates custom coding to deliver rapid, high-adoption productivity gains.",
       "entryPoint": true,
       "startingPrice": "$25,000",
+      "template": "GE Land Template",
       "targetIndustries": ["Any industry using Google Workspace"],
       "targetProfiles": ["Google Workspace orgs without Gemini", "Companies wanting quick AI productivity wins"],
       "caseStudies": []
@@ -112,9 +151,10 @@
       "categoryId": "2.0",
       "subType": "ADK Connector",
       "subTypeId": "2.2",
-      "description": "Custom-built, programmable bridges enabling AI agents to perform write actions and complex logic within proprietary enterprise systems and legacy APIs. Uses Agent Development Kit for custom schemas and multi-agent orchestration — AI executes end-to-end business tasks autonomously.",
+      "description": "Gemini Enterprise deals that include custom-built, programmable bridges that enable AI agents to perform \"write\" actions and complex logic within proprietary enterprise systems and legacy APIs.\n\nAgent Development Kit is used to handle custom schemas and multi-agent orchestration, allowing AI to execute end-to-end business tasks autonomously.",
       "entryPoint": false,
       "startingPrice": null,
+      "template": null,
       "targetIndustries": ["Any industry with legacy systems"],
       "targetProfiles": ["Companies with proprietary systems needing AI integration", "Orgs wanting autonomous AI task execution"],
       "caseStudies": []
@@ -125,9 +165,10 @@
       "categoryId": "3.0",
       "subType": "Custom Agents",
       "subTypeId": "3.1",
-      "description": "Specialized AI experts built to automate specific, high-friction business workflows (e.g., SKU discovery, marketing intake) with >=99% accuracy. Leverages agent-to-agent frameworks to coordinate complex tasks across departments — manual processes that took days become automated actions in minutes.",
+      "description": "Custom Agents are specialized AI \"experts\" built to automate specific, high-friction business workflows, such as SKU discovery or marketing intake, with >=99% accuracy.\n\nThese agents leverage \"agent-to-agent\" frameworks to coordinate complex tasks across departments, transforming manual processes that took days into automated actions completed in minutes.",
       "entryPoint": false,
       "startingPrice": null,
+      "template": null,
       "targetIndustries": ["Retail", "Manufacturing", "Healthcare", "Financial Services"],
       "targetProfiles": ["Existing Gemini users wanting deeper automation", "Companies with cross-department workflow needs"],
       "caseStudies": [
@@ -154,9 +195,10 @@
       "categoryId": "4.0",
       "subType": "Adoption & AI Managed Services",
       "subTypeId": "4.1",
-      "description": "Strategic partnership where Techolution takes full responsibility for making Gemini a daily habit. Sets up a Center of Excellence (CoE) handling user training, prompt optimization, and platform management to turn basic AI tools into measurable, long-term productivity gains.",
+      "description": "This is a strategic partnership where Techolution takes full responsibility for making Gemini a daily habit across your company.\n\nBy setting up a dedicated Center of Excellence (CoE), we handle the user training, prompt optimization, and platform management needed to turn basic AI tools into measurable, long-term productivity gains.",
       "entryPoint": true,
       "startingPrice": null,
+      "template": "GE Enablement Deck Template",
       "targetIndustries": ["Any industry with Google Workspace + Gemini"],
       "targetProfiles": ["Companies with low Gemini adoption", "Orgs wanting AI CoE setup"],
       "caseStudies": [
@@ -173,9 +215,10 @@
       "categoryId": "5.0",
       "subType": null,
       "subTypeId": "5.1",
-      "description": "AI-Shoring engagement where Techolution takes full operational responsibility for your AI ecosystem — delivering higher quality at half the cost of traditional teams. Provides 24/7 proactive monitoring and optimization of custom agents ensuring they remain hallucination-free, secure, and aligned with evolving business goals.",
+      "description": "GE Managed Services is an \"AI-Shoring\" engagement where Techolution takes full operational responsibility for your AI ecosystem to deliver higher quality at half the cost of traditional teams.\n\nIt provides 24/7 proactive monitoring and optimization of your custom agents to ensure they remain hallucination-free, secure, and aligned with your evolving business goals.",
       "entryPoint": false,
       "startingPrice": null,
+      "template": null,
       "targetIndustries": ["Any industry with deployed AI agents"],
       "targetProfiles": ["Companies with production AI agents needing 24/7 support", "Orgs wanting to reduce AI ops cost"],
       "caseStudies": []
@@ -186,9 +229,10 @@
       "categoryId": "6.0",
       "subType": null,
       "subTypeId": "6.1",
-      "description": "Outcome-based engagement with full operational responsibility for IT ecosystem — cloud infrastructure, legacy apps, and data pipelines — delivering 24/7 reliability at lower cost. A 'buck stops here' partnership managing end-to-end system health, proactively fixing bugs and optimizing performance.",
+      "description": "Outcome-based engagement where we take full operational responsibility for your IT ecosystem; including cloud infrastructure, legacy apps, and data pipelines, to deliver 24/7 reliability at a lower cost.\n\nUnlike staff augmentation, this is a \"buck stops here\" partnership where we manage the end-to-end health of your systems, proactively fixing bugs and optimizing performance so your team can focus on core business strategy.",
       "entryPoint": false,
       "startingPrice": null,
+      "template": "Managed Services Template 2025",
       "targetIndustries": ["Any"],
       "targetProfiles": ["Companies wanting to outsource IT operations", "Orgs with complex multi-cloud environments"],
       "caseStudies": [
@@ -215,9 +259,10 @@
       "categoryId": "7.0",
       "subType": "Cloud Migration",
       "subTypeId": "7.1",
-      "description": "Foundational engagement transitioning legacy infrastructure and applications to cloud with zero business interruption to lower costs and increase agility. Establishes a secure, AI-Ready cloud foundation enabling advanced data platforms and Gemini AI capabilities.",
+      "description": "Cloud Migration is a foundational engagement that transitions legacy infrastructure and applications to the cloud with zero business interruption to lower costs and increase operational agility.\n\nIt establishes a secure, \"AI-Ready\" cloud foundation that enables enterprises to leverage advanced data platforms and Gemini AI capabilities for long-term modernization.",
       "entryPoint": true,
       "startingPrice": null,
+      "template": null,
       "targetIndustries": ["Any with on-prem infrastructure"],
       "targetProfiles": ["Companies with on-prem legacy systems", "Orgs planning cloud-first strategy"],
       "caseStudies": [
@@ -260,6 +305,21 @@
           "client": "Newscorp",
           "engagement": "Automated Kubernetes infrastructure modernization",
           "outcome": "Faster deployment cycles, reduced manual operations"
+        },
+        {
+          "client": "Pearson",
+          "engagement": "Legacy systems migration to Google Cloud with data orchestration modernization",
+          "outcome": "Established a repeatable legacy-to-cloud migration framework, modernized 3,482 data orchestration jobs, delivered cost and operational efficiencies via cloud managed services"
+        },
+        {
+          "client": "True Digital",
+          "engagement": "On-prem to GCP data migration with Anthos for hybrid cloud",
+          "outcome": "Reduced data-center dependency and enabled apps to deploy, run, scale, and manage across on-prem and cloud"
+        },
+        {
+          "client": "Mobile Payments Provider (Africa)",
+          "engagement": "Anthos-based Google Cloud foundation for in-country mobile payments",
+          "outcome": "Brought Google Cloud into a region with no prior cloud presence to meet data-residency regulations, deploying 4000+ vCPUs to support in-country mobile payment workloads"
         }
       ]
     },
@@ -269,9 +329,10 @@
       "categoryId": "7.0",
       "subType": "Digital Modernization",
       "subTypeId": "7.2",
-      "description": "Transformative engagement refactoring obsolete legacy applications into high-performance, cloud-native architectures at unparalleled speed. Eliminates technical debt and monolithic bottlenecks using AI-driven automation to rebuild core systems — modular, scalable, and ready for advanced AI agents.",
+      "description": "Digital Modernization is a transformative engagement that refactors obsolete legacy applications into high-performance, cloud-native architectures at unparalleled speed.\n\nIt eliminates technical debt and \"monolithic\" bottlenecks by leveraging AI-driven automation to rebuild your core systems, making them modular, scalable, and ready to power advanced AI agents.",
       "entryPoint": false,
       "startingPrice": null,
+      "template": null,
       "targetIndustries": ["Financial Services", "Healthcare", "Retail", "Media", "Telecom"],
       "targetProfiles": ["Companies with legacy monolithic applications", "Orgs with technical debt"],
       "caseStudies": [
@@ -304,6 +365,16 @@
           "client": "ADP",
           "engagement": "Modernized internet banking solution",
           "outcome": "Modern web & mobile app bringing digital banking features to business customers"
+        },
+        {
+          "client": "Credit Suisse",
+          "engagement": "App modernization for cloud-native credit risk application",
+          "outcome": "New UX/UI with eKYC and secure integration APIs to the Federal Reserve as part of a major banking digital transformation"
+        },
+        {
+          "client": "Mood Fabrics",
+          "engagement": "eCommerce platform modernization — Magento 1 to Magento 2 marketplace",
+          "outcome": "Improved website/app stability during marketing campaigns, faster page loads via caching, and higher conversion through better UX"
         }
       ]
     },
@@ -313,9 +384,10 @@
       "categoryId": "7.0",
       "subType": "App Design & Development",
       "subTypeId": "7.3",
-      "description": "End-to-end innovation engagement transforming product vision into production-ready application within weeks at guaranteed price. Combines world-class UI/UX design with rapid agile development to deliver scalable, secure, AI-integrated digital products.",
+      "description": "End-to-end innovation engagement that transforms a product vision into a production-ready application within weeks at a guaranteed price.\n\nIt combines world-class UI/UX design with rapid, agile development to deliver scalable, secure, and AI-integrated digital products that drive immediate customer engagement.",
       "entryPoint": true,
       "startingPrice": null,
+      "template": null,
       "targetIndustries": ["Any"],
       "targetProfiles": ["Companies building new digital products", "Startups needing rapid development"],
       "caseStudies": [
@@ -343,6 +415,36 @@
           "client": "Cypris (IPCypris)",
           "engagement": "Online patent marketplace on GCP",
           "outcome": "Automated market intelligence reports 100% cheaper than market rate"
+        },
+        {
+          "client": "FaceOpen",
+          "engagement": "Touch-free door access control with facial + voice recognition on edge + cloud AI",
+          "outcome": "Real/spoof face detection and alert-based access across global facilities using a hybrid edge-cloud matching engine"
+        },
+        {
+          "client": "Troy",
+          "engagement": "Online mobile dating app with AI profile matching and Twilio video calling",
+          "outcome": "API-based architecture with best-in-class video calling and an AI-driven recommendation engine for profile matching"
+        },
+        {
+          "client": "Thmbl",
+          "engagement": "Influencer eCommerce app on Shopify",
+          "outcome": "Automated shopping, payment, shipping, returns, and customer service for influencers upselling fashion brands"
+        },
+        {
+          "client": "Ministry of Communications and Information, Singapore",
+          "engagement": "Omni-channel holographic telepresence event companion app",
+          "outcome": "Live event streaming with holographic telepresence and real-time interaction, plus a self-service organizer admin portal"
+        },
+        {
+          "client": "KAFD (Saudi Arabia)",
+          "engagement": "Smart city platform architecture and strategy (in partnership with EY)",
+          "outcome": "Customized smart-city platform architecture covering IT/OT/IoT integration, data and AI strategy aligned to local regulations, delivered as a working prototype"
+        },
+        {
+          "client": "Maritime Insurance Provider",
+          "engagement": "Policy creation application digitizing manual open-cover policy workflows",
+          "outcome": "Digitized the manual data-input process into an app to create, manage, and review open-cover policies and onboard new customers, laying the foundation for future transformation"
         }
       ]
     },
@@ -352,9 +454,10 @@
       "categoryId": "7.0",
       "subType": "AI Data Readiness (Data Modernization)",
       "subTypeId": "7.4",
-      "description": "Foundational engagement modernizing and cleansing fragmented enterprise data to create a high-accuracy truth source for AI models. Establishes robust data pipelines and governance protocols ensuring Gemini agents are grounded in secure, organized, hallucination-free information.",
+      "description": "Foundational engagement that modernizes and cleanses fragmented enterprise data to create a high-accuracy \"truth source\" for AI models.\n\nIt establishes robust data pipelines and governance protocols to ensure your Gemini agents are grounded in secure, organized, and hallucination-free information.",
       "entryPoint": true,
       "startingPrice": null,
+      "template": null,
       "targetIndustries": ["Healthcare", "Financial Services", "Manufacturing", "Retail"],
       "targetProfiles": ["Companies with fragmented data", "Orgs preparing for AI deployment", "Companies needing data governance"],
       "caseStudies": [
@@ -372,6 +475,31 @@
           "client": "RRS (Revolution Retail Systems)",
           "engagement": "IoT asset monitoring — Azure Cloud migration with real-time dashboard",
           "outcome": "$50M savings, 73% improved efficiency, 5x reduction in support resolution, real-time from 7-day reporting"
+        },
+        {
+          "client": "Central Water Authority (CWA)",
+          "engagement": "Device-agnostic edge + cloud AI platform for real-time water flow and quality monitoring",
+          "outcome": "Proactive leak and theft detection via a self-service Google Cloud dashboard, with improved operational insights and no manual intervention"
+        },
+        {
+          "client": "PWC & CESC",
+          "engagement": "Real-time transformer condition monitoring with custom IoT sensors and edge gateways",
+          "outcome": "Server uptime to 96%, 50% fewer outage calls, transformer lifetime extended 18-24 months, annual savings from oil-theft prevention, 90% higher customer satisfaction"
+        },
+        {
+          "client": "New York City (NYC Dept. of Health)",
+          "engagement": "IoT + Cloud air quality monitoring with edge device management",
+          "outcome": "Reduced cloud consumption by over 50% through smarter edge data processing, with remote configuration of air-quality devices across the city"
+        },
+        {
+          "client": "HarperCollins",
+          "engagement": "Finance and sales data automation — multi-vendor ingestion, scraping, parsing, and TitleView modernization on GCP/BigQuery",
+          "outcome": "Reduced overhead costs by 50% and increased operational efficiency by 50% with a unified, automated, secure enterprise data warehouse"
+        },
+        {
+          "client": "Telecom Tower Operator",
+          "engagement": "techo Smart Edge IoT platform for remote telecom tower asset monitoring",
+          "outcome": "Edge compute with a centralized cloud dashboard delivering energy-asset optimization, outage reduction, and AI predictive/prescriptive alerting that eliminated the need for site visits"
         }
       ]
     }

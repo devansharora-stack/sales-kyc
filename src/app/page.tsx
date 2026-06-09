@@ -35,9 +35,14 @@ export default function DashboardPage() {
           <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Dashboard</h1>
           <p className="text-sm text-slate-400 mt-1">AI-powered company research & GTM intelligence</p>
         </div>
-        <Link href="/projects/new" className="btn-primary gap-2">
-          <span>+</span> New Project
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link href="/solutions" className="btn-ghost text-sm text-[#3289FF]">
+            Solution Repository
+          </Link>
+          <Link href="/projects/new" className="btn-primary gap-2">
+            <span>+</span> New Project
+          </Link>
+        </div>
       </div>
 
       {/* Stats */}

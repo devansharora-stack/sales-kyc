@@ -3,8 +3,9 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import type { Project, ResearchJob, ResearchStep, Rating } from "@/lib/types";
+import type { Project, ResearchJob, ResearchStep, Rating, SalesIntelligence, SalesMotionType } from "@/lib/types";
 import { createBrowserClient } from "@/lib/db";
+import CSVUpload from "@/components/CSVUpload";
 
 const RATING_STYLES: Record<Rating, string> = {
   A: "bg-emerald-50 text-emerald-700 border-emerald-200",
@@ -28,6 +29,42 @@ interface CompanyRow {
   fullName: string;
   hqCity: string;
   state: string;
+  salesIntelligence?: SalesIntelligence;
+}
+
+type SortKey = "score" | "opportunity" | "motion" | "rating";
+
+const SORT_OPTIONS: { key: SortKey; label: string }[] = [
+  { key: "score", label: "Account Score" },
+  { key: "opportunity", label: "Opportunity Value" },
+  { key: "motion", label: "Sales Motion" },
+  { key: "rating", label: "Rating" },
+];
+
+const MOTION_STYLES: Record<SalesMotionType, string> = {
+  "Quick Win": "bg-emerald-50 text-emerald-700 border-emerald-200",
+  "Land & Expand": "bg-blue-50 text-blue-700 border-blue-200",
+  "Strategic Sale": "bg-amber-50 text-amber-700 border-amber-200",
+  "Long Cycle": "bg-red-50 text-red-700 border-red-200",
+};
+
+function sortProfiles(profiles: CompanyRow[], sortBy: SortKey): CompanyRow[] {
+  return [...profiles].sort((a, b) => {
+    switch (sortBy) {
+      case "score":
+        return (b.total_score ?? 0) - (a.total_score ?? 0);
+      case "opportunity":
+        return (b.salesIntelligence?.opportunityValue?.score ?? 0) - (a.salesIntelligence?.opportunityValue?.score ?? 0);
+      case "motion":
+        return (b.salesIntelligence?.salesMotion?.score ?? 0) - (a.salesIntelligence?.salesMotion?.score ?? 0);
+      case "rating": {
+        const order: Record<string, number> = { A: 6, B: 5, C: 4, D: 3, E: 2, F: 1 };
+        return (order[b.rating] ?? 0) - (order[a.rating] ?? 0);
+      }
+      default:
+        return 0;
+    }
+  });
 }
 
 interface JobWithSteps extends ResearchJob {
@@ -45,6 +82,7 @@ export default function ProjectDetailPage() {
   const [addingCompanies, setAddingCompanies] = useState(false);
   const [newCompanies, setNewCompanies] = useState("");
   const [retrying, setRetrying] = useState<string | null>(null);
+  const [sortBy, setSortBy] = useState<SortKey>("score");
 
   const fetchData = useCallback(async () => {
     try {
@@ -192,6 +230,12 @@ export default function ProjectDetailPage() {
           <button onClick={handleArchive} className="btn-ghost text-xs">
             {project.status === "active" ? "Archive" : "Unarchive"}
           </button>
+          <Link
+            href={`/projects/${projectId}/solutions`}
+            className="btn-ghost text-xs text-[#3289FF]"
+          >
+            Solutions KB
+          </Link>
           <button
             onClick={() => { if (confirm("Delete this project and all its data?")) handleDelete(); }}
             className="btn-ghost text-xs text-red-400 hover:text-red-600 hover:border-red-200"
@@ -241,6 +285,17 @@ export default function ProjectDetailPage() {
           >
             {addingCompanies ? "Adding..." : "Add & Research"}
           </button>
+          <CSVUpload
+            existingSlugs={profiles.map((p) => p.slug)}
+            onSubmit={async (companies) => {
+              await fetch(`/api/projects/${projectId}/companies`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ companies }),
+              });
+              fetchData();
+            }}
+          />
         </div>
       </div>
 
@@ -309,7 +364,25 @@ export default function ProjectDetailPage() {
       {/* Completed Companies */}
       {profiles.length > 0 && (
         <div>
-          <h2 className="text-sm font-semibold text-slate-600 mb-3">Company Profiles</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-sm font-semibold text-slate-600">Company Profiles</h2>
+            <div className="flex items-center gap-1.5">
+              <span className="text-[10px] text-slate-400 mr-1">Sort by</span>
+              {SORT_OPTIONS.map((opt) => (
+                <button
+                  key={opt.key}
+                  onClick={() => setSortBy(opt.key)}
+                  className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
+                    sortBy === opt.key
+                      ? "bg-[#3289FF] text-white border-[#3289FF]"
+                      : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
               <thead>
@@ -318,12 +391,14 @@ export default function ProjectDetailPage() {
                   <th className="text-left p-3">Industry</th>
                   <th className="text-center p-3">Score</th>
                   <th className="text-center p-3">Rating</th>
+                  <th className="text-center p-3">Opp Value</th>
+                  <th className="text-center p-3">Sales Motion</th>
                   <th className="text-center p-3">Urgency</th>
                   <th className="text-left p-3">Solution</th>
                 </tr>
               </thead>
               <tbody>
-                {profiles.map((p) => (
+                {sortProfiles(profiles, sortBy).map((p) => (
                   <tr key={p.id} className="border-b border-[#E2E8F0] last:border-0 hover:bg-[rgba(50,137,255,0.02)] transition-colors">
                     <td className="p-3">
                       <Link
@@ -344,6 +419,31 @@ export default function ProjectDetailPage() {
                       <span className={`badge border ${RATING_STYLES[p.rating]}`}>
                         {p.rating}
                       </span>
+                    </td>
+                    <td className="p-3 text-center">
+                      {p.salesIntelligence?.opportunityValue ? (
+                        <span className={`text-sm font-bold ${
+                          p.salesIntelligence.opportunityValue.score >= 7 ? "text-emerald-600" :
+                          p.salesIntelligence.opportunityValue.score >= 5 ? "text-[#3289FF]" :
+                          "text-amber-600"
+                        }`}>
+                          {p.salesIntelligence.opportunityValue.score}
+                          <span className="text-[10px] font-normal text-slate-400">/10</span>
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-300">—</span>
+                      )}
+                    </td>
+                    <td className="p-3 text-center">
+                      {p.salesIntelligence?.salesMotion ? (
+                        <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                          MOTION_STYLES[p.salesIntelligence.salesMotion.motion] || "bg-slate-50 text-slate-600 border-slate-200"
+                        }`}>
+                          {p.salesIntelligence.salesMotion.motion}
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-slate-300">—</span>
+                      )}
                     </td>
                     <td className="p-3 text-center text-xs text-slate-500">{p.urgency}</td>
                     <td className="p-3 text-xs text-slate-500">{p.primary_solution?.replace(/-/g, " ")}</td>
