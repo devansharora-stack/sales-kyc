@@ -1,6 +1,6 @@
 {
-  "version": "2.0",
-  "lastUpdated": "2026-06-08",
+  "version": "2.1",
+  "lastUpdated": "2026-06-09",
   "offerings": [
     {
       "id": "bpa-value-finder",
@@ -93,6 +93,41 @@
           "client": "US Steel",
           "engagement": "Computer vision for steel quality automation",
           "outcome": "Saved $150K per line per month, 73% increase in operational efficiency"
+        },
+        {
+          "client": "Mediverse",
+          "engagement": "Mediverse Command Center for Indonesia's medical supply chain with AI-driven demand forecasting",
+          "outcome": "Accurate demand forecasting, improved patient outcomes, and enhanced supply-chain efficiency across logistics"
+        },
+        {
+          "client": "Skymatics",
+          "engagement": "Drone + computer vision automation for crop loss analysis and insurance claims",
+          "outcome": "Automated identification, measurement, and on-demand reporting of crop loss, cutting cost and time for insurers and farmers"
+        },
+        {
+          "client": "Convenience Store (USA)",
+          "engagement": "Computer vision fast-food & drink stock monitoring on IP cameras",
+          "outcome": "Predicted fast-moving stock from sales patterns with an audio-visual dashboard and out-of-stock alerts, eliminating ad-hoc stocking and boosting sales"
+        },
+        {
+          "client": "Regional Airport Authority (USA)",
+          "engagement": "Computer vision smart parking management on existing CCTV",
+          "outcome": "Real-time full/vacant parking-spot detection and illegal-parking identification via a web app with custom reporting"
+        },
+        {
+          "client": "Food Processing Company (USA)",
+          "engagement": "Computer vision smart manufacturing for yogurt flavor quantification",
+          "outcome": "Real-time, localized process control with vision cameras and sensors, reducing yield losses with global visibility of production lines"
+        },
+        {
+          "client": "Sports Ministry (South East Asia)",
+          "engagement": "Computer vision swimmer detection and fitness pose estimation",
+          "outcome": "Detected swimmers and captured velocity/acceleration, plus DNN-based activity recognition to count and track movements (push-ups, swim strokes, sprints)"
+        },
+        {
+          "client": "City Council (South East Asia)",
+          "engagement": "Computer vision vehicle & license plate detection on CCTV",
+          "outcome": "Parking-violation identification and automated toll-booth billing built on the existing CCTV network with real-time monitoring"
         }
       ]
     },
@@ -270,6 +305,21 @@
           "client": "Newscorp",
           "engagement": "Automated Kubernetes infrastructure modernization",
           "outcome": "Faster deployment cycles, reduced manual operations"
+        },
+        {
+          "client": "Pearson",
+          "engagement": "Legacy systems migration to Google Cloud with data orchestration modernization",
+          "outcome": "Established a repeatable legacy-to-cloud migration framework, modernized 3,482 data orchestration jobs, delivered cost and operational efficiencies via cloud managed services"
+        },
+        {
+          "client": "True Digital",
+          "engagement": "On-prem to GCP data migration with Anthos for hybrid cloud",
+          "outcome": "Reduced data-center dependency and enabled apps to deploy, run, scale, and manage across on-prem and cloud"
+        },
+        {
+          "client": "Mobile Payments Provider (Africa)",
+          "engagement": "Anthos-based Google Cloud foundation for in-country mobile payments",
+          "outcome": "Brought Google Cloud into a region with no prior cloud presence to meet data-residency regulations, deploying 4000+ vCPUs to support in-country mobile payment workloads"
         }
       ]
     },
@@ -315,6 +365,16 @@
           "client": "ADP",
           "engagement": "Modernized internet banking solution",
           "outcome": "Modern web & mobile app bringing digital banking features to business customers"
+        },
+        {
+          "client": "Credit Suisse",
+          "engagement": "App modernization for cloud-native credit risk application",
+          "outcome": "New UX/UI with eKYC and secure integration APIs to the Federal Reserve as part of a major banking digital transformation"
+        },
+        {
+          "client": "Mood Fabrics",
+          "engagement": "eCommerce platform modernization — Magento 1 to Magento 2 marketplace",
+          "outcome": "Improved website/app stability during marketing campaigns, faster page loads via caching, and higher conversion through better UX"
         }
       ]
     },
@@ -355,6 +415,36 @@
           "client": "Cypris (IPCypris)",
           "engagement": "Online patent marketplace on GCP",
           "outcome": "Automated market intelligence reports 100% cheaper than market rate"
+        },
+        {
+          "client": "FaceOpen",
+          "engagement": "Touch-free door access control with facial + voice recognition on edge + cloud AI",
+          "outcome": "Real/spoof face detection and alert-based access across global facilities using a hybrid edge-cloud matching engine"
+        },
+        {
+          "client": "Troy",
+          "engagement": "Online mobile dating app with AI profile matching and Twilio video calling",
+          "outcome": "API-based architecture with best-in-class video calling and an AI-driven recommendation engine for profile matching"
+        },
+        {
+          "client": "Thmbl",
+          "engagement": "Influencer eCommerce app on Shopify",
+          "outcome": "Automated shopping, payment, shipping, returns, and customer service for influencers upselling fashion brands"
+        },
+        {
+          "client": "Ministry of Communications and Information, Singapore",
+          "engagement": "Omni-channel holographic telepresence event companion app",
+          "outcome": "Live event streaming with holographic telepresence and real-time interaction, plus a self-service organizer admin portal"
+        },
+        {
+          "client": "KAFD (Saudi Arabia)",
+          "engagement": "Smart city platform architecture and strategy (in partnership with EY)",
+          "outcome": "Customized smart-city platform architecture covering IT/OT/IoT integration, data and AI strategy aligned to local regulations, delivered as a working prototype"
+        },
+        {
+          "client": "Maritime Insurance Provider",
+          "engagement": "Policy creation application digitizing manual open-cover policy workflows",
+          "outcome": "Digitized the manual data-input process into an app to create, manage, and review open-cover policies and onboard new customers, laying the foundation for future transformation"
         }
       ]
     },
@@ -385,6 +475,31 @@
           "client": "RRS (Revolution Retail Systems)",
           "engagement": "IoT asset monitoring — Azure Cloud migration with real-time dashboard",
           "outcome": "$50M savings, 73% improved efficiency, 5x reduction in support resolution, real-time from 7-day reporting"
+        },
+        {
+          "client": "Central Water Authority (CWA)",
+          "engagement": "Device-agnostic edge + cloud AI platform for real-time water flow and quality monitoring",
+          "outcome": "Proactive leak and theft detection via a self-service Google Cloud dashboard, with improved operational insights and no manual intervention"
+        },
+        {
+          "client": "PWC & CESC",
+          "engagement": "Real-time transformer condition monitoring with custom IoT sensors and edge gateways",
+          "outcome": "Server uptime to 96%, 50% fewer outage calls, transformer lifetime extended 18-24 months, annual savings from oil-theft prevention, 90% higher customer satisfaction"
+        },
+        {
+          "client": "New York City (NYC Dept. of Health)",
+          "engagement": "IoT + Cloud air quality monitoring with edge device management",
+          "outcome": "Reduced cloud consumption by over 50% through smarter edge data processing, with remote configuration of air-quality devices across the city"
+        },
+        {
+          "client": "HarperCollins",
+          "engagement": "Finance and sales data automation — multi-vendor ingestion, scraping, parsing, and TitleView modernization on GCP/BigQuery",
+          "outcome": "Reduced overhead costs by 50% and increased operational efficiency by 50% with a unified, automated, secure enterprise data warehouse"
+        },
+        {
+          "client": "Telecom Tower Operator",
+          "engagement": "techo Smart Edge IoT platform for remote telecom tower asset monitoring",
+          "outcome": "Edge compute with a centralized cloud dashboard delivering energy-asset optimization, outage reduction, and AI predictive/prescriptive alerting that eliminated the need for site visits"
         }
       ]
     }

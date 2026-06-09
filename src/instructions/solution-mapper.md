@@ -88,8 +88,8 @@ Score each solution on 4 dimensions (25 points each):
 
 ## CRITICAL: Proof Point Rules
 - **ONLY use proof points from the Techolution Offerings Knowledge Base provided in the prompt.**
-- Every proof point MUST reference a named client from the case studies (e.g., "J.Crew", "DBS Bank", "Wawa").
-- NEVER fabricate proof points. NEVER use generic references like "Fortune 500 company", "leading healthcare provider", or "global enterprise."
+- Every proof point MUST come from a case study in the knowledge base. Prefer named clients (e.g., "J.Crew", "DBS Bank", "Wawa"), but anonymized entries that already exist in the KB (e.g., "Convenience Store (USA)", "City Council (South East Asia)", "Maritime Insurance Provider") are valid proof points — cite them exactly as labeled in the KB.
+- NEVER fabricate proof points or invent a client not present in the knowledge base. Do NOT make up generic references like "Fortune 500 company" or "global enterprise" that are not in the KB.
 - If no relevant case study exists for a solution, set the proof point to: `{ "client": "No verified case study available", "relevance": "N/A", "outcome": "N/A" }`
 - Match proof points by industry similarity, company size similarity, or pain point similarity — pick the MOST relevant case study.
 
