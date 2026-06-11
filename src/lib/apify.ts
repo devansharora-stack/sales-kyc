@@ -16,9 +16,10 @@ export const APIFY_ACTORS = {
   posts: "LQQIXN9Othf8f7R5n",
 } as const;
 
-// Cap posts — the posts actor dominates cost (~$0.48/100 posts). ~20 recent
-// posts is enough signal for synthesis at ~5x lower spend.
-const MAX_POSTS = 25;
+// Cap posts — the posts actor bills $5/1k results ($0.005/post) and dominates
+// cost. The cap MUST be passed to the actor (total_posts) so we're billed for
+// only these, not the actor's default 100/page that we'd otherwise slice away.
+const MAX_POSTS = 20;
 
 function getToken(): string {
   const token = process.env.APIFY_API_TOKEN;
@@ -139,7 +140,10 @@ export async function scrapeHarvestProfile(url: string): Promise<Record<string, 
 export async function scrapeApifyPosts(url: string): Promise<Record<string, any>[]> {
   // The actor accepts a few input shapes; `username` (with a full URL) is the
   // validated one, but try fallbacks defensively.
-  for (const input of [{ username: url }, { profileUrl: url }, { profileUrls: [url] }, { urls: [url] }]) {
+  // total_posts caps what the actor scrapes (and what we're billed for); limit
+  // bounds the first page. Without these the actor defaults to 100/page.
+  const cap = { total_posts: MAX_POSTS, limit: MAX_POSTS };
+  for (const input of [{ username: url, ...cap }, { profileUrl: url, ...cap }, { profileUrls: [url], ...cap }, { urls: [url], ...cap }]) {
     try {
       const items = await runApifyActor<Record<string, any>>(APIFY_ACTORS.posts, input);
       // Drop the "no activity" sentinel ({profile_input, message}, no .text).

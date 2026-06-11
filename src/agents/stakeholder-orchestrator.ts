@@ -272,12 +272,30 @@ function mergeProfile(input: {
   };
 }
 
+// Personal / ceremonial posts that carry no sales signal. Cheap mechanical
+// screen so we don't spend synthesis tokens just to have Claude discard them.
+const PERSONAL_POST_PATTERNS = [
+  /\bhappy (?:birthday|anniversary)\b/i,
+  /\bwork ?anniversary\b/i,
+  /\b\d+ years? at\b/i,
+  /\b(?:thrilled|honou?red|humbled|delighted|proud) to (?:announce|share|receive)\b/i,
+  /\bcongratulations?\b/i,
+  /\bcongrats\b/i,
+  /\bRIP\b|\brest in peace\b/i,
+  /\bthank you (?:all|everyone|so much)\b/i,
+];
+
 // Drop obvious low-signal posts before synthesis (mirror webinar-intel pre-filter):
-// keep posts with some engagement OR enough text to carry an opinion.
+// keep posts with some engagement OR enough text to carry an opinion, and drop
+// personal/ceremonial posts that reveal nothing about how the person thinks.
 function isSubstantivePost(p: StakeholderPost): boolean {
-  const len = (p.text || "").trim().length;
+  const text = (p.text || "").trim();
+  const len = text.length;
   const engagement = (p.likes || 0) + (p.comments || 0);
   if (len < 80) return false;
+  // Short-to-medium personal posts are noise; very long posts may still carry a
+  // real take, so only screen patterns out below the 280-char "opinion" bar.
+  if (len < 280 && PERSONAL_POST_PATTERNS.some((re) => re.test(text))) return false;
   return engagement > 0 || len > 200;
 }
 
