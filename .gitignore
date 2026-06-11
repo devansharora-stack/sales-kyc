@@ -56,3 +56,8 @@ test-output/
 southwire-profile.json
 southwire-report.html
 case studies/
+
+# local-only: dev/debug scripts, DB dumps, supabase cli temp
+/scripts/
+/backups/
+/supabase/.temp/
