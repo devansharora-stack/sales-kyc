@@ -2,7 +2,7 @@
 
 import { usePathname } from "next/navigation";
 import Navigation from "./Navigation";
-import ProgressSidebar from "./ProgressSidebar";
+import ChatSidebar from "./ChatSidebar";
 
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -15,12 +15,11 @@ export default function MainLayout({ children }: { children: React.ReactNode }) 
   return (
     <>
       <Navigation />
-      <div className="flex">
-        <ProgressSidebar />
+      <ChatSidebar>
         <main className="flex-1 max-w-[1200px] mx-auto px-6 lg:px-10 py-8">
           {children}
         </main>
-      </div>
+      </ChatSidebar>
     </>
   );
 }
