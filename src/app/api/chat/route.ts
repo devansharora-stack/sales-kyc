@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { users, projects, chatSessions } from "@/db/schema";
 import { and, eq, desc, isNull } from "drizzle-orm";
-import { buildChatSystemPrompt, fetchCompanySalesBundle } from "@/lib/chat-context";
+import { buildChatSystemPrompt, fetchCompanySalesBundle, fetchStakeholderBundle } from "@/lib/chat-context";
 
 const LOOKUP_COMPANY_TOOL = {
   name: "lookup_company",
@@ -21,6 +21,23 @@ const LOOKUP_COMPANY_TOOL = {
       },
     },
     required: ["company_slugs"],
+  },
+};
+
+const LOOKUP_STAKEHOLDER_TOOL = {
+  name: "lookup_stakeholder",
+  description:
+    "Retrieve the full deep-analysis profile for one or more people the user has deep-analyzed. Use this whenever the user asks about a specific person, wants to draft outreach to them, or needs to understand their priorities, pain points, or how to engage them. Pass the id identifiers listed in the deep-analyzed stakeholders section of your context.",
+  input_schema: {
+    type: "object",
+    properties: {
+      stakeholder_ids: {
+        type: "array",
+        items: { type: "string" },
+        description: "id identifiers of the people to look up (from the deep-analyzed stakeholders list)",
+      },
+    },
+    required: ["stakeholder_ids"],
   },
 };
 
@@ -232,12 +249,16 @@ export async function POST(request: Request) {
     timestamp: new Date().toISOString(),
   });
 
-  const { prompt: systemPrompt, hasCompanyIndex } = await buildChatSystemPrompt({
+  const { prompt: systemPrompt, hasCompanyIndex, hasStakeholderIndex } = await buildChatSystemPrompt({
     ...context,
     userId: user.id,
   });
 
-  const tools = hasCompanyIndex ? [LOOKUP_COMPANY_TOOL] : undefined;
+  const toolList = [
+    ...(hasCompanyIndex ? [LOOKUP_COMPANY_TOOL] : []),
+    ...(hasStakeholderIndex ? [LOOKUP_STAKEHOLDER_TOOL] : []),
+  ];
+  const tools = toolList.length ? toolList : undefined;
   const apiMessages: Array<{ role: string; content: string | unknown[] }> =
     messages.map(({ role, content }) => ({ role, content }));
 
@@ -313,6 +334,26 @@ export async function POST(request: Request) {
                 type: "tool_result",
                 tool_use_id: tc.id,
                 content: "Error retrieving company data.",
+                is_error: true,
+              });
+            }
+          } else if (tc.name === "lookup_stakeholder") {
+            try {
+              const input = JSON.parse(tc.input);
+              const bundle = await fetchStakeholderBundle(
+                user.id,
+                input.stakeholder_ids || []
+              );
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: tc.id,
+                content: bundle || "No deep-analysis data found for the requested people.",
+              });
+            } catch {
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: tc.id,
+                content: "Error retrieving stakeholder data.",
                 is_error: true,
               });
             }

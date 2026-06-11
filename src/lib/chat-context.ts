@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
-import { companyProfiles } from "@/db/schema";
+import { companyProfiles, stakeholderProfiles } from "@/db/schema";
 import { and, eq, inArray, desc } from "drizzle-orm";
-import type { CompanyDetail } from "@/lib/types";
+import type { CompanyDetail, DeepStakeholderProfile } from "@/lib/types";
 import offeringsData from "@/data/offerings-kb.json";
 
 const BASE_PREAMBLE = `You are KYC Genie, Techolution's AI sales intelligence assistant. You help sales teams understand company research, identify opportunities, and recommend solutions from Techolution's portfolio.
@@ -185,12 +185,96 @@ export async function fetchCompanySalesBundle(
   return sections.join("\n\n---\n\n");
 }
 
+export async function fetchStakeholderBundle(
+  userId: string,
+  ids: string[]
+): Promise<string | null> {
+  if (!ids.length) return null;
+
+  const safeIds = ids.slice(0, 3);
+
+  const rows = await db
+    .select({
+      id: stakeholderProfiles.id,
+      name: stakeholderProfiles.name,
+      company: stakeholderProfiles.company,
+      title: stakeholderProfiles.title,
+      data: stakeholderProfiles.data,
+    })
+    .from(stakeholderProfiles)
+    .where(and(eq(stakeholderProfiles.userId, userId), inArray(stakeholderProfiles.id, safeIds)));
+
+  if (!rows.length) return null;
+
+  const sections: string[] = [];
+
+  for (const row of rows) {
+    const profile = (row.data as { profile?: DeepStakeholderProfile } | null)?.profile;
+    if (!profile) continue;
+
+    const b = profile.intelBrief;
+    const lines: string[] = [];
+    lines.push(`## Deep Stakeholder Profile: ${profile.fullName || row.name}`);
+    lines.push(
+      `**Role:** ${profile.headline || row.title || ""}${row.company ? ` @ ${row.company}` : ""} | **Location:** ${profile.location || "N/A"}`
+    );
+    if (profile.linkedinUrl) lines.push(`**LinkedIn:** ${profile.linkedinUrl}`);
+    if (b?.intelQuality) lines.push(`**Intel Quality:** ${b.intelQuality}${b.intelQualityReason ? ` — ${b.intelQualityReason}` : ""}`);
+
+    if (b?.executiveSummary) lines.push(`\n### Executive Summary\n${b.executiveSummary}`);
+    if (b?.keyInsight) lines.push(`\n### Key Insight\n${b.keyInsight}`);
+
+    if (b?.verifiedPriorities?.length) {
+      lines.push(`\n### Verified Priorities`);
+      for (const p of b.verifiedPriorities) {
+        lines.push(`- **${p.priority}** [${p.confidence}]: ${p.evidence}${p.sourceUrl ? ` (${p.sourceUrl})` : ""}`);
+      }
+    }
+
+    if (b?.painPoints?.length) {
+      lines.push(`\n### Pain Points`);
+      for (const p of b.painPoints) {
+        lines.push(`- **${p.pain}** [${p.confidence}]: ${p.evidence}${p.sourceUrl ? ` (${p.sourceUrl})` : ""}`);
+      }
+    }
+
+    if (b?.engagementApproach) {
+      const e = b.engagementApproach;
+      lines.push(`\n### Engagement Approach`);
+      if (e.openingAngle) lines.push(`**Opening Angle:** ${e.openingAngle}`);
+      if (e.talkingPoints?.length) lines.push(`**Talking Points:** ${e.talkingPoints.join("; ")}`);
+      if (e.avoidTopics?.length) lines.push(`**Avoid:** ${e.avoidTopics.join("; ")}`);
+    }
+
+    if (b?.postInsights?.length) {
+      lines.push(`\n### LinkedIn Post Insights`);
+      for (const pi of b.postInsights) {
+        lines.push(`- **${pi.headline}:** ${pi.insight}${pi.engagement ? ` (${pi.engagement})` : ""}${pi.sourceUrl ? ` — ${pi.sourceUrl}` : ""}`);
+      }
+    }
+
+    if (profile.experience?.length) {
+      lines.push(`\n### Experience`);
+      for (const ex of profile.experience.slice(0, 5)) {
+        lines.push(`- **${ex.position || ""}** at ${ex.company || ""}${ex.duration ? ` (${ex.duration})` : ""}`);
+      }
+    }
+
+    if (profile.skills?.length) lines.push(`\n### Skills\n${profile.skills.slice(0, 20).join(", ")}`);
+
+    sections.push(lines.join("\n"));
+  }
+
+  if (!sections.length) return null;
+  return sections.join("\n\n---\n\n");
+}
+
 export async function buildChatSystemPrompt(context: {
   type: "company" | "project" | "global";
   projectId?: string;
   companySlug?: string;
   userId?: string;
-}): Promise<{ prompt: string; hasCompanyIndex: boolean }> {
+}): Promise<{ prompt: string; hasCompanyIndex: boolean; hasStakeholderIndex: boolean }> {
   const sections: string[] = [BASE_PREAMBLE, buildSolutionsSummary()];
 
   if (context.type === "company" && context.companySlug && context.projectId) {
@@ -283,7 +367,32 @@ export async function buildChatSystemPrompt(context: {
     }
   }
 
-  return { prompt: sections.join("\n\n"), hasCompanyIndex };
+  let hasStakeholderIndex = false;
+
+  if (context.userId) {
+    const stakeholders = await db
+      .select({
+        id: stakeholderProfiles.id,
+        name: stakeholderProfiles.name,
+        company: stakeholderProfiles.company,
+        title: stakeholderProfiles.title,
+      })
+      .from(stakeholderProfiles)
+      .where(and(eq(stakeholderProfiles.userId, context.userId), eq(stakeholderProfiles.status, "completed")))
+      .orderBy(desc(stakeholderProfiles.updatedAt))
+      .limit(30);
+
+    if (stakeholders.length) {
+      hasStakeholderIndex = true;
+      const index = stakeholders
+        .map((s) => `- **${s.name}**${s.title ? ` — ${s.title}` : ""}${s.company ? ` @ ${s.company}` : ""} [id: ${s.id}]`)
+        .join("\n");
+      sections.push(`## Deep-Analyzed Stakeholders\n\n${index}`);
+      sections.push(`STAKEHOLDER INTELLIGENCE ACCESS:\nYou have a lookup_stakeholder tool to retrieve the full deep-analysis profile for any of the people listed above (their LinkedIn experience, priorities, pain points, recommended engagement approach, and post insights). Use this tool whenever the user asks about a specific person, wants help drafting outreach to them, or needs to understand how to approach or sell to them. Pass the id values from the list above. Do not answer person-specific questions from the summary list alone — use the tool to get the complete profile first, then synthesize.`);
+    }
+  }
+
+  return { prompt: sections.join("\n\n"), hasCompanyIndex, hasStakeholderIndex };
 }
 
 function cleanCompanyData(data: CompanyDetail): Partial<CompanyDetail> {
