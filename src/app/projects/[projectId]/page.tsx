@@ -82,6 +82,8 @@ export default function ProjectDetailPage() {
   const [newCompanies, setNewCompanies] = useState("");
   const [retrying, setRetrying] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>("score");
+  const [pendingReuse, setPendingReuse] = useState<{ company_name: string; slug: string; updated_at: string | null }[]>([]);
+  const [resolvingReuse, setResolvingReuse] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -113,30 +115,44 @@ export default function ProjectDetailPage() {
     return () => clearInterval(interval);
   }, [hasActiveJobs, fetchData]);
 
+  async function postCompanies(names: string[], opts?: { reuse?: boolean; forceRefresh?: boolean }) {
+    const res = await fetch(`/api/projects/${projectId}/companies`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ companies: names, ...opts }),
+    });
+    const data = await res.json().catch(() => ({}));
+    const found = (data?.existing ?? []) as { company_name: string; slug: string; updated_at: string | null }[];
+    if (found.length > 0) {
+      setPendingReuse((prev) => {
+        const seen = new Set(prev.map((p) => p.slug));
+        return [...prev, ...found.filter((f) => !seen.has(f.slug))];
+      });
+    }
+  }
+
   async function handleAddCompanies() {
     const names = newCompanies.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean);
     if (names.length === 0) return;
     setAddingCompanies(true);
-
-    await fetch(`/api/projects/${projectId}/companies`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ companies: names }),
-    });
-
+    await postCompanies(names);
     setNewCompanies("");
     setAddingCompanies(false);
     fetchData();
   }
 
+  async function handleReuseDecision(name: string, decision: "reuse" | "refresh") {
+    setResolvingReuse(name);
+    await postCompanies([name], decision === "reuse" ? { reuse: true } : { forceRefresh: true });
+    setPendingReuse((prev) => prev.filter((p) => p.company_name !== name));
+    setResolvingReuse(null);
+    fetchData();
+  }
+
   async function handleRetry(jobId: string, companyName: string) {
     setRetrying(jobId);
-    // Re-trigger research for this company by creating a new job
-    await fetch(`/api/projects/${projectId}/companies`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ companies: [companyName] }),
-    });
+    // Retry means the user explicitly wants a fresh run — skip the cache.
+    await postCompanies([companyName], { forceRefresh: true });
     setRetrying(null);
     fetchData();
   }
@@ -215,12 +231,6 @@ export default function ProjectDetailPage() {
           >
             Stakeholders
           </Link>
-          <Link
-            href={`/projects/${projectId}/solutions`}
-            className="btn-ghost text-xs text-[#3289FF]"
-          >
-            Solutions KB
-          </Link>
           <button
             onClick={() => { if (confirm("Delete this project and all its data?")) handleDelete(); }}
             className="btn-ghost text-xs text-red-400 hover:text-red-600 hover:border-red-200"
@@ -273,16 +283,46 @@ export default function ProjectDetailPage() {
           <CSVUpload
             existingSlugs={profiles.map((p) => p.slug)}
             onSubmit={async (companies) => {
-              await fetch(`/api/projects/${projectId}/companies`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ companies }),
-              });
+              await postCompanies(companies);
               fetchData();
             }}
           />
         </div>
       </div>
+
+      {/* Existing-research prompts */}
+      {pendingReuse.length > 0 && (
+        <div className="mb-6 space-y-2">
+          {pendingReuse.map((p) => (
+            <div key={p.slug} className="card p-4 flex items-center justify-between border-amber-200 bg-amber-50/40">
+              <div>
+                <p className="text-sm font-medium text-slate-800">
+                  Research for <span className="font-semibold">{p.company_name}</span> already exists
+                </p>
+                <p className="text-xs text-slate-500">
+                  Last updated {p.updated_at ? new Date(p.updated_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "recently"}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleReuseDecision(p.company_name, "reuse")}
+                  disabled={resolvingReuse === p.company_name}
+                  className="btn-primary disabled:opacity-50"
+                >
+                  {resolvingReuse === p.company_name ? "Working..." : "Use existing"}
+                </button>
+                <button
+                  onClick={() => handleReuseDecision(p.company_name, "refresh")}
+                  disabled={resolvingReuse === p.company_name}
+                  className="btn-ghost disabled:opacity-50"
+                >
+                  Refresh now
+                </button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Active Research */}
       {activeJobs.length > 0 && (

@@ -269,8 +269,14 @@ export async function POST(
 
   const CACHE_MAX_AGE_DAYS = 7;
   const forceRefresh = body.forceRefresh === true;
+  // When the user has been shown the "already researched" prompt and chose
+  // "Use existing", the frontend re-POSTs with reuse:true to copy the cached
+  // profile. Without reuse (and without forceRefresh) we only DETECT a cache
+  // hit and report it back so the frontend can ask first.
+  const reuse = body.reuse === true;
 
   const jobs = [];
+  const existing: { company_name: string; slug: string; updated_at: Date | null }[] = [];
   for (const companyName of companyNames) {
     // Normalize slug for cache lookup
     const normalizedSlug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -288,7 +294,13 @@ export async function POST(
         .limit(1);
 
       if (cached) {
-        // Copy cached profile to this project
+        // Not yet confirmed by the user — report the hit and let the
+        // frontend prompt "already researched on <date>, refresh?".
+        if (!reuse) {
+          existing.push({ company_name: companyName, slug: cached.slug, updated_at: cached.updatedAt });
+          continue;
+        }
+        // User chose "Use existing" — copy the cached profile to this project
         try {
           await db
             .insert(companyProfiles)
@@ -364,5 +376,5 @@ export async function POST(
     })
     .where(eq(projects.id, projectId));
 
-  return NextResponse.json({ jobs, count: jobs.length });
+  return NextResponse.json({ jobs, count: jobs.length, existing });
 }

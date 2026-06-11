@@ -65,6 +65,8 @@ export default function CompanyPage() {
   const [deepRows, setDeepRows] = useState<DeepStakeholderRow[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [analyzing, setAnalyzing] = useState(false);
+  const [pendingReuse, setPendingReuse] = useState<{ name: string; company: string | null; title: string | null; updated_at: string | null }[]>([]);
+  const [resolvingReuse, setResolvingReuse] = useState<string | null>(null);
 
   const projectId = params.projectId as string;
   const slug = params.slug as string;
@@ -102,19 +104,45 @@ export default function CompanyPage() {
     });
   }
 
+  async function postPeople(
+    people: { name: string; company: string | null; title: string | null }[],
+    opts?: { reuse?: boolean; forceRefresh?: boolean },
+  ) {
+    const res = await fetch(`/api/projects/${projectId}/stakeholders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stakeholders: people, inputType: "company", companyProfileId, ...opts }),
+    });
+    const data = await res.json().catch(() => ({}));
+    const found = (data?.existing ?? []) as { name: string; company: string | null; updated_at: string | null }[];
+    if (found.length > 0) {
+      setPendingReuse(prev => {
+        const seen = new Set(prev.map(p => p.name.toLowerCase()));
+        const add = found
+          .filter(f => !seen.has(f.name.toLowerCase()))
+          .map(f => ({ name: f.name, company: f.company, title: people.find(p => p.name === f.name)?.title ?? null, updated_at: f.updated_at }));
+        return [...prev, ...add];
+      });
+    }
+  }
+
   async function handleDeepAnalyze() {
     if (!company || selected.size === 0) return;
     const people = company.stakeholders
       .filter(s => selected.has(s.name))
       .map(s => ({ name: s.name, company: company.name, title: s.title }));
     setAnalyzing(true);
-    await fetch(`/api/projects/${projectId}/stakeholders`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ stakeholders: people, inputType: "company", companyProfileId }),
-    });
+    await postPeople(people);
     setAnalyzing(false);
     setSelected(new Set());
+    fetchDeep(projectId);
+  }
+
+  async function handleReuseDecision(person: { name: string; company: string | null; title: string | null }, decision: "reuse" | "refresh") {
+    setResolvingReuse(person.name);
+    await postPeople([person], decision === "reuse" ? { reuse: true } : { forceRefresh: true });
+    setPendingReuse(prev => prev.filter(p => p.name !== person.name));
+    setResolvingReuse(null);
     fetchDeep(projectId);
   }
 
@@ -572,6 +600,38 @@ export default function CompanyPage() {
       {/* TAB: Stakeholders */}
       {activeTab === "stakeholders" && (
         <div className="space-y-6">
+          {pendingReuse.length > 0 && (
+            <div className="space-y-2">
+              {pendingReuse.map(p => (
+                <div key={p.name} className="card p-4 flex items-center justify-between border-amber-200 bg-amber-50/40">
+                  <div>
+                    <p className="text-sm font-medium text-slate-800">
+                      <span className="font-semibold">{p.name}</span> already analyzed
+                    </p>
+                    <p className="text-xs text-slate-500">
+                      Last updated {p.updated_at ? new Date(p.updated_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "recently"} &middot; reusing skips the LinkedIn scrape
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleReuseDecision({ name: p.name, company: p.company, title: p.title }, "reuse")}
+                      disabled={resolvingReuse === p.name}
+                      className="btn-primary text-xs disabled:opacity-50"
+                    >
+                      {resolvingReuse === p.name ? "Working…" : "Use existing"}
+                    </button>
+                    <button
+                      onClick={() => handleReuseDecision({ name: p.name, company: p.company, title: p.title }, "refresh")}
+                      disabled={resolvingReuse === p.name}
+                      className="btn-ghost text-xs disabled:opacity-50"
+                    >
+                      Re-analyze
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           {company.stakeholders?.length > 0 && (
             <Card
               title="Key Stakeholders"

@@ -42,10 +42,18 @@ const STATUS_LABEL: Record<StakeholderStatus, string> = {
   cancelled: "Cancelled",
 };
 
+interface PendingReuse {
+  input: StakeholderInput;
+  inputType: "manual" | "csv";
+  updated_at: string | null;
+}
+
 export default function ProjectStakeholdersPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const [rows, setRows] = useState<StakeholderRow[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pendingReuse, setPendingReuse] = useState<PendingReuse[]>([]);
+  const [resolvingReuse, setResolvingReuse] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     try {
@@ -67,11 +75,39 @@ export default function ProjectStakeholdersPage() {
   }, [hasActive, fetchData]);
 
   async function handleImport(people: StakeholderInput[], inputType: "manual" | "csv") {
-    await fetch(`/api/projects/${projectId}/stakeholders`, {
+    const res = await fetch(`/api/projects/${projectId}/stakeholders`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ stakeholders: people, inputType }),
     });
+    const data = await res.json().catch(() => ({}));
+    const found = (data?.existing ?? []) as { name: string; company: string | null; updated_at: string | null }[];
+    if (found.length > 0) {
+      const matched: PendingReuse[] = found
+        .map((f) => {
+          const input = people.find((p) => p.name === f.name && (p.company || null) === (f.company || null));
+          return input ? { input, inputType, updated_at: f.updated_at } : null;
+        })
+        .filter((x): x is PendingReuse => x !== null);
+      setPendingReuse((prev) => [...prev, ...matched]);
+    }
+    fetchData();
+  }
+
+  async function handleReuseDecision(item: PendingReuse, decision: "reuse" | "refresh") {
+    const key = `${item.input.name}|${item.input.company || ""}`;
+    setResolvingReuse(key);
+    await fetch(`/api/projects/${projectId}/stakeholders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        stakeholders: [item.input],
+        inputType: item.inputType,
+        ...(decision === "reuse" ? { reuse: true } : { forceRefresh: true }),
+      }),
+    });
+    setPendingReuse((prev) => prev.filter((p) => `${p.input.name}|${p.input.company || ""}` !== key));
+    setResolvingReuse(null);
     fetchData();
   }
 
@@ -87,6 +123,43 @@ export default function ProjectStakeholdersPage() {
         </div>
         <StakeholderImport onSubmit={handleImport} />
       </div>
+
+      {pendingReuse.length > 0 && (
+        <div className="mb-6 space-y-2">
+          {pendingReuse.map((item) => {
+            const key = `${item.input.name}|${item.input.company || ""}`;
+            return (
+              <div key={key} className="card p-4 flex items-center justify-between border-amber-200 bg-amber-50/40">
+                <div>
+                  <p className="text-sm font-medium text-slate-800">
+                    <span className="font-semibold">{item.input.name}</span>
+                    {item.input.company ? ` @ ${item.input.company}` : ""} already analyzed
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    Last updated {item.updated_at ? new Date(item.updated_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "recently"} &middot; reusing skips the LinkedIn scrape
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => handleReuseDecision(item, "reuse")}
+                    disabled={resolvingReuse === key}
+                    className="btn-primary disabled:opacity-50"
+                  >
+                    {resolvingReuse === key ? "Working..." : "Use existing"}
+                  </button>
+                  <button
+                    onClick={() => handleReuseDecision(item, "refresh")}
+                    disabled={resolvingReuse === key}
+                    className="btn-ghost disabled:opacity-50"
+                  >
+                    Re-analyze
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {loading ? (
         <div className="card p-4"><div className="h-10 bg-slate-50 rounded animate-pulse" /></div>
