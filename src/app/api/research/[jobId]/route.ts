@@ -1,36 +1,34 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { createServerClient } from "@/lib/db";
+import { db } from "@/lib/db";
+import { researchJobs, researchSteps, companyProfiles } from "@/db/schema";
+import { and, eq, inArray } from "drizzle-orm";
+import { serializeJob } from "@/lib/serializers";
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ jobId: string }> }
 ) {
   const { jobId } = await params;
-  const supabase = createServerClient();
 
-  const { data: job } = await supabase
-    .from("research_jobs")
-    .select("*, research_steps(*)")
-    .eq("id", jobId)
-    .single();
+  const [job] = await db.select().from(researchJobs).where(eq(researchJobs.id, jobId));
 
   if (!job) {
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
+  const steps = await db.select().from(researchSteps).where(eq(researchSteps.jobId, jobId));
+
   // Find the profile slug (check even before job is marked completed —
   // the profile may be saved before the job status is updated)
-  let profileSlug: string | null = null;
-  const { data: profile } = await supabase
-    .from("company_profiles")
-    .select("slug")
-    .eq("job_id", jobId)
-    .single();
-  profileSlug = profile?.slug || null;
+  const [profile] = await db
+    .select({ slug: companyProfiles.slug })
+    .from(companyProfiles)
+    .where(eq(companyProfiles.jobId, jobId));
+  const profileSlug = profile?.slug || null;
 
-  return NextResponse.json({ job, profileSlug });
+  return NextResponse.json({ job: serializeJob(job, steps), profileSlug });
 }
 
 /** Dismiss a stale/stuck research job by marking it as failed */
@@ -44,29 +42,26 @@ export async function DELETE(
   }
 
   const { jobId } = await params;
-  const supabase = createServerClient();
 
   // Mark job as failed/dismissed
-  await supabase
-    .from("research_jobs")
-    .update({
+  await db
+    .update(researchJobs)
+    .set({
       status: "failed",
-      error_message: "Dismissed by user",
-      completed_at: new Date().toISOString(),
+      errorMessage: "Dismissed by user",
+      completedAt: new Date(),
     })
-    .eq("id", jobId)
-    .in("status", ["queued", "running"]);
+    .where(and(eq(researchJobs.id, jobId), inArray(researchJobs.status, ["queued", "running"])));
 
   // Also mark any pending/running steps as failed
-  await supabase
-    .from("research_steps")
-    .update({
+  await db
+    .update(researchSteps)
+    .set({
       status: "failed",
-      error_message: "Job dismissed",
-      completed_at: new Date().toISOString(),
+      errorMessage: "Job dismissed",
+      completedAt: new Date(),
     })
-    .eq("job_id", jobId)
-    .in("status", ["pending", "running"]);
+    .where(and(eq(researchSteps.jobId, jobId), inArray(researchSteps.status, ["pending", "running"])));
 
   return NextResponse.json({ success: true });
 }

@@ -1,7 +1,9 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { createServerClient } from "@/lib/db";
+import { db } from "@/lib/db";
+import { users, projects, chatSessions } from "@/db/schema";
+import { and, eq, desc, isNull } from "drizzle-orm";
 import { buildChatSystemPrompt, fetchCompanySalesBundle } from "@/lib/chat-context";
 
 const LOOKUP_COMPANY_TOOL = {
@@ -175,24 +177,21 @@ export async function POST(request: Request) {
     );
   }
 
-  const supabase = createServerClient();
-
-  const { data: user } = await supabase
-    .from("users")
-    .select("id")
-    .eq("email", session.user.email)
-    .single();
+  const [user] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, session.user.email))
+    .limit(1);
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
   if (context.projectId) {
-    const { data: project } = await supabase
-      .from("projects")
-      .select("id")
-      .eq("id", context.projectId)
-      .eq("user_id", user.id)
-      .single();
+    const [project] = await db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(and(eq(projects.id, context.projectId), eq(projects.userId, user.id)))
+      .limit(1);
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
@@ -202,27 +201,25 @@ export async function POST(request: Request) {
   let messages: { role: string; content: string; timestamp: string }[] = [];
 
   if (currentSessionId) {
-    const { data: existing } = await supabase
-      .from("chat_sessions")
-      .select("messages")
-      .eq("id", currentSessionId)
-      .eq("user_id", user.id)
-      .single();
+    const [existing] = await db
+      .select({ messages: chatSessions.messages })
+      .from(chatSessions)
+      .where(and(eq(chatSessions.id, currentSessionId), eq(chatSessions.userId, user.id)))
+      .limit(1);
     if (existing) {
-      messages = existing.messages || [];
+      messages = (existing.messages as typeof messages) || [];
     }
   } else {
-    const { data: newSession } = await supabase
-      .from("chat_sessions")
-      .insert({
-        project_id: context.projectId || null,
-        user_id: user.id,
-        company_slug: context.companySlug || null,
-        context_type: context.type,
+    const [newSession] = await db
+      .insert(chatSessions)
+      .values({
+        projectId: context.projectId || null,
+        userId: user.id,
+        companySlug: context.companySlug || null,
+        contextType: context.type,
         title: message.slice(0, 100),
       })
-      .select("id")
-      .single();
+      .returning({ id: chatSessions.id });
     if (!newSession) {
       return NextResponse.json({ error: "Failed to create session" }, { status: 500 });
     }
@@ -303,7 +300,6 @@ export async function POST(request: Request) {
             try {
               const input = JSON.parse(tc.input);
               const bundle = await fetchCompanySalesBundle(
-                supabase,
                 user.id,
                 input.company_slugs || []
               );
@@ -346,13 +342,10 @@ export async function POST(request: Request) {
         });
       }
 
-      await supabase
-        .from("chat_sessions")
-        .update({
-          messages,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", currentSessionId);
+      await db
+        .update(chatSessions)
+        .set({ messages, updatedAt: new Date() })
+        .where(eq(chatSessions.id, currentSessionId));
 
       controller.close();
     },
@@ -374,25 +367,23 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const supabase = createServerClient();
 
-  const { data: user } = await supabase
-    .from("users")
-    .select("id")
-    .eq("email", session.user.email)
-    .single();
+  const [user] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, session.user.email))
+    .limit(1);
   if (!user) {
     return NextResponse.json({ sessions: [] });
   }
 
   const sessionId = searchParams.get("sessionId");
   if (sessionId) {
-    const { data } = await supabase
-      .from("chat_sessions")
-      .select("id, messages")
-      .eq("id", sessionId)
-      .eq("user_id", user.id)
-      .single();
+    const [data] = await db
+      .select({ id: chatSessions.id, messages: chatSessions.messages })
+      .from(chatSessions)
+      .where(and(eq(chatSessions.id, sessionId), eq(chatSessions.userId, user.id)))
+      .limit(1);
     if (!data) {
       return NextResponse.json({ error: "Session not found" }, { status: 404 });
     }
@@ -400,28 +391,29 @@ export async function GET(request: Request) {
   }
 
   const projectId = searchParams.get("projectId");
-
-  let query = supabase
-    .from("chat_sessions")
-    .select("id, title, context_type, company_slug, updated_at, messages")
-    .eq("user_id", user.id)
-    .order("updated_at", { ascending: false });
-
-  if (projectId) {
-    query = query.eq("project_id", projectId);
-  } else {
-    query = query.is("project_id", null);
-  }
-
   const companySlug = searchParams.get("companySlug");
+
+  const filters = [eq(chatSessions.userId, user.id)];
+  filters.push(projectId ? eq(chatSessions.projectId, projectId) : isNull(chatSessions.projectId));
   if (companySlug) {
-    query = query.eq("company_slug", companySlug);
+    filters.push(eq(chatSessions.companySlug, companySlug));
   }
 
-  const { data: sessions } = await query;
+  const sessions = await db
+    .select({
+      id: chatSessions.id,
+      title: chatSessions.title,
+      context_type: chatSessions.contextType,
+      company_slug: chatSessions.companySlug,
+      updated_at: chatSessions.updatedAt,
+      messages: chatSessions.messages,
+    })
+    .from(chatSessions)
+    .where(and(...filters))
+    .orderBy(desc(chatSessions.updatedAt));
 
   return NextResponse.json({
-    sessions: (sessions || []).map((s: any) => ({
+    sessions: sessions.map((s) => ({
       id: s.id,
       title: s.title,
       context_type: s.context_type,

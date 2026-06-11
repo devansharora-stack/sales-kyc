@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { createBrowserClient } from "@/lib/db";
 import type { ResearchStep } from "@/lib/types";
 
 // --- Phase definitions ---
@@ -427,28 +426,13 @@ export default function ResearchProgressPage() {
     fetchJob();
   }, [fetchJob]);
 
-  // Supabase Realtime subscription
+  // Poll for live progress until the job finishes (replaces Supabase Realtime).
+  const jobDone = job?.status === "completed" || job?.status === "failed";
   useEffect(() => {
-    const supabase = createBrowserClient();
-
-    const channel = supabase
-      .channel(`research-${jobId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "research_jobs", filter: `id=eq.${jobId}` },
-        () => fetchJob()
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "research_steps" },
-        () => fetchJob()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [jobId, fetchJob]);
+    if (jobDone) return;
+    const interval = setInterval(fetchJob, 3000);
+    return () => clearInterval(interval);
+  }, [jobDone, fetchJob]);
 
   // Redirect to profile when completed
   useEffect(() => {

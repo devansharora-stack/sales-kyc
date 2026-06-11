@@ -50,14 +50,31 @@ const tierColors = {
   "Influencer": { bg: "bg-amber-50/50", border: "border-amber-200/60", badge: "bg-amber-100 text-amber-800" },
 } as const;
 
+interface DeepStakeholderRow {
+  id: string;
+  name: string;
+  status: string;
+}
+
 export default function CompanyPage() {
   const params = useParams();
   const [company, setCompany] = useState<CompanyDetail | null>(null);
   const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
+  const [companyProfileId, setCompanyProfileId] = useState<string | null>(null);
+  const [deepRows, setDeepRows] = useState<DeepStakeholderRow[]>([]);
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [analyzing, setAnalyzing] = useState(false);
 
   const projectId = params.projectId as string;
   const slug = params.slug as string;
+
+  const fetchDeep = (pid: string) => {
+    fetch(`/api/projects/${pid}/stakeholders`)
+      .then(r => r.ok ? r.json() : { stakeholders: [] })
+      .then(d => setDeepRows(d.stakeholders || []))
+      .catch(() => {});
+  };
 
   useEffect(() => {
     if (!projectId || !slug) return;
@@ -67,11 +84,39 @@ export default function CompanyPage() {
         // API returns { profiles, jobs } — find the matching profile
         const profile = data.profiles?.find((p: { slug: string }) => p.slug === slug);
         if (!profile) throw new Error("Not found");
+        setCompanyProfileId(profile.id || null);
         // Profile data is stored in the `data` JSONB column
         setCompany(profile.data || profile);
       })
       .catch(() => setError(true));
+    fetchDeep(projectId);
   }, [projectId, slug]);
+
+  const deepByName = new Map(deepRows.map(d => [d.name.toLowerCase(), d]));
+
+  function toggleSelect(name: string) {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(name)) next.delete(name); else next.add(name);
+      return next;
+    });
+  }
+
+  async function handleDeepAnalyze() {
+    if (!company || selected.size === 0) return;
+    const people = company.stakeholders
+      .filter(s => selected.has(s.name))
+      .map(s => ({ name: s.name, company: company.name, title: s.title }));
+    setAnalyzing(true);
+    await fetch(`/api/projects/${projectId}/stakeholders`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ stakeholders: people, inputType: "company", companyProfileId }),
+    });
+    setAnalyzing(false);
+    setSelected(new Set());
+    fetchDeep(projectId);
+  }
 
   if (error) return (
     <div className="text-center py-20">
@@ -528,7 +573,19 @@ export default function CompanyPage() {
       {activeTab === "stakeholders" && (
         <div className="space-y-6">
           {company.stakeholders?.length > 0 && (
-            <Card title="Key Stakeholders" subtitle={`${company.stakeholders.length} contacts identified`}>
+            <Card
+              title="Key Stakeholders"
+              subtitle={`${company.stakeholders.length} contacts identified`}
+              action={
+                <button
+                  onClick={handleDeepAnalyze}
+                  disabled={analyzing || selected.size === 0}
+                  className="btn-primary text-xs disabled:opacity-50"
+                >
+                  {analyzing ? "Queuing…" : `Deep-analyze ${selected.size} selected`}
+                </button>
+              }
+            >
               <div className="flex flex-wrap gap-4 mb-4 pb-3 border-b border-slate-100">
                 <div className="flex items-center gap-1.5">
                   <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#3289FF]" />
@@ -560,12 +617,32 @@ export default function CompanyPage() {
                   <div key={tier} className="mb-4 last:mb-0">
                     <p className="text-label mb-2">{tier}s</p>
                     <div className="grid md:grid-cols-2 gap-2">
-                      {tierList.map((s, i) => (
+                      {tierList.map((s, i) => {
+                        const deep = deepByName.get(s.name.toLowerCase());
+                        return (
                         <div key={i} className={`${tc.bg} border ${tc.border} rounded-lg p-3`}>
                           <div className="flex items-start justify-between gap-2">
-                            <div className="min-w-0">
-                              <p className="text-sm font-semibold text-slate-800">{s.name}</p>
-                              <p className="text-xs text-slate-500 mt-0.5">{s.title}</p>
+                            <div className="flex items-start gap-2 min-w-0">
+                              <input
+                                type="checkbox"
+                                checked={selected.has(s.name)}
+                                onChange={() => toggleSelect(s.name)}
+                                className="mt-1 shrink-0 accent-[#3289FF] cursor-pointer"
+                              />
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-1.5 flex-wrap">
+                                  <p className="text-sm font-semibold text-slate-800">{s.name}</p>
+                                  {deep && (
+                                    <Link
+                                      href={`/projects/${projectId}/stakeholder/${deep.id}`}
+                                      className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[rgba(50,137,255,0.08)] text-[#3289FF] border border-[#3289FF]/20 hover:underline"
+                                    >
+                                      {deep.status === "completed" ? "Deep profile ✓" : "Analyzing…"}
+                                    </Link>
+                                  )}
+                                </div>
+                                <p className="text-xs text-slate-500 mt-0.5">{s.title}</p>
+                              </div>
                             </div>
                             <span className={`text-xs font-medium px-1.5 py-0.5 rounded shrink-0 ${tc.badge}`}>{s.tier}</span>
                           </div>
@@ -587,7 +664,8 @@ export default function CompanyPage() {
                             )}
                           </div>
                         </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 );

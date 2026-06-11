@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { createServerClient } from "@/lib/db";
+import { db } from "@/lib/db";
+import { users, projects } from "@/db/schema";
+import { eq, desc } from "drizzle-orm";
+import { serializeProject } from "@/lib/serializers";
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -9,26 +12,20 @@ export async function GET() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = createServerClient();
-
   // Get or create user
-  const { data: user } = await supabase
-    .from("users")
-    .select("id")
-    .eq("email", session.user.email)
-    .single();
+  const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, session.user.email));
 
   if (!user) {
     return NextResponse.json({ projects: [] });
   }
 
-  const { data: projects } = await supabase
-    .from("projects")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("created_at", { ascending: false });
+  const rows = await db
+    .select()
+    .from(projects)
+    .where(eq(projects.userId, user.id))
+    .orderBy(desc(projects.createdAt));
 
-  return NextResponse.json({ projects: projects || [] });
+  return NextResponse.json({ projects: rows.map(serializeProject) });
 }
 
 export async function POST(request: Request) {
@@ -37,36 +34,30 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const supabase = createServerClient();
   const body = await request.json();
 
   // Upsert user
-  const { data: user } = await supabase
-    .from("users")
-    .upsert(
-      { email: session.user.email, name: session.user.name, image: session.user.image },
-      { onConflict: "email" }
-    )
-    .select("id")
-    .single();
+  const [user] = await db
+    .insert(users)
+    .values({ email: session.user.email, name: session.user.name, image: session.user.image })
+    .onConflictDoUpdate({
+      target: users.email,
+      set: { name: session.user.name, image: session.user.image },
+    })
+    .returning({ id: users.id });
 
   if (!user) {
     return NextResponse.json({ error: "Failed to create user" }, { status: 500 });
   }
 
-  const { data: project, error } = await supabase
-    .from("projects")
-    .insert({
-      user_id: user.id,
-      name: body.name,
-      description: body.description || null,
-    })
-    .select()
-    .single();
+  const [project] = await db
+    .insert(projects)
+    .values({ userId: user.id, name: body.name, description: body.description || null })
+    .returning();
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  if (!project) {
+    return NextResponse.json({ error: "Failed to create project" }, { status: 500 });
   }
 
-  return NextResponse.json({ project });
+  return NextResponse.json({ project: serializeProject(project) });
 }

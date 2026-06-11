@@ -1,4 +1,6 @@
-import { createServerClient } from "@/lib/db";
+import { db } from "@/lib/db";
+import { companyProfiles } from "@/db/schema";
+import { and, eq, inArray, desc } from "drizzle-orm";
 import type { CompanyDetail } from "@/lib/types";
 import offeringsData from "@/data/offerings-kb.json";
 
@@ -64,28 +66,7 @@ interface CompanyIndex {
   execSummary: string;
 }
 
-const SALES_BUNDLE_FIELDS = [
-  "data->name",
-  "data->fullName",
-  "data->industry",
-  "data->subSector",
-  "data->hqCity",
-  "data->state",
-  "data->totalScore",
-  "data->rating",
-  "data->execSummary",
-  "data->businessDescription",
-  "data->stakeholders",
-  "data->painPoints",
-  "data->gtm",
-  "data->solutionMappings",
-  "data->triggerEvents",
-  "data->scores",
-  "data->salesIntelligence",
-].join(", ");
-
 export async function fetchCompanySalesBundle(
-  supabase: ReturnType<typeof createServerClient>,
   userId: string,
   slugs: string[]
 ): Promise<string | null> {
@@ -93,13 +74,18 @@ export async function fetchCompanySalesBundle(
 
   const safeSlugs = slugs.slice(0, 3);
 
-  const { data: profiles } = await supabase
-    .from("company_profiles")
-    .select(`slug, ${SALES_BUNDLE_FIELDS}`)
-    .eq("user_id", userId)
-    .in("slug", safeSlugs) as { data: Record<string, unknown>[] | null };
+  const rows = await db
+    .select({ slug: companyProfiles.slug, data: companyProfiles.data })
+    .from(companyProfiles)
+    .where(and(eq(companyProfiles.userId, userId), inArray(companyProfiles.slug, safeSlugs)));
 
-  if (!profiles || profiles.length === 0) return null;
+  if (!rows.length) return null;
+
+  // The bundle fields all live in the `data` JSONB blob; flatten for access.
+  const profiles: Record<string, any>[] = rows.map((r) => ({
+    slug: r.slug,
+    ...((r.data || {}) as Record<string, any>),
+  }));
 
   const sections: string[] = [];
 
@@ -207,28 +193,51 @@ export async function buildChatSystemPrompt(context: {
 }): Promise<{ prompt: string; hasCompanyIndex: boolean }> {
   const sections: string[] = [BASE_PREAMBLE, buildSolutionsSummary()];
 
-  const supabase = createServerClient();
-
   if (context.type === "company" && context.companySlug && context.projectId) {
-    const { data: profile } = await supabase
-      .from("company_profiles")
-      .select("data")
-      .eq("project_id", context.projectId)
-      .eq("slug", context.companySlug)
-      .single();
+    const [profile] = await db
+      .select({ data: companyProfiles.data })
+      .from(companyProfiles)
+      .where(and(eq(companyProfiles.projectId, context.projectId), eq(companyProfiles.slug, context.companySlug)))
+      .limit(1);
 
     if (profile?.data) {
       const company = cleanCompanyData(profile.data as CompanyDetail);
       sections.push(`## Company Research Data\n\n${JSON.stringify(company, null, 2)}`);
     }
   } else if (context.type === "project" && context.projectId) {
-    const { data: profiles } = await supabase
-      .from("company_profiles")
-      .select("slug, total_score, rating, industry, urgency, primary_solution, gemini_status, data->name, data->fullName, data->hqCity, data->state, data->execSummary")
-      .eq("project_id", context.projectId)
-      .order("total_score", { ascending: false });
+    const rows = await db
+      .select({
+        slug: companyProfiles.slug,
+        total_score: companyProfiles.totalScore,
+        rating: companyProfiles.rating,
+        industry: companyProfiles.industry,
+        urgency: companyProfiles.urgency,
+        primary_solution: companyProfiles.primarySolution,
+        gemini_status: companyProfiles.geminiStatus,
+        data: companyProfiles.data,
+      })
+      .from(companyProfiles)
+      .where(eq(companyProfiles.projectId, context.projectId))
+      .orderBy(desc(companyProfiles.totalScore));
 
-    if (profiles?.length) {
+    if (rows.length) {
+      const profiles = rows.map((r) => {
+        const d = (r.data || {}) as Record<string, any>;
+        return {
+          slug: r.slug,
+          total_score: r.total_score,
+          rating: r.rating,
+          industry: r.industry,
+          urgency: r.urgency,
+          primary_solution: r.primary_solution,
+          gemini_status: r.gemini_status,
+          name: d.name,
+          fullName: d.fullName,
+          hqCity: d.hqCity,
+          state: d.state,
+          execSummary: d.execSummary,
+        };
+      });
       sections.push(`## Project Companies (${profiles.length} researched)\n\n${JSON.stringify(profiles, null, 2)}`);
     }
   }
@@ -237,24 +246,34 @@ export async function buildChatSystemPrompt(context: {
   let hasCompanyIndex = false;
 
   if (context.userId) {
-    const { data: allProfiles } = await supabase
-      .from("company_profiles")
-      .select("slug, total_score, rating, industry, primary_solution, data->name, data->execSummary")
-      .eq("user_id", context.userId)
-      .order("total_score", { ascending: false })
+    const allProfiles = await db
+      .select({
+        slug: companyProfiles.slug,
+        total_score: companyProfiles.totalScore,
+        rating: companyProfiles.rating,
+        industry: companyProfiles.industry,
+        primary_solution: companyProfiles.primarySolution,
+        data: companyProfiles.data,
+      })
+      .from(companyProfiles)
+      .where(eq(companyProfiles.userId, context.userId))
+      .orderBy(desc(companyProfiles.totalScore))
       .limit(30);
 
-    if (allProfiles?.length) {
+    if (allProfiles.length) {
       hasCompanyIndex = true;
-      companyIndex = allProfiles.map((p: Record<string, unknown>) => ({
-        slug: p.slug as string,
-        name: p.name as string,
-        total_score: p.total_score as number,
-        rating: p.rating as string,
-        industry: p.industry as string,
-        primary_solution: p.primary_solution as string,
-        execSummary: typeof p.execSummary === "string" ? p.execSummary : "",
-      }));
+      companyIndex = allProfiles.map((p) => {
+        const d = (p.data || {}) as Record<string, any>;
+        return {
+          slug: p.slug,
+          name: (d.name as string) ?? "",
+          total_score: (p.total_score as number) ?? 0,
+          rating: p.rating as string,
+          industry: p.industry as string,
+          primary_solution: p.primary_solution as string,
+          execSummary: typeof d.execSummary === "string" ? d.execSummary : "",
+        };
+      });
 
       const index = companyIndex.map((p) =>
         `- **${p.name}** [slug: ${p.slug}]: Score ${p.total_score} (${p.rating}), ${p.industry}, Primary: ${p.primary_solution}. ${p.execSummary.slice(0, 120)}`

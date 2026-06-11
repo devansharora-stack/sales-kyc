@@ -1,8 +1,12 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { createServerClient } from "@/lib/db";
+import { db } from "@/lib/db";
+import { users, projects, researchJobs, researchSteps, companyProfiles } from "@/db/schema";
+import { and, eq, gte, desc, inArray, sql } from "drizzle-orm";
+import { serializeJob } from "@/lib/serializers";
 import { inngest } from "@/lib/inngest";
+import type { CompanyDetail } from "@/lib/types";
 
 /**
  * Extract company name from a URL by fetching the page title.
@@ -94,21 +98,17 @@ export async function GET(
   }
 
   const { projectId } = await params;
-  const supabase = createServerClient();
 
   // Verify project belongs to this user
-  const { data: userRecord } = await supabase
-    .from("users")
-    .select("id")
-    .eq("email", session.user.email)
-    .single();
+  const [userRecord] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, session.user.email));
   if (userRecord) {
-    const { data: project } = await supabase
-      .from("projects")
-      .select("id")
-      .eq("id", projectId)
-      .eq("user_id", userRecord.id)
-      .single();
+    const [project] = await db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(and(eq(projects.id, projectId), eq(projects.userId, userRecord.id)));
     if (!project) {
       return NextResponse.json({ error: "Project not found" }, { status: 404 });
     }
@@ -119,40 +119,91 @@ export async function GET(
 
   // If slug is provided, return full profile data for a single company
   if (slug) {
-    const { data: profile } = await supabase
-      .from("company_profiles")
-      .select("*")
-      .eq("project_id", projectId)
-      .eq("slug", slug)
-      .single();
+    const [profile] = await db
+      .select()
+      .from(companyProfiles)
+      .where(and(eq(companyProfiles.projectId, projectId), eq(companyProfiles.slug, slug)));
 
     if (!profile) {
       return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
     return NextResponse.json({
-      profiles: [profile],
+      profiles: [
+        {
+          id: profile.id,
+          slug: profile.slug,
+          total_score: profile.totalScore,
+          rating: profile.rating,
+          industry: profile.industry,
+          urgency: profile.urgency,
+          primary_solution: profile.primarySolution,
+          gemini_status: profile.geminiStatus,
+          data: profile.data,
+        },
+      ],
       jobs: [],
     });
   }
 
   // Get completed company profiles (summary view for list)
-  const { data: profiles } = await supabase
-    .from("company_profiles")
-    .select("id, slug, total_score, rating, industry, urgency, primary_solution, gemini_status, data->name, data->fullName, data->hqCity, data->state, data->execSummary, data->salesIntelligence")
-    .eq("project_id", projectId)
-    .order("total_score", { ascending: false });
+  const profileRows = await db
+    .select({
+      id: companyProfiles.id,
+      slug: companyProfiles.slug,
+      total_score: companyProfiles.totalScore,
+      rating: companyProfiles.rating,
+      industry: companyProfiles.industry,
+      urgency: companyProfiles.urgency,
+      primary_solution: companyProfiles.primarySolution,
+      gemini_status: companyProfiles.geminiStatus,
+      data: companyProfiles.data,
+    })
+    .from(companyProfiles)
+    .where(eq(companyProfiles.projectId, projectId))
+    .orderBy(desc(companyProfiles.totalScore));
 
-  // Get active research jobs
-  const { data: jobs } = await supabase
-    .from("research_jobs")
-    .select("*, research_steps(*)")
-    .eq("project_id", projectId)
-    .order("created_at", { ascending: false });
+  const profilesList = profileRows.map((p) => {
+    const d = (p.data || {}) as Partial<CompanyDetail>;
+    return {
+      id: p.id,
+      slug: p.slug,
+      total_score: p.total_score,
+      rating: p.rating,
+      industry: p.industry,
+      urgency: p.urgency,
+      primary_solution: p.primary_solution,
+      gemini_status: p.gemini_status,
+      name: d.name,
+      fullName: d.fullName,
+      hqCity: d.hqCity,
+      state: d.state,
+      execSummary: d.execSummary,
+      salesIntelligence: d.salesIntelligence,
+    };
+  });
+
+  // Get all research jobs for this project with their steps
+  const jobRows = await db
+    .select()
+    .from(researchJobs)
+    .where(eq(researchJobs.projectId, projectId))
+    .orderBy(desc(researchJobs.createdAt));
+
+  const jobIds = jobRows.map((j) => j.id);
+  const stepRows = jobIds.length
+    ? await db.select().from(researchSteps).where(inArray(researchSteps.jobId, jobIds))
+    : [];
+  const stepsByJob = new Map<string, typeof stepRows>();
+  for (const s of stepRows) {
+    const arr = stepsByJob.get(s.jobId!) || [];
+    arr.push(s);
+    stepsByJob.set(s.jobId!, arr);
+  }
 
   return NextResponse.json({
-    profiles: profiles || [],
-    jobs: jobs || [],
+    profiles: profilesList,
+    jobs: jobRows.map((j) => serializeJob(j, stepsByJob.get(j.id) || [])),
   });
 }
 
@@ -166,7 +217,6 @@ export async function POST(
   }
 
   const { projectId } = await params;
-  const supabase = createServerClient();
   const body = await request.json();
   const rawCompanies = body.companies || [];
 
@@ -193,11 +243,10 @@ export async function POST(
   }
 
   // Get user
-  const { data: user } = await supabase
-    .from("users")
-    .select("id")
-    .eq("email", session.user.email)
-    .single();
+  const [user] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, session.user.email));
 
   if (!user) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
@@ -231,58 +280,67 @@ export async function POST(
       const cutoffDate = new Date();
       cutoffDate.setDate(cutoffDate.getDate() - CACHE_MAX_AGE_DAYS);
 
-      const { data: cached } = await supabase
-        .from("company_profiles")
-        .select("*")
-        .eq("slug", normalizedSlug)
-        .gte("updated_at", cutoffDate.toISOString())
-        .order("updated_at", { ascending: false })
-        .limit(1)
-        .single();
+      const [cached] = await db
+        .select()
+        .from(companyProfiles)
+        .where(and(eq(companyProfiles.slug, normalizedSlug), gte(companyProfiles.updatedAt, cutoffDate)))
+        .orderBy(desc(companyProfiles.updatedAt))
+        .limit(1);
 
       if (cached) {
         // Copy cached profile to this project
-        const { error: upsertError } = await supabase.from("company_profiles").upsert(
-          {
-            job_id: cached.job_id,
-            project_id: projectId,
-            user_id: user.id,
-            slug: cached.slug,
-            data: cached.data,
-            total_score: cached.total_score,
-            rating: cached.rating,
-            industry: cached.industry,
-            urgency: cached.urgency,
-            primary_solution: cached.primary_solution,
-            gemini_status: cached.gemini_status,
-          },
-          { onConflict: "project_id,slug" }
-        );
+        try {
+          await db
+            .insert(companyProfiles)
+            .values({
+              jobId: cached.jobId,
+              projectId,
+              userId: user.id,
+              slug: cached.slug,
+              data: cached.data,
+              totalScore: cached.totalScore,
+              rating: cached.rating,
+              industry: cached.industry,
+              urgency: cached.urgency,
+              primarySolution: cached.primarySolution,
+              geminiStatus: cached.geminiStatus,
+            })
+            .onConflictDoUpdate({
+              target: [companyProfiles.projectId, companyProfiles.slug],
+              set: {
+                jobId: cached.jobId,
+                userId: user.id,
+                data: cached.data,
+                totalScore: cached.totalScore,
+                rating: cached.rating,
+                industry: cached.industry,
+                urgency: cached.urgency,
+                primarySolution: cached.primarySolution,
+                geminiStatus: cached.geminiStatus,
+                updatedAt: new Date(),
+              },
+            });
 
-        if (!upsertError) {
-          jobs.push({ id: cached.job_id, cached: true, company_name: companyName, slug: cached.slug });
+          jobs.push({ id: cached.jobId, cached: true, company_name: companyName, slug: cached.slug });
           continue;
+        } catch {
+          // fall through to creating a fresh job
         }
       }
     }
 
     // No cache hit — create a new research job
-    const { data: job } = await supabase
-      .from("research_jobs")
-      .insert({
-        project_id: projectId,
-        user_id: user.id,
-        company_name: companyName,
-      })
-      .select()
-      .single();
+    const [job] = await db
+      .insert(researchJobs)
+      .values({ projectId, userId: user.id, companyName })
+      .returning();
 
     if (job) {
       // Create all research steps
-      await supabase.from("research_steps").insert(
+      await db.insert(researchSteps).values(
         agentSteps.map((step) => ({
-          job_id: job.id,
-          agent_name: step.agent_name,
+          jobId: job.id,
+          agentName: step.agent_name,
           phase: step.phase,
         }))
       );
@@ -293,24 +351,18 @@ export async function POST(
         data: { jobId: job.id, companyName },
       });
 
-      jobs.push(job);
+      jobs.push(serializeJob(job));
     }
   }
 
   // Update project company count
-  const { data: currentProject } = await supabase
-    .from("projects")
-    .select("company_count")
-    .eq("id", projectId)
-    .single();
-
-  await supabase
-    .from("projects")
-    .update({
-      company_count: (currentProject?.company_count || 0) + jobs.length,
-      updated_at: new Date().toISOString(),
+  await db
+    .update(projects)
+    .set({
+      companyCount: sql`${projects.companyCount} + ${jobs.length}`,
+      updatedAt: new Date(),
     })
-    .eq("id", projectId);
+    .where(eq(projects.id, projectId));
 
   return NextResponse.json({ jobs, count: jobs.length });
 }
