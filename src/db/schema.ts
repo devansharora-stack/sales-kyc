@@ -1,4 +1,5 @@
-import { pgSchema, uuid, text, integer, jsonb, timestamp, unique, index } from "drizzle-orm/pg-core";
+import { pgSchema, uuid, text, integer, jsonb, timestamp, unique, index, check } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // Everything lives in the isolated `sales_kyc` schema (shared AlloyDB cluster).
 export const kyc = pgSchema("sales_kyc");
@@ -116,5 +117,25 @@ export const stakeholderProfiles = kyc.table(
     unique("stakeholder_profiles_project_name_company_key").on(t.projectId, t.name, t.company),
     index("idx_stakeholders_project").on(t.projectId),
     index("idx_stakeholders_company_profile").on(t.companyProfileId),
+  ],
+);
+
+export const chatSessions = kyc.table(
+  "chat_sessions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    projectId: uuid("project_id").references(() => projects.id, { onDelete: "cascade" }),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    companySlug: text("company_slug"),
+    contextType: text("context_type").notNull(),
+    title: text("title"),
+    messages: jsonb("messages").default([]),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    check("chat_sessions_context_type_check", sql`${t.contextType} IN ('company', 'project', 'global')`),
+    index("idx_chat_sessions_user").on(t.userId),
+    index("idx_chat_sessions_project").on(t.projectId),
   ],
 );

@@ -22,6 +22,7 @@ const TABS = [
   { id: "overview", label: "Overview" },
   { id: "intelligence", label: "Intelligence" },
   { id: "gtm", label: "GTM Strategy" },
+  { id: "solutions", label: "Solution Mapping" },
   { id: "stakeholders", label: "Stakeholders" },
   { id: "sources", label: "Sources" },
 ];
@@ -517,27 +518,6 @@ export default function CompanyPage() {
             <WhyRecommendation reasoning={company.gtm.entrySolutionReasoning} sources={company.gtm.entrySolutionSources || company.gtm.sources} />
           </Card>
 
-          <Card title="Solution Mapping" subtitle="Their problem, what we sell, what they get." action={<FitScoreMethodology />}>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-slate-200">
-                    <th className="text-center text-label px-3 py-2 w-10">#</th>
-                    <th className="text-left text-label px-3 py-2">Problem</th>
-                    <th className="text-left text-label px-3 py-2">Techolution Capability</th>
-                    <th className="text-left text-label px-3 py-2 w-32">Fit Score</th>
-                    <th className="text-left text-label px-3 py-2">Expected Outcome</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {company.solutionMappings?.map((m, i) => (
-                    <SolutionMappingRow key={i} index={i + 1} mapping={m} />
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-
           {company.gtm.pilotStrategy && (
             <Card title="Pilot Strategy" subtitle="The first project we propose to prove value.">
               <div className="bg-emerald-50/50 border border-emerald-200/60 rounded-lg p-4">
@@ -560,6 +540,32 @@ export default function CompanyPage() {
           )}
 
           <Sources sources={company.gtm.sources} />
+        </div>
+      )}
+
+      {/* TAB: Solution Mapping */}
+      {activeTab === "solutions" && (
+        <div className="space-y-6">
+          <Card title="Solution Mapping" subtitle="Their problem, what we sell, what they get." action={<FitScoreMethodology />}>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-200">
+                    <th className="text-center text-label px-3 py-2 w-10">#</th>
+                    <th className="text-left text-label px-3 py-2">Problem</th>
+                    <th className="text-left text-label px-3 py-2">Techolution Capability</th>
+                    <th className="text-left text-label px-3 py-2 w-32">Fit Score</th>
+                    <th className="text-left text-label px-3 py-2">Expected Outcome</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {company.solutionMappings?.map((m, i) => (
+                    <SolutionMappingRow key={i} index={i + 1} mapping={m} />
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
         </div>
       )}
 
