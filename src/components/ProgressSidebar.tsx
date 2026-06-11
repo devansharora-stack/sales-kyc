@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { usePathname } from "next/navigation";
-import { createBrowserClient } from "@/lib/db";
 import Link from "next/link";
 
 const AGENT_LABELS: Record<string, string> = {
@@ -78,44 +77,14 @@ export default function ProgressSidebar() {
       return;
     }
 
-    const supabase = createBrowserClient();
-
-    // Fetch ALL jobs for this project (active = queued/running/failed)
-    const { data: jobs } = await supabase
-      .from("research_jobs")
-      .select("id, project_id, company_name, status, progress, created_at, started_at, research_steps(id, agent_name, status)")
-      .eq("project_id", projectId)
-      .in("status", ["queued", "running", "failed"])
-      .order("created_at", { ascending: false })
-      .limit(10);
-
-    if (jobs) setActiveJobs(jobs as unknown as Job[]);
-
-    // Fetch recently completed — join with company_profiles to get slug
-    const { data: completed } = await supabase
-      .from("research_jobs")
-      .select("id, project_id, company_name, status, progress, created_at, started_at, research_steps(id, agent_name, status)")
-      .eq("project_id", projectId)
-      .eq("status", "completed")
-      .order("completed_at", { ascending: false })
-      .limit(5);
-
-    if (completed) {
-      // Fetch slugs for completed jobs
-      const jobIds = completed.map((j: any) => j.id);
-      const { data: profiles } = await supabase
-        .from("company_profiles")
-        .select("job_id, slug, project_id")
-        .in("job_id", jobIds);
-
-      const slugMap = new Map((profiles || []).map((p: any) => [p.job_id, { slug: p.slug, project_id: p.project_id }]));
-
-      setRecentCompleted(
-        completed.map((j: any) => ({
-          ...j,
-          slug: slugMap.get(j.id)?.slug || j.company_name.toLowerCase().replace(/[^a-z0-9]+/g, "-"),
-        })) as CompletedJob[]
-      );
+    try {
+      const res = await fetch(`/api/projects/${projectId}/sidebar`);
+      if (!res.ok) return;
+      const data = await res.json();
+      setActiveJobs((data.activeJobs || []) as Job[]);
+      setRecentCompleted((data.recentCompleted || []) as CompletedJob[]);
+    } catch {
+      /* ignore transient fetch errors */
     }
   }
 
@@ -130,34 +99,12 @@ export default function ProgressSidebar() {
   }
 
   useEffect(() => {
-    const supabase = createBrowserClient();
-
     fetchJobs();
-
     if (!projectId) return;
 
-    const jobChannel = supabase
-      .channel(`sidebar-jobs-${projectId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "research_jobs", filter: `project_id=eq.${projectId}` },
-        () => fetchJobs()
-      )
-      .subscribe();
-
-    const stepChannel = supabase
-      .channel(`sidebar-steps-${projectId}`)
-      .on(
-        "postgres_changes",
-        { event: "UPDATE", schema: "public", table: "research_steps" },
-        () => fetchJobs()
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(jobChannel);
-      supabase.removeChannel(stepChannel);
-    };
+    // Poll for live progress (replaces Supabase Realtime).
+    const interval = setInterval(fetchJobs, 3000);
+    return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId]);
 

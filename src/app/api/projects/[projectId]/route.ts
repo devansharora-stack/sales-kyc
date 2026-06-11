@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
-import { createServerClient } from "@/lib/db";
+import { db } from "@/lib/db";
+import { projects } from "@/db/schema";
+import { eq } from "drizzle-orm";
+import { serializeProject } from "@/lib/serializers";
 
 export async function GET(
   _request: Request,
@@ -13,19 +16,14 @@ export async function GET(
   }
 
   const { projectId } = await params;
-  const supabase = createServerClient();
 
-  const { data: project } = await supabase
-    .from("projects")
-    .select("*")
-    .eq("id", projectId)
-    .single();
+  const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
 
   if (!project) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ project });
+  return NextResponse.json({ project: serializeProject(project) });
 }
 
 export async function PATCH(
@@ -38,21 +36,25 @@ export async function PATCH(
   }
 
   const { projectId } = await params;
-  const supabase = createServerClient();
   const body = await request.json();
 
-  const { data: project, error } = await supabase
-    .from("projects")
-    .update({ ...body, updated_at: new Date().toISOString() })
-    .eq("id", projectId)
-    .select()
-    .single();
+  // Only allow updating known columns
+  const patch: Partial<typeof projects.$inferInsert> = { updatedAt: new Date() };
+  if (typeof body.name === "string") patch.name = body.name;
+  if ("description" in body) patch.description = body.description;
+  if (body.status === "active" || body.status === "archived") patch.status = body.status;
 
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  const [project] = await db
+    .update(projects)
+    .set(patch)
+    .where(eq(projects.id, projectId))
+    .returning();
+
+  if (!project) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ project });
+  return NextResponse.json({ project: serializeProject(project) });
 }
 
 export async function DELETE(
@@ -65,16 +67,8 @@ export async function DELETE(
   }
 
   const { projectId } = await params;
-  const supabase = createServerClient();
 
-  const { error } = await supabase
-    .from("projects")
-    .delete()
-    .eq("id", projectId);
-
-  if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  await db.delete(projects).where(eq(projects.id, projectId));
 
   return NextResponse.json({ success: true });
 }

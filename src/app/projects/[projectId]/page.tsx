@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import type { Project, ResearchJob, ResearchStep, Rating, SalesIntelligence, SalesMotionType } from "@/lib/types";
-import { createBrowserClient } from "@/lib/db";
 import CSVUpload from "@/components/CSVUpload";
 
 const RATING_STYLES: Record<Rating, string> = {
@@ -106,33 +105,13 @@ export default function ProjectDetailPage() {
     fetchData();
   }, [fetchData]);
 
-  // Subscribe to Supabase Realtime for live progress
+  // Poll for live progress while any job is active (replaces Supabase Realtime).
+  const hasActiveJobs = jobs.some((j) => j.status === "queued" || j.status === "running");
   useEffect(() => {
-    const supabase = createBrowserClient();
-
-    const channel = supabase
-      .channel(`project-${projectId}`)
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "research_jobs", filter: `project_id=eq.${projectId}` },
-        () => { fetchData(); }
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "research_steps" },
-        () => { fetchData(); }
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "company_profiles", filter: `project_id=eq.${projectId}` },
-        () => { fetchData(); }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [projectId, fetchData]);
+    if (!hasActiveJobs) return;
+    const interval = setInterval(fetchData, 3000);
+    return () => clearInterval(interval);
+  }, [hasActiveJobs, fetchData]);
 
   async function handleAddCompanies() {
     const names = newCompanies.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean);
@@ -230,6 +209,12 @@ export default function ProjectDetailPage() {
           <button onClick={handleArchive} className="btn-ghost text-xs">
             {project.status === "active" ? "Archive" : "Unarchive"}
           </button>
+          <Link
+            href={`/projects/${projectId}/stakeholders`}
+            className="btn-ghost text-xs text-[#3289FF]"
+          >
+            Stakeholders
+          </Link>
           <Link
             href={`/projects/${projectId}/solutions`}
             className="btn-ghost text-xs text-[#3289FF]"

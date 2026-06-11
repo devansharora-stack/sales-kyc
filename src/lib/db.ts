@@ -1,17 +1,21 @@
-import { createClient } from "@supabase/supabase-js";
+import { drizzle } from "drizzle-orm/node-postgres";
+import { Pool } from "pg";
+import * as schema from "@/db/schema";
 
-// Server-side client (uses service role key for full access)
-export function createServerClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  );
+// AlloyDB (Postgres) connection. All app tables live in the isolated
+// `sales_kyc` schema on a shared cluster — never the crowded `public` schema.
+// Pool is cached across hot-reloads to avoid exhausting connections in dev.
+const globalForDb = globalThis as unknown as { __kycPool?: Pool };
+
+function getPool(): Pool {
+  if (!globalForDb.__kycPool) {
+    globalForDb.__kycPool = new Pool({
+      connectionString: process.env.DATABASE_URL,
+      ssl: { rejectUnauthorized: false },
+      max: 10,
+    });
+  }
+  return globalForDb.__kycPool;
 }
 
-// Browser-side client (uses anon key, respects RLS)
-export function createBrowserClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  );
-}
+export const db = drizzle(getPool(), { schema });

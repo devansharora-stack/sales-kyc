@@ -8,7 +8,9 @@
  */
 
 import { inngest } from "@/lib/inngest";
-import { createServerClient } from "@/lib/db";
+import { db } from "@/lib/db";
+import { researchJobs, researchSteps, companyProfiles } from "@/db/schema";
+import { and, eq } from "drizzle-orm";
 import { scoreToRating } from "@/lib/types";
 import type { CompanyDetail, GeminiStatus } from "@/lib/types";
 
@@ -25,27 +27,21 @@ import { runScoringAgent } from "./scoring-agent";
 import { runVerification } from "./verification-agent";
 import { runSalesIntelligence } from "./sales-intelligence";
 
-// Helper: update a research step's status in Supabase
+// Helper: update a research step's status
 async function updateStep(
   jobId: string,
   agentName: string,
-  update: Record<string, unknown>
+  update: Partial<typeof researchSteps.$inferInsert>
 ) {
-  const supabase = createServerClient();
-  await supabase
-    .from("research_steps")
-    .update(update)
-    .eq("job_id", jobId)
-    .eq("agent_name", agentName);
+  await db
+    .update(researchSteps)
+    .set(update)
+    .where(and(eq(researchSteps.jobId, jobId), eq(researchSteps.agentName, agentName)));
 }
 
 // Helper: update research job progress
 async function updateJobProgress(jobId: string, progress: number) {
-  const supabase = createServerClient();
-  await supabase
-    .from("research_jobs")
-    .update({ progress })
-    .eq("id", jobId);
+  await db.update(researchJobs).set({ progress }).where(eq(researchJobs.id, jobId));
 }
 
 // Wraps an agent call with step status tracking
@@ -57,7 +53,7 @@ async function runAgentStep<T>(
   const start = Date.now();
   await updateStep(jobId, agentName, {
     status: "running",
-    started_at: new Date().toISOString(),
+    startedAt: new Date(),
   });
 
   try {
@@ -65,16 +61,16 @@ async function runAgentStep<T>(
     await updateStep(jobId, agentName, {
       status: "completed",
       output: result as Record<string, unknown>,
-      completed_at: new Date().toISOString(),
-      duration_ms: Date.now() - start,
+      completedAt: new Date(),
+      durationMs: Date.now() - start,
     });
     return result;
   } catch (error) {
     await updateStep(jobId, agentName, {
       status: "failed",
-      error_message: error instanceof Error ? error.message : String(error),
-      completed_at: new Date().toISOString(),
-      duration_ms: Date.now() - start,
+      errorMessage: error instanceof Error ? error.message : String(error),
+      completedAt: new Date(),
+      durationMs: Date.now() - start,
     });
     throw error;
   }
@@ -90,13 +86,11 @@ export const researchCompany = inngest.createFunction(
   async ({ event, step }: { event: { data: { jobId: string; companyName: string; companyContext?: Record<string, string> } }; step: { run: <T>(id: string, fn: () => Promise<T>) => Promise<T> } }) => {
     const { jobId, companyName, companyContext } = event.data;
 
-    const supabase = createServerClient();
-
     // Mark job as running
-    await supabase
-      .from("research_jobs")
-      .update({ status: "running", started_at: new Date().toISOString() })
-      .eq("id", jobId);
+    await db
+      .update(researchJobs)
+      .set({ status: "running", startedAt: new Date() })
+      .where(eq(researchJobs.id, jobId));
 
     // Safe field accessors — LLM output may omit fields
     const safe = (val: unknown, fallback = "Unknown") => (val as string) || fallback;
@@ -394,53 +388,62 @@ export const researchCompany = inngest.createFunction(
       // ============================
 
       await step.run("save-profile", async () => {
-        const { data: job } = await supabase
-          .from("research_jobs")
-          .select("project_id, user_id")
-          .eq("id", jobId)
-          .single();
+        const [job] = await db
+          .select({ projectId: researchJobs.projectId, userId: researchJobs.userId })
+          .from(researchJobs)
+          .where(eq(researchJobs.id, jobId));
 
         if (!job) throw new Error(`Job ${jobId} not found`);
 
-        await supabase.from("company_profiles").upsert(
-          {
-            job_id: jobId,
-            project_id: job.project_id,
-            user_id: job.user_id,
+        await db
+          .insert(companyProfiles)
+          .values({
+            jobId,
+            projectId: job.projectId,
+            userId: job.userId,
             slug: correctedProfile.slug,
             data: correctedProfile as unknown as Record<string, unknown>,
-            total_score: correctedProfile.totalScore,
+            totalScore: correctedProfile.totalScore,
             rating: correctedProfile.rating,
             industry: correctedProfile.industry,
             urgency: correctedProfile.gtm?.urgency || "medium",
-            primary_solution: primarySolution,
-            gemini_status: correctedProfile.geminiStatus,
-          },
-          { onConflict: "project_id,slug" }
-        );
+            primarySolution: primarySolution,
+            geminiStatus: correctedProfile.geminiStatus,
+          })
+          .onConflictDoUpdate({
+            target: [companyProfiles.projectId, companyProfiles.slug],
+            set: {
+              jobId,
+              userId: job.userId,
+              data: correctedProfile as unknown as Record<string, unknown>,
+              totalScore: correctedProfile.totalScore,
+              rating: correctedProfile.rating,
+              industry: correctedProfile.industry,
+              urgency: correctedProfile.gtm?.urgency || "medium",
+              primarySolution: primarySolution,
+              geminiStatus: correctedProfile.geminiStatus,
+              updatedAt: new Date(),
+            },
+          });
 
         // Mark job complete
-        await supabase
-          .from("research_jobs")
-          .update({
-            status: "completed",
-            progress: 100,
-            completed_at: new Date().toISOString(),
-          })
-          .eq("id", jobId);
+        await db
+          .update(researchJobs)
+          .set({ status: "completed", progress: 100, completedAt: new Date() })
+          .where(eq(researchJobs.id, jobId));
       });
 
       return { success: true, slug: correctedProfile.slug, rating: correctedProfile.rating };
     } catch (error) {
       // Mark job as failed
-      await supabase
-        .from("research_jobs")
-        .update({
+      await db
+        .update(researchJobs)
+        .set({
           status: "failed",
-          error_message: error instanceof Error ? error.message : String(error),
-          completed_at: new Date().toISOString(),
+          errorMessage: error instanceof Error ? error.message : String(error),
+          completedAt: new Date(),
         })
-        .eq("id", jobId);
+        .where(eq(researchJobs.id, jobId));
 
       throw error;
     }

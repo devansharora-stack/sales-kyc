@@ -121,6 +121,138 @@ export interface Stakeholder {
   confidence: "verified" | "likely" | "unverified";
 }
 
+// === Deep Stakeholder Analysis ===
+
+export type IntelQuality = "HIGH" | "MEDIUM" | "LOW";
+
+export interface StakeholderExperience {
+  position: string;
+  company: string;
+  startDate?: string;
+  endDate?: string;
+  duration?: string;
+  location?: string;
+  description?: string;
+}
+
+export interface StakeholderEducation {
+  school: string;
+  degree?: string;
+  fieldOfStudy?: string;
+}
+
+export interface StakeholderCertification {
+  title: string;
+  issuer?: string;
+}
+
+export interface StakeholderOrganization {
+  title: string;
+  role?: string;
+}
+
+export interface StakeholderAward {
+  title: string;
+  issuer?: string;
+}
+
+export interface StakeholderVolunteering {
+  role: string;
+  organization?: string;
+}
+
+export interface StakeholderPost {
+  text: string;
+  date?: string;
+  likes?: number;
+  comments?: number;
+  url?: string;
+}
+
+export interface StakeholderCompanyIntel {
+  companyName?: string;
+  industry?: string;
+  employeeCount?: string;
+  revenue?: string;
+  yearFounded?: string;
+  specialities?: string[];
+}
+
+// AI synthesis — mirrors webinar-intel's intelBrief
+export interface StakeholderIntelBrief {
+  intelQuality: IntelQuality;
+  intelQualityReason: string;
+  executiveSummary: string;
+  keyInsight: string;
+  careerNarrative: { role: string; tenure?: string; takeaway: string }[];
+  verifiedPriorities: { priority: string; evidence: string; confidence: IntelQuality; sourceUrl?: string }[];
+  painPoints: { pain: string; evidence: string; confidence: IntelQuality; sourceUrl?: string }[];
+  postInsights: { headline: string; insight: string; engagement?: string; sourceUrl?: string }[];
+  engagementApproach: { openingAngle: string; talkingPoints: string[]; avoidTopics: string[] };
+}
+
+// Drives the header "Intel coverage" checklist
+export interface StakeholderDataRichness {
+  score: number;
+  about: boolean;
+  experience: boolean;
+  skills: boolean;
+  posts: boolean;
+  certifications: boolean;
+  companyData: boolean;
+  organizations: boolean;
+}
+
+export interface DeepStakeholderProfile {
+  // Raw (normalized from scrapers)
+  fullName: string;
+  firstName?: string;
+  lastName?: string;
+  headline?: string;
+  photoUrl?: string;
+  linkedinUrl?: string;
+  location?: string;
+  about?: string;
+  experience: StakeholderExperience[];
+  skills: string[];
+  education: StakeholderEducation[];
+  certifications: StakeholderCertification[];
+  organizations: StakeholderOrganization[];
+  languages: string[];
+  honorsAndAwards: StakeholderAward[];
+  volunteering: StakeholderVolunteering[];
+  connectionsCount?: number;
+  followerCount?: number;
+  posts: StakeholderPost[];
+  companyIntel?: StakeholderCompanyIntel;
+  // AI synthesis + coverage
+  intelBrief: StakeholderIntelBrief;
+  dataRichness: StakeholderDataRichness;
+}
+
+export type StakeholderStatus =
+  | "queued" | "resolving" | "needs_confirmation" | "scraping"
+  | "synthesizing" | "completed" | "failed" | "cancelled";
+
+export interface StakeholderRecord {
+  id: string;
+  project_id: string;
+  company_profile_id: string | null;
+  user_id: string;
+  name: string;
+  company: string | null;
+  title: string | null;
+  linkedin_url: string | null;
+  url_confidence: "high" | "low" | "confirmed" | null;
+  input_type: "manual" | "csv" | "company" | null;
+  status: StakeholderStatus;
+  progress: number;
+  data: { raw?: Record<string, unknown>; profile?: DeepStakeholderProfile } | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // === Company Data ===
 
 export interface FitScoreBreakdown {

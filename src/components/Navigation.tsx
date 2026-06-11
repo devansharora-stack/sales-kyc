@@ -26,6 +26,7 @@ export default function Navigation() {
             {[
               { href: "/", label: "Dashboard" },
               { href: "/projects", label: "Projects" },
+              { href: "/stakeholders", label: "Stakeholders" },
             ].map((item) => {
               const isActive =
                 item.href === "/"
