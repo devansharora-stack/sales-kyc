@@ -4,10 +4,38 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import type { Project } from "@/lib/types";
 
+function ProjectCard({ project }: { project: Project }) {
+  return (
+    <Link href={`/projects/${project.id}`} className="card p-4 block">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-700">{project.name}</h3>
+          {project.description && (
+            <p className="text-xs text-slate-400 mt-0.5">{project.description}</p>
+          )}
+          <p className="text-[10px] text-slate-300 mt-1">
+            Created {new Date(project.created_at).toLocaleDateString()}
+          </p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <p className="text-sm font-bold text-[#3289FF]">{project.company_count}</p>
+            <p className="text-[10px] text-slate-400">companies</p>
+          </div>
+          <span className={`badge ${project.status === "active" ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400"}`}>
+            {project.status}
+          </span>
+        </div>
+      </div>
+    </Link>
+  );
+}
+
 export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     fetch("/api/projects")
@@ -26,6 +54,7 @@ export default function DashboardPage() {
   }, []);
 
   const activeProjects = projects.filter((p) => p.status === "active");
+  const archivedProjects = projects.filter((p) => p.status !== "active");
   const totalCompanies = projects.reduce((sum, p) => sum + p.company_count, 0);
 
   return (
@@ -64,9 +93,17 @@ export default function DashboardPage() {
       )}
 
       {/* Projects List */}
-      {!loading && !error && (
-        <div className="mb-4">
+      {!loading && !error && projects.length > 0 && (
+        <div className="mb-4 flex items-center justify-between">
           <h2 className="text-sm font-semibold text-slate-600">Recent Projects</h2>
+          {archivedProjects.length > 0 && (
+            <button
+              onClick={() => setShowArchived((v) => !v)}
+              className="text-xs text-slate-400 hover:text-[#3289FF]"
+            >
+              {showArchived ? "Hide" : "Show"} archived ({archivedProjects.length})
+            </button>
+          )}
         </div>
       )}
 
@@ -128,30 +165,22 @@ export default function DashboardPage() {
       {/* Projects */}
       {!loading && !error && projects.length > 0 && (
         <div className="space-y-3">
-          {projects.map((project) => (
-            <Link key={project.id} href={`/projects/${project.id}`} className="card p-4 block">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="text-sm font-semibold text-slate-700">{project.name}</h3>
-                  {project.description && (
-                    <p className="text-xs text-slate-400 mt-0.5">{project.description}</p>
-                  )}
-                  <p className="text-[10px] text-slate-300 mt-1">
-                    Created {new Date(project.created_at).toLocaleDateString()}
-                  </p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-sm font-bold text-[#3289FF]">{project.company_count}</p>
-                    <p className="text-[10px] text-slate-400">companies</p>
-                  </div>
-                  <span className={`badge ${project.status === "active" ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400"}`}>
-                    {project.status}
-                  </span>
-                </div>
+          {activeProjects.length > 0 ? (
+            activeProjects.map((project) => <ProjectCard key={project.id} project={project} />)
+          ) : (
+            <div className="card p-8 text-center">
+              <p className="text-sm text-slate-400">No active projects. {archivedProjects.length > 0 ? "Show archived below or create a new one." : ""}</p>
+            </div>
+          )}
+
+          {showArchived && archivedProjects.length > 0 && (
+            <div className="pt-4">
+              <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Archived</h2>
+              <div className="space-y-3 opacity-70">
+                {archivedProjects.map((project) => <ProjectCard key={project.id} project={project} />)}
               </div>
-            </Link>
-          ))}
+            </div>
+          )}
         </div>
       )}
     </div>
