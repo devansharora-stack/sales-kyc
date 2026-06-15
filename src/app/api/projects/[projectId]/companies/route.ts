@@ -260,10 +260,12 @@ export async function POST(
     { agent_name: "trigger_scanner", phase: 2 },
     { agent_name: "pain_point_analyzer", phase: 2 },
     { agent_name: "stakeholder_researcher", phase: 2 },
+    { agent_name: "partner_landscape", phase: 2 },
     { agent_name: "solution_mapper", phase: 3 },
     { agent_name: "gtm_generator", phase: 3 },
     { agent_name: "scoring_agent", phase: 3 },
     { agent_name: "sales_intelligence", phase: 3 },
+    { agent_name: "stakeholder_offering_mapper", phase: 3 },
     { agent_name: "verification", phase: 4 },
   ];
 

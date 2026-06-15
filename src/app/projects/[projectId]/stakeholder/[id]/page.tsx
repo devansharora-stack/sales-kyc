@@ -29,6 +29,7 @@ const STATUS_LABEL: Record<StakeholderStatus, string> = {
   completed: "Completed",
   failed: "Failed",
   cancelled: "Cancelled",
+  departed: "No longer at company",
 };
 
 export default function StakeholderDetailPage() {
@@ -161,6 +162,14 @@ export default function StakeholderDetailPage() {
             {s.status === "failed" && (
               <div className="mt-2">
                 <p className="text-sm text-red-500">{s.error_message || "Analysis failed."}</p>
+              </div>
+            )}
+
+            {s.status === "departed" && (
+              <div className="mt-2">
+                <p className="text-sm text-slate-500">
+                  {s.error_message || "This person no longer holds this role at the company, so they were excluded from current stakeholders."}
+                </p>
               </div>
             )}
           </div>

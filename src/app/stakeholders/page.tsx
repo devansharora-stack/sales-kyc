@@ -26,6 +26,7 @@ const STATUS_STYLES: Record<StakeholderStatus, string> = {
   completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
   failed: "bg-red-50 text-red-600 border-red-200",
   cancelled: "bg-slate-50 text-slate-400 border-slate-200",
+  departed: "bg-slate-50 text-slate-500 border-slate-200",
 };
 
 const STATUS_LABEL: Record<StakeholderStatus, string> = {
@@ -37,6 +38,7 @@ const STATUS_LABEL: Record<StakeholderStatus, string> = {
   completed: "Completed",
   failed: "Failed",
   cancelled: "Cancelled",
+  departed: "No longer at company",
 };
 
 export default function GlobalStakeholdersPage() {

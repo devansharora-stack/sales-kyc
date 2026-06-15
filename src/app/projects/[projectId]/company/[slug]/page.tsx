@@ -6,12 +6,15 @@ import Link from "next/link";
 import type { CompanyDetail, Source, SolutionId, SolutionMapping, EstimatedImpact, SalesMotionType } from "@/lib/types";
 import { ALL_SOLUTIONS } from "@/lib/types";
 import { generateCompanyPDF } from "@/lib/generate-pdf";
+import { normalizeStakeholderName } from "@/lib/names";
 import RatingBadge from "@/components/company/RatingBadge";
 import GeminiStatusBadge from "@/components/company/GeminiStatusBadge";
 import UrgencyBadge from "@/components/company/UrgencyBadge";
 import ScoreBar from "@/components/company/ScoreBar";
 import Sources from "@/components/company/Sources";
 import TechLandscapePanel from "@/components/company/TechLandscapePanel";
+import PartnerLandscapePanel from "@/components/company/PartnerLandscapePanel";
+import StakeholderMatrixPanel from "@/components/company/StakeholderMatrixPanel";
 import NumberedList from "@/components/company/NumberedList";
 import CollapsibleItem from "@/components/company/CollapsibleItem";
 
@@ -23,7 +26,9 @@ const TABS = [
   { id: "intelligence", label: "Intelligence" },
   { id: "gtm", label: "GTM Strategy" },
   { id: "solutions", label: "Solution Mapping" },
+  { id: "partners", label: "Partner Landscape" },
   { id: "stakeholders", label: "Stakeholders" },
+  { id: "matrix", label: "Stakeholder Matrix" },
   { id: "sources", label: "Sources" },
 ];
 
@@ -94,7 +99,14 @@ export default function CompanyPage() {
     fetchDeep(projectId);
   }, [projectId, slug]);
 
-  const deepByName = new Map(deepRows.map(d => [d.name.toLowerCase(), d]));
+  const deepByName = new Map(deepRows.map(d => [normalizeStakeholderName(d.name), d]));
+
+  const hasActiveDeep = deepRows.some(d => ["queued", "resolving", "scraping", "synthesizing"].includes(d.status));
+  useEffect(() => {
+    if (!hasActiveDeep || !projectId) return;
+    const interval = setInterval(() => fetchDeep(projectId), 3000);
+    return () => clearInterval(interval);
+  }, [hasActiveDeep, projectId]);
 
   function toggleSelect(name: string) {
     setSelected(prev => {
@@ -135,6 +147,14 @@ export default function CompanyPage() {
     await postPeople(people);
     setAnalyzing(false);
     setSelected(new Set());
+    fetchDeep(projectId);
+  }
+
+  // Matrix per-stakeholder trigger: reuse a fresh saved profile if one exists,
+  // otherwise queue a fresh analysis — no prompt (silent reuse).
+  async function handleMatrixDeepResearch(name: string, title: string) {
+    if (!company) return;
+    await postPeople([{ name, company: company.name, title: title || null }], { reuse: true });
     fetchDeep(projectId);
   }
 
@@ -597,6 +617,15 @@ export default function CompanyPage() {
         </div>
       )}
 
+      {/* TAB: Partner Landscape */}
+      {activeTab === "partners" && (
+        <div className="space-y-6">
+          <Card title="Partner Landscape" subtitle="Their current vendors, what's covered, and where Techolution wins.">
+            <PartnerLandscapePanel partners={company.partnerLandscape || []} />
+          </Card>
+        </div>
+      )}
+
       {/* TAB: Stakeholders */}
       {activeTab === "stakeholders" && (
         <div className="space-y-6">
@@ -678,7 +707,7 @@ export default function CompanyPage() {
                     <p className="text-label mb-2">{tier}s</p>
                     <div className="grid md:grid-cols-2 gap-2">
                       {tierList.map((s, i) => {
-                        const deep = deepByName.get(s.name.toLowerCase());
+                        const deep = deepByName.get(normalizeStakeholderName(s.name));
                         return (
                         <div key={i} className={`${tc.bg} border ${tc.border} rounded-lg p-3`}>
                           <div className="flex items-start justify-between gap-2">
@@ -732,6 +761,26 @@ export default function CompanyPage() {
               })}
             </Card>
           )}
+        </div>
+      )}
+
+      {/* TAB: Stakeholder Matrix */}
+      {activeTab === "matrix" && (
+        <div className="space-y-6">
+          <Card title="Stakeholder Decision Matrix" subtitle="Who sponsors, approves, or gates each offering — and how to approach them.">
+            {company.stakeholderOfferingMatrix ? (
+              <StakeholderMatrixPanel
+                matrix={company.stakeholderOfferingMatrix}
+                projectId={projectId}
+                deepByName={deepByName}
+                onDeepResearch={handleMatrixDeepResearch}
+              />
+            ) : (
+              <p className="text-sm text-slate-400 py-6 text-center">
+                No stakeholder matrix available. Re-run research on this company to generate it.
+              </p>
+            )}
+          </Card>
         </div>
       )}
 

@@ -29,6 +29,7 @@ const STATUS_STYLES: Record<StakeholderStatus, string> = {
   completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
   failed: "bg-red-50 text-red-600 border-red-200",
   cancelled: "bg-slate-50 text-slate-400 border-slate-200",
+  departed: "bg-slate-50 text-slate-500 border-slate-200",
 };
 
 const STATUS_LABEL: Record<StakeholderStatus, string> = {
@@ -40,6 +41,7 @@ const STATUS_LABEL: Record<StakeholderStatus, string> = {
   completed: "Completed",
   failed: "Failed",
   cancelled: "Cancelled",
+  departed: "No longer at company",
 };
 
 interface PendingReuse {
@@ -195,6 +197,9 @@ export default function ProjectStakeholdersPage() {
                       )}
                       {r.status === "failed" && r.error_message && (
                         <p className="text-[10px] text-red-400 mt-0.5 truncate max-w-xs">{r.error_message}</p>
+                      )}
+                      {r.status === "departed" && r.error_message && (
+                        <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-xs">{r.error_message}</p>
                       )}
                     </td>
                     <td className="p-3 text-xs text-slate-500">{r.company || "—"}</td>

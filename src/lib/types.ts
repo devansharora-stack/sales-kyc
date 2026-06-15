@@ -232,7 +232,7 @@ export interface DeepStakeholderProfile {
 
 export type StakeholderStatus =
   | "queued" | "resolving" | "needs_confirmation" | "scraping"
-  | "synthesizing" | "completed" | "failed" | "cancelled";
+  | "synthesizing" | "completed" | "failed" | "cancelled" | "departed";
 
 export interface StakeholderRecord {
   id: string;
@@ -335,6 +335,42 @@ export interface GTMStrategy {
 
 export type GeminiStatus = "land" | "expand" | "explore" | "none";
 
+// === Partner Landscape ===
+
+export interface PartnerEntry {
+  partner: string;
+  domain: string; // e.g. "ERP & Integration", "OT / Manufacturing"
+  whatTheyDeliver: string;
+  techolutionOpportunity: string; // "what they DON'T do" — the Techolution gap/opening
+  sources: Source[];
+}
+
+// === Stakeholder × Offering Matrix ===
+
+export type CellStrength = "strong" | "conditional" | "none";
+
+export interface MatrixCell {
+  solution: SolutionId;
+  solutionName: string;
+  // Power/role label for this stakeholder × offering, e.g. PRIMARY, APPROVE,
+  // CHAMPION, SUPPORT, ENTRY, FINANCE GATE, STRATEGIC. Empty when no relationship.
+  role: string;
+  strength: CellStrength;
+  rationale: string; // short, 1-2 lines on why and how to approach
+}
+
+export interface MatrixRow {
+  stakeholderName: string;
+  title: string;
+  powerLabel: string; // e.g. "PRIMARY DECISION MAKER", "BUDGET APPROVER", "EXEC SPONSOR"
+  cells: MatrixCell[]; // one per solution column, in solutionColumns order
+}
+
+export interface StakeholderOfferingMatrix {
+  solutionColumns: { id: SolutionId; name: string; shortName: string }[];
+  rows: MatrixRow[];
+}
+
 export interface CompanyDetail {
   slug: string;
   name: string;
@@ -357,6 +393,8 @@ export interface CompanyDetail {
   rating: Rating;
   geminiStatus: GeminiStatus;
   stakeholders: Stakeholder[];
+  partnerLandscape: PartnerEntry[];
+  stakeholderOfferingMatrix?: StakeholderOfferingMatrix;
   salesIntelligence?: SalesIntelligence;
   relatedCompanies: { slug: string; name: string; relationship: string }[];
   sources: Source[];

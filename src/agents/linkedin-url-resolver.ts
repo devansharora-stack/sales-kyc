@@ -21,12 +21,16 @@ export interface ResolvedUrl {
   confidence: "high" | "low";
   via: "claude" | "apify" | "none";
   reason?: string;
+  /** True when the person has left / no longer holds the role at the company. */
+  departed?: boolean;
 }
 
 interface ClaudeResolution {
   linkedinUrl?: string;
   confidence?: string;
   why?: string;
+  /** False if the person has left / no longer holds the role at the company. */
+  stillAtCompany?: boolean;
 }
 
 function normalizeIn(url: string | null | undefined): string | null {
@@ -52,14 +56,22 @@ export async function resolveLinkedInUrl(
 
 Search the web (e.g. "${name}" "${company || ""}" linkedin) and identify the exact person who currently works ${company ? `at ${company}` : "in this role"}${title ? ` as ${title}` : ""}.
 
-Respond ONLY with JSON:
-{"linkedinUrl": "https://www.linkedin.com/in/...", "confidence": "high" | "low", "why": "one sentence on how you matched this exact person"}
+Verify the person STILL holds this role: an old appointment/promotion press release is not proof of current tenure. Check their current LinkedIn headline and look for any "former"/departure/successor signals.
 
-Set confidence to "low" if you are unsure it is the right person, or if multiple people share the name and you cannot disambiguate. The URL must be a real linkedin.com/in/ profile.`,
+Respond ONLY with JSON:
+{"linkedinUrl": "https://www.linkedin.com/in/...", "confidence": "high" | "low", "stillAtCompany": true | false, "why": "one sentence on how you matched this exact person and whether they are still in the role"}
+
+Set "stillAtCompany" to false if the person has left or no longer holds this role${company ? ` at ${company}` : ""} (even if you found their correct profile). Set confidence to "low" if you are unsure it is the right person, multiple people share the name, or they are no longer in the role. The URL must be a real linkedin.com/in/ profile.`,
       maxSearchUses: 6,
     });
 
     const url = normalizeIn(result?.linkedinUrl);
+    // Person left / no longer in role → not a valid CURRENT stakeholder.
+    // Flag as departed so the orchestrator excludes them (no point asking the
+    // user to confirm a URL for someone who is no longer at the company).
+    if (result.stillAtCompany === false) {
+      return { url, confidence: "low", via: "claude", reason: result.why, departed: true };
+    }
     if (url && (result.confidence || "").toLowerCase() === "high") {
       return { url, confidence: "high", via: "claude", reason: result.why };
     }
