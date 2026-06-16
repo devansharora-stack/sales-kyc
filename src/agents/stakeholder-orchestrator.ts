@@ -182,7 +182,7 @@ const num = (...vals: unknown[]): number | undefined => {
 };
 const arr = (v: unknown): any[] => (Array.isArray(v) ? v : []);
 
-function mergeProfile(input: {
+export function mergeProfile(input: {
   bright: Record<string, any> | null;
   profile: Record<string, any> | null;
   posts: Record<string, any>[];
@@ -321,7 +321,7 @@ function isSubstantivePost(p: StakeholderPost): boolean {
   return engagement > 0 || len > 200;
 }
 
-function computeRichness(p: Omit<DeepStakeholderProfile, "intelBrief" | "dataRichness">): StakeholderDataRichness {
+export function computeRichness(p: Omit<DeepStakeholderProfile, "intelBrief" | "dataRichness">): StakeholderDataRichness {
   const flags = {
     about: !!(p.about && p.about.length > 20),
     experience: p.experience.length > 0,

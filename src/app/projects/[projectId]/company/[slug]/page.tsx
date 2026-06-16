@@ -247,8 +247,10 @@ export default function CompanyPage() {
     <div className="animate-fade-in">
       <Link href={`/projects/${projectId}`} className="text-sm text-slate-500 hover:text-[#3289FF] mb-4 inline-flex items-center gap-1 transition-colors">&larr; Back to Project</Link>
 
+      {/* Sticky top panel: hero card + tab nav stay pinned while sections scroll */}
+      <div className="sticky top-14 z-30 bg-[#F8FAFC] -mx-4 lg:-mx-8 px-4 lg:px-8 pt-2">
       {/* Company Hero Card */}
-      <div className="card p-0 mb-6 overflow-hidden">
+      <div className="card p-0 mb-3 overflow-hidden">
         <div className="bg-gradient-to-r from-[#F8FAFF] to-white px-6 py-5 border-b border-slate-100">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div>
@@ -303,7 +305,7 @@ export default function CompanyPage() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="sticky top-14 z-30 bg-white/90 backdrop-blur-sm -mx-4 lg:-mx-8 px-4 lg:px-8 mb-6">
+      <div className="bg-white/90 backdrop-blur-sm">
         <div className="flex border-b border-[#E2E8F0] overflow-x-auto no-scrollbar">
           {TABS.map(tab => (
             <button
@@ -320,6 +322,8 @@ export default function CompanyPage() {
           ))}
         </div>
       </div>
+      </div>{/* end sticky top panel */}
+      <div className="mb-6" />
 
       {/* Sales Intelligence Panel — always visible above tabs */}
       {company.salesIntelligence && (
