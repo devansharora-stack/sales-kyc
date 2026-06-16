@@ -31,10 +31,11 @@ function ProjectCard({ project }: { project: Project }) {
   );
 }
 
-export default function DashboardPage() {
+export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     fetch("/api/projects")
@@ -54,66 +55,23 @@ export default function DashboardPage() {
 
   const activeProjects = projects.filter((p) => p.status === "active");
   const archivedProjects = projects.filter((p) => p.status !== "active");
-  const totalCompanies = projects.reduce((sum, p) => sum + p.company_count, 0);
 
   return (
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-8">
         <div>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Dashboard</h1>
-          <p className="text-sm text-slate-400 mt-1">AI-powered company research & GTM intelligence</p>
+          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">Projects</h1>
+          <p className="text-sm text-slate-400 mt-1">All research projects across your workspace</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Link href="/solutions" className="btn-ghost text-sm text-[#3289FF]">
-            Solution Repository
-          </Link>
-          <Link href="/projects/new" className="btn-primary gap-2">
-            <span>+</span> New Project
-          </Link>
-        </div>
+        <Link href="/projects/new" className="btn-primary gap-2">
+          <span>+</span> New Project
+        </Link>
       </div>
-
-      {/* Stats */}
-      {!loading && !error && (
-        <div className="grid grid-cols-3 gap-4 mb-8">
-          <div className="card p-5">
-            <p className="text-2xl font-bold text-[#3289FF]">{activeProjects.length}</p>
-            <p className="text-label mt-1">Active Projects</p>
-          </div>
-          <div className="card p-5">
-            <p className="text-2xl font-bold text-[#3289FF]">{totalCompanies}</p>
-            <p className="text-label mt-1">Companies Researched</p>
-          </div>
-          <div className="card p-5">
-            <p className="text-2xl font-bold text-[#3289FF]">{projects.length}</p>
-            <p className="text-label mt-1">Total Projects</p>
-          </div>
-        </div>
-      )}
-
-      {/* Recent Projects header */}
-      {!loading && !error && projects.length > 0 && (
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold text-slate-600">Recent Projects</h2>
-          <Link href="/projects" className="text-xs text-slate-400 hover:text-[#3289FF]">
-            View all projects →
-          </Link>
-        </div>
-      )}
 
       {/* Loading */}
       {loading && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-3 gap-4">
-            {[...Array(3)].map((_, i) => (
-              <div key={i} className="card p-5">
-                <div className="h-7 w-12 bg-slate-100 rounded animate-pulse mb-2" />
-                <div className="h-3 w-20 bg-slate-50 rounded animate-pulse" />
-              </div>
-            ))}
-          </div>
-          <div className="h-5 w-28 bg-slate-100 rounded animate-pulse" />
-          {[...Array(3)].map((_, i) => (
+        <div className="space-y-3">
+          {[...Array(4)].map((_, i) => (
             <div key={i} className="card p-4">
               <div className="flex items-center justify-between">
                 <div className="space-y-2">
@@ -156,24 +114,39 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Projects preview */}
+      {/* Projects */}
       {!loading && !error && projects.length > 0 && (
-        <div className="space-y-3">
-          {activeProjects.length > 0 ? (
-            <>
-              {activeProjects.slice(0, 4).map((project) => <ProjectCard key={project.id} project={project} />)}
-              {activeProjects.length > 4 && (
-                <Link href="/projects" className="block text-center text-xs text-slate-400 hover:text-[#3289FF] py-2">
-                  View all {activeProjects.length} projects →
-                </Link>
-              )}
-            </>
-          ) : (
-            <div className="card p-8 text-center">
-              <p className="text-sm text-slate-400">No active projects. {archivedProjects.length > 0 ? <Link href="/projects" className="text-[#3289FF] hover:underline">See archived</Link> : ""} or create a new one.</p>
+        <>
+          {archivedProjects.length > 0 && (
+            <div className="mb-4 flex items-center justify-end">
+              <button
+                onClick={() => setShowArchived((v) => !v)}
+                className="text-xs text-slate-400 hover:text-[#3289FF]"
+              >
+                {showArchived ? "Hide" : "Show"} archived ({archivedProjects.length})
+              </button>
             </div>
           )}
-        </div>
+
+          <div className="space-y-3">
+            {activeProjects.length > 0 ? (
+              activeProjects.map((project) => <ProjectCard key={project.id} project={project} />)
+            ) : (
+              <div className="card p-8 text-center">
+                <p className="text-sm text-slate-400">No active projects. {archivedProjects.length > 0 ? "Show archived above or create a new one." : ""}</p>
+              </div>
+            )}
+
+            {showArchived && archivedProjects.length > 0 && (
+              <div className="pt-4">
+                <h2 className="text-xs font-semibold text-slate-400 uppercase tracking-wide mb-3">Archived</h2>
+                <div className="space-y-3 opacity-70">
+                  {archivedProjects.map((project) => <ProjectCard key={project.id} project={project} />)}
+                </div>
+              </div>
+            )}
+          </div>
+        </>
       )}
     </div>
   );
