@@ -1,0 +1,374 @@
+/**
+ * Claude Opus client via Azure AI Foundry.
+ *
+ * Two modes:
+ *   callClaudeJSON()      — simple one-shot, no tools (for synthesis agents)
+ *   callClaudeWithTools()  — with server-side web search (for research agents)
+ *
+ * The web_search tool is Anthropic's built-in server-side tool.
+ * Claude searches the web itself — no external API key needed.
+ * Same mechanism Claude Code uses in west-coast research.
+ */
+
+interface ClaudeOptions {
+  systemPrompt: string;
+  userPrompt: string;
+  temperature?: number;
+}
+
+// Lazy getters — env vars may not be set at module load time (e.g. test scripts)
+function getFoundryUrl() {
+  const endpoint = process.env.AZURE_AI_FOUNDRY_ENDPOINT;
+  if (!endpoint) throw new Error("AZURE_AI_FOUNDRY_ENDPOINT is not set");
+  return endpoint + "/anthropic/v1/messages";
+}
+function getFoundryKey() {
+  const key = process.env.AZURE_AI_FOUNDRY_API_KEY;
+  if (!key) throw new Error("AZURE_AI_FOUNDRY_API_KEY is not set");
+  return key;
+}
+function getModel() {
+  return process.env.ANTHROPIC_DEFAULT_OPUS_MODEL || "claude-opus-4-6";
+}
+
+// ─── Simple client (no tools) ───
+
+export async function callClaude({
+  systemPrompt,
+  userPrompt,
+  temperature = 0.2,
+}: ClaudeOptions): Promise<string> {
+  const body = {
+    model: getModel(),
+    max_tokens: 32768,
+    temperature,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
+  };
+
+  const response = await fetchWithRetry(body);
+  const data = await response.json();
+  if (data.stop_reason === "max_tokens") {
+    console.warn(`[claude] Response truncated by max_tokens (${body.max_tokens}). Output may be incomplete.`);
+  }
+  return data.content?.[0]?.text || "";
+}
+
+export async function callClaudeJSON<T>(options: ClaudeOptions): Promise<T> {
+  const text = await callClaude(options);
+  if (!text || text.trim().length === 0) {
+    throw new Error("Claude returned empty response — cannot parse JSON");
+  }
+  return extractJSON<T>(text);
+}
+
+// ─── Agentic client with server-side web search ───
+
+interface ToolUseOptions extends ClaudeOptions {
+  /** Max search uses per request (default 10) */
+  maxSearchUses?: number;
+}
+
+/**
+ * Call Claude with the built-in web_search tool.
+ * Anthropic executes the searches server-side — same as Claude Code.
+ * No external search API needed.
+ *
+ * After parsing the JSON output, we cross-validate: every URL in the
+ * output must have appeared in a web_search_tool_result block.
+ * URLs from Claude's memory/training data are stripped.
+ */
+export async function callClaudeWithTools<T>(options: ToolUseOptions): Promise<T> {
+  const {
+    systemPrompt,
+    userPrompt,
+    temperature = 0.2,
+    maxSearchUses = 10,
+  } = options;
+
+  const body = {
+    model: getModel(),
+    max_tokens: 32768,
+    temperature,
+    system: systemPrompt,
+    messages: [{ role: "user", content: userPrompt }],
+    tools: [
+      {
+        type: "web_search_20250305",
+        name: "web_search",
+        max_uses: maxSearchUses,
+      },
+    ],
+  };
+
+  const response = await fetchWithRetry(body);
+  const data = await response.json();
+
+  // Extract text blocks and collect all URLs from web_search_tool_result blocks
+  const content: any[] = data.content || [];
+  const textParts: string[] = [];
+  const searchResultUrls = new Set<string>();
+
+  for (const block of content) {
+    if (block.type === "text" && block.text) {
+      textParts.push(block.text);
+    }
+    // Collect URLs from web search results — these are the ONLY valid source URLs
+    if (block.type === "web_search_tool_result" && block.content) {
+      for (const result of block.content) {
+        if (result.type === "web_search_result" && result.url) {
+          searchResultUrls.add(result.url);
+          // Also add the base URL (some results link to specific pages)
+          try {
+            const u = new URL(result.url);
+            searchResultUrls.add(`${u.origin}${u.pathname}`);
+          } catch {}
+        }
+      }
+    }
+  }
+
+  const fullText = textParts.join("\n");
+  if (!fullText) {
+    throw new Error("Claude returned no text in response");
+  }
+
+  const parsed = extractJSON<T>(fullText);
+
+  // Cross-validate: strip any source URLs that didn't come from search results
+  if (searchResultUrls.size > 0) {
+    stripFabricatedUrls(parsed, searchResultUrls);
+  }
+
+  return parsed;
+}
+
+/**
+ * Recursively walk the parsed output and remove any source URL
+ * that was NOT in the web search results.
+ * This is the nuclear option against hallucinated URLs.
+ */
+function stripFabricatedUrls(obj: any, validUrls: Set<string>): void {
+  if (!obj || typeof obj !== "object") return;
+
+  if (Array.isArray(obj)) {
+    for (const item of obj) {
+      stripFabricatedUrls(item, validUrls);
+    }
+    return;
+  }
+
+  // If this object has a "url" field and it's a source-like object, validate it
+  if (typeof obj.url === "string" && obj.url.startsWith("http") && ("label" in obj || "type" in obj)) {
+    if (!isUrlFromSearch(obj.url, validUrls)) {
+      const strippedUrl = obj.url;
+      obj.url = "";
+      obj._fabricated = true;
+      console.log(`[claude] Stripped fabricated URL: ${strippedUrl}`);
+    }
+  }
+
+  // Recurse into all values
+  for (const val of Object.values(obj)) {
+    stripFabricatedUrls(val, validUrls);
+  }
+}
+
+/**
+ * Check if a URL matches any URL from the web search results.
+ * Uses domain + path prefix matching to handle minor variations
+ * (trailing slashes, query params, etc.)
+ */
+function isUrlFromSearch(url: string, validUrls: Set<string>): boolean {
+  // Exact match
+  if (validUrls.has(url)) return true;
+
+  // Normalize and try again
+  try {
+    const parsed = new URL(url);
+    const normalized = `${parsed.origin}${parsed.pathname}`.replace(/\/$/, "");
+    for (const valid of validUrls) {
+      const validNorm = valid.replace(/\/$/, "");
+      // Exact normalized match
+      if (normalized === validNorm) return true;
+      // Same domain + path prefix match (for sub-pages of a result)
+      try {
+        const vp = new URL(valid);
+        if (parsed.hostname === vp.hostname && parsed.pathname.startsWith(vp.pathname)) return true;
+      } catch {}
+    }
+  } catch {}
+
+  return false;
+}
+
+// ─── Shared utilities ───
+
+function extractJSON<T>(text: string): T {
+  // Try 1: Extract from ```json ... ``` code block
+  const fenceMatch = text.match(/```(?:json)?\s*\n([\s\S]*?)\n```/i);
+  if (fenceMatch) {
+    return parseWithRepair<T>(fenceMatch[1].trim());
+  }
+
+  // Try 2: Strip leading/trailing fences (response is entirely fenced)
+  const stripped = text
+    .replace(/^```(?:json)?\s*\n?/i, "")
+    .replace(/\n?```\s*$/i, "")
+    .trim();
+
+  try {
+    return JSON.parse(stripped) as T;
+  } catch {
+    // Try 3: Find first { or [ and parse from there
+    const start = stripped.search(/[\[{]/);
+    if (start >= 0) {
+      return parseWithRepair<T>(stripped.slice(start));
+    }
+    throw new Error(`Failed to parse JSON from Claude response: ${stripped.slice(0, 200)}`);
+  }
+}
+
+/**
+ * Attempt JSON.parse, and if it fails, try to repair:
+ * - Truncated JSON (missing closers) → repairTruncatedJSON
+ * - Trailing junk (extra braces/text after root closes) → extractRootObject
+ */
+function parseWithRepair<T>(json: string): T {
+  try {
+    return JSON.parse(json) as T;
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "";
+    console.log(`[claude] JSON parse failed: ${msg}, attempting repair...`);
+
+    // Try 1: Extract just the root object (strip trailing junk)
+    const extracted = extractRootObject(json);
+    if (extracted !== json) {
+      try { return JSON.parse(extracted) as T; } catch { /* fall through */ }
+    }
+
+    // Try 2: Repair truncated JSON
+    try { return JSON.parse(repairTruncatedJSON(json)) as T; } catch { /* fall through */ }
+
+    // Try 3: Extract root then repair
+    try { return JSON.parse(repairTruncatedJSON(extracted)) as T; } catch { throw e; }
+  }
+}
+
+/**
+ * Extract just the root JSON object/array by tracking brace depth.
+ * Stops at the point where the root closes — strips trailing junk.
+ */
+function extractRootObject(json: string): string {
+  if (!json || (json[0] !== '{' && json[0] !== '[')) return json;
+  let depth = 0;
+  let inString = false;
+
+  for (let i = 0; i < json.length; i++) {
+    const ch = json[i];
+    if (ch === '"' && (i === 0 || json[i - 1] !== '\\')) {
+      inString = !inString;
+      continue;
+    }
+    if (inString) continue;
+    if (ch === '{' || ch === '[') depth++;
+    else if (ch === '}' || ch === ']') {
+      depth--;
+      if (depth === 0) return json.substring(0, i + 1);
+    }
+  }
+  return json;
+}
+
+/**
+ * Repair truncated JSON by closing open structures.
+ * Handles: unterminated strings, unclosed arrays/objects, trailing commas.
+ */
+function repairTruncatedJSON(json: string): string {
+  let s = json;
+
+  // Step 1: If we're inside an unterminated string, cut back to before it started
+  let inString = false;
+  let lastOutsideString = 0;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '"' && (i === 0 || s[i - 1] !== '\\')) {
+      inString = !inString;
+      if (inString) lastOutsideString = i;
+    }
+    if (!inString) lastOutsideString = i;
+  }
+  if (inString) {
+    s = s.substring(0, lastOutsideString);
+  }
+
+  // Step 2: Remove trailing incomplete key-value pairs, colons, commas
+  s = s.replace(/,\s*$/, "");
+  s = s.replace(/:\s*$/, "");
+  s = s.replace(/,?\s*"[^"]*"\s*$/, "");
+  s = s.replace(/,\s*$/, "");
+
+  // Step 3: Count open braces/brackets and close them
+  const stack: string[] = [];
+  inString = false;
+  for (let i = 0; i < s.length; i++) {
+    const ch = s[i];
+    if (ch === '"' && (i === 0 || s[i - 1] !== '\\')) { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') stack.push('}');
+    else if (ch === '[') stack.push(']');
+    else if (ch === '}' || ch === ']') stack.pop();
+  }
+
+  s = s.replace(/,\s*$/, "");
+  while (stack.length > 0) s += stack.pop();
+  return s;
+}
+
+async function fetchWithRetry(body: Record<string, unknown>, maxRetries = 3): Promise<Response> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    let response: Response;
+    try {
+      response = await fetch(getFoundryUrl(), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": getFoundryKey(),
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(240_000), // 4 min timeout — must fit within Vercel 300s limit
+      });
+    } catch (err) {
+      // Network errors, timeouts (AbortSignal), DNS failures — all retryable
+      if (attempt < maxRetries - 1) {
+        const backoff = (attempt + 1) * 10000;
+        const msg = err instanceof Error ? err.message : String(err);
+        console.log(`[claude] Network error: ${msg}, retrying in ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries})`);
+        await new Promise((resolve) => setTimeout(resolve, backoff));
+        continue;
+      }
+      throw err;
+    }
+
+    if (response.ok) return response;
+
+    const err = await response.text();
+    const isRetryable =
+      response.status === 429 ||
+      response.status === 529 ||
+      response.status === 503 ||
+      err.includes("overloaded") ||
+      err.includes("rate");
+
+    if (isRetryable && attempt < maxRetries - 1) {
+      const backoff = (attempt + 1) * 5000;
+      console.log(`[claude] Retryable error ${response.status}, waiting ${backoff / 1000}s (attempt ${attempt + 1}/${maxRetries})`);
+      await new Promise((resolve) => setTimeout(resolve, backoff));
+      continue;
+    }
+
+    throw new Error(`Claude Foundry error ${response.status}: ${err}`);
+  }
+  throw new Error("Claude: max retries exceeded");
+}
