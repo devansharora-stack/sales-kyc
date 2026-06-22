@@ -231,18 +231,18 @@ export default function ChatPanel() {
   return (
     <div className="flex-1 flex flex-col min-h-0 h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0] shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-[#E2E8F0] dark:border-slate-700 shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-6 h-6 rounded-md bg-[#3289FF] flex items-center justify-center">
             <span className="text-white text-xs font-bold">K</span>
           </div>
-          <span className="text-sm font-semibold text-slate-700">KYC Genie</span>
+          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">KYC Genie</span>
         </div>
         <div className="flex items-center gap-1">
           {messages.length > 0 && (
             <button
               onClick={handleNewChat}
-              className="px-2 py-1 rounded text-[10px] font-medium text-slate-400 hover:text-[#3289FF] hover:bg-[rgba(50,137,255,0.08)] transition-colors cursor-pointer"
+              className="px-2 py-1 rounded text-[10px] font-medium text-slate-400 dark:text-slate-500 hover:text-[#3289FF] hover:bg-[rgba(50,137,255,0.08)] transition-colors cursor-pointer"
               title="New conversation"
             >
               + New
@@ -251,7 +251,7 @@ export default function ChatPanel() {
           <button
             onClick={() => { setShowHistory(!showHistory); fetchSessions(); }}
             className={`w-7 h-7 flex items-center justify-center rounded-md transition-colors cursor-pointer ${
-              showHistory ? "bg-[rgba(50,137,255,0.1)] text-[#3289FF]" : "text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              showHistory ? "bg-[rgba(50,137,255,0.1)] text-[#3289FF]" : "text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
             }`}
             title="Conversation history"
           >
@@ -264,13 +264,13 @@ export default function ChatPanel() {
 
       {/* History panel */}
       {showHistory && (
-        <div className="border-b border-[#E2E8F0] bg-white shrink-0 max-h-[40%] overflow-y-auto">
+        <div className="border-b border-[#E2E8F0] dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0 max-h-[40%] overflow-y-auto">
           <div className="p-3">
-            <p className="text-[10px] text-slate-400 uppercase tracking-wider font-mono mb-2">
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 uppercase tracking-wider font-mono mb-2">
               Past conversations
             </p>
             {sessions.length === 0 ? (
-              <p className="text-xs text-slate-400 py-2">No past conversations yet.</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 py-2">No past conversations yet.</p>
             ) : (
               <div className="space-y-0.5">
                 {sessions.map((s) => (
@@ -280,15 +280,15 @@ export default function ChatPanel() {
                     className={`w-full text-left px-3 py-2 rounded-lg transition-colors cursor-pointer group ${
                       activeSessionId === s.id
                         ? "bg-[rgba(50,137,255,0.08)] border border-[#3289FF]/20"
-                        : "hover:bg-slate-50"
+                        : "hover:bg-slate-50 dark:hover:bg-slate-800"
                     }`}
                   >
                     <p className={`text-xs truncate ${
-                      activeSessionId === s.id ? "text-[#3289FF] font-medium" : "text-slate-600 group-hover:text-slate-800"
+                      activeSessionId === s.id ? "text-[#3289FF] font-medium" : "text-slate-600 dark:text-slate-300 group-hover:text-slate-800 dark:group-hover:text-slate-100"
                     }`}>
                       {s.title || "Untitled"}
                     </p>
-                    <p className="text-[10px] text-slate-400 mt-0.5">
+                    <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
                       {s.messageCount} messages
                     </p>
                   </button>
@@ -309,14 +309,14 @@ export default function ChatPanel() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 12.76c0 1.6 1.123 2.994 2.707 3.227 1.087.16 2.185.283 3.293.369V21l4.076-4.076a1.526 1.526 0 011.037-.443 48.282 48.282 0 005.68-.494c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
               </svg>
             </div>
-            <p className="text-sm text-slate-500 font-medium mb-1">
+            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mb-1">
               {context.companySlug
                 ? `Ask about ${slugToName(context.companySlug)}`
                 : context.type === "project"
                   ? "Ask about your companies"
                   : "How can I help you?"}
             </p>
-            <p className="text-xs text-slate-400">
+            <p className="text-xs text-slate-400 dark:text-slate-500">
               AI assistant with access to your research data
             </p>
           </div>
@@ -339,11 +339,11 @@ export default function ChatPanel() {
               />
             )}
             {error && (
-              <div className="px-3 py-2 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-xs text-red-500">{error}</p>
+              <div className="px-3 py-2 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">
+                <p className="text-xs text-red-500 dark:text-red-300">{error}</p>
                 <button
                   onClick={() => setError(null)}
-                  className="text-[10px] text-red-400 hover:text-red-600 mt-1 cursor-pointer"
+                  className="text-[10px] text-red-400 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 mt-1 cursor-pointer"
                 >
                   Dismiss
                 </button>

@@ -145,14 +145,14 @@ export default function CSVUpload({ existingSlugs, onSubmit }: CSVUploadProps) {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-2xl mx-4 max-h-[80vh] flex flex-col">
             {/* Header */}
-            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
               <div>
-                <h2 className="text-lg font-semibold text-slate-800">Upload CSV</h2>
-                <p className="text-xs text-slate-400 mt-0.5">One company name per row, up to {MAX_ROWS} companies</p>
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Upload CSV</h2>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">One company name per row, up to {MAX_ROWS} companies</p>
               </div>
-              <button onClick={handleClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
+              <button onClick={handleClose} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 text-xl leading-none">&times;</button>
             </div>
 
             <div className="p-5 overflow-y-auto flex-1">
@@ -164,15 +164,15 @@ export default function CSVUpload({ existingSlugs, onSubmit }: CSVUploadProps) {
                     onDragLeave={() => setDragOver(false)}
                     onDrop={handleDrop}
                     className={`border-2 border-dashed rounded-lg p-10 text-center transition-colors cursor-pointer ${
-                      dragOver ? "border-[#3289FF] bg-[rgba(50,137,255,0.04)]" : "border-slate-200 hover:border-slate-300"
+                      dragOver ? "border-[#3289FF] bg-[rgba(50,137,255,0.04)]" : "border-slate-200 dark:border-slate-700 hover:border-slate-300 dark:hover:border-slate-600"
                     }`}
                     onClick={() => fileRef.current?.click()}
                   >
-                    <svg className="w-10 h-10 text-slate-300 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <svg className="w-10 h-10 text-slate-300 dark:text-slate-500 mx-auto mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
                     </svg>
-                    <p className="text-sm text-slate-500 mb-1">Drop a CSV file here or click to browse</p>
-                    <p className="text-xs text-slate-400">CSV with company names in the first column</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Drop a CSV file here or click to browse</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">CSV with company names in the first column</p>
                   </div>
                   <input
                     ref={fileRef}
@@ -186,10 +186,10 @@ export default function CSVUpload({ existingSlugs, onSubmit }: CSVUploadProps) {
                 <>
                   {/* Preview table */}
                   <div className="flex items-center justify-between mb-3">
-                    <div className="text-sm text-slate-600">
+                    <div className="text-sm text-slate-600 dark:text-slate-300">
                       <span className="font-medium">{selectedCount}</span> of {rows.length} selected
                       {dupeCount > 0 && (
-                        <span className="text-slate-400 ml-2">({dupeCount} already researched)</span>
+                        <span className="text-slate-400 dark:text-slate-500 ml-2">({dupeCount} already researched)</span>
                       )}
                     </div>
                     <button onClick={toggleAll} className="text-xs text-[#3289FF] hover:underline">
@@ -197,39 +197,39 @@ export default function CSVUpload({ existingSlugs, onSubmit }: CSVUploadProps) {
                     </button>
                   </div>
 
-                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                     <table className="w-full text-sm">
                       <thead>
-                        <tr className="bg-slate-50 text-left">
+                        <tr className="bg-slate-50 dark:bg-slate-800 text-left">
                           <th className="p-2 w-10"></th>
-                          <th className="p-2 text-xs font-medium text-slate-500">#</th>
-                          <th className="p-2 text-xs font-medium text-slate-500">Company Name</th>
-                          <th className="p-2 text-xs font-medium text-slate-500">Status</th>
+                          <th className="p-2 text-xs font-medium text-slate-500 dark:text-slate-400">#</th>
+                          <th className="p-2 text-xs font-medium text-slate-500 dark:text-slate-400">Company Name</th>
+                          <th className="p-2 text-xs font-medium text-slate-500 dark:text-slate-400">Status</th>
                         </tr>
                       </thead>
                       <tbody>
                         {rows.map((row, i) => (
                           <tr
                             key={i}
-                            className={`border-t border-slate-100 ${!row.selected ? "opacity-50" : ""}`}
+                            className={`border-t border-slate-100 dark:border-slate-700 ${!row.selected ? "opacity-50" : ""}`}
                           >
                             <td className="p-2 text-center">
                               <input
                                 type="checkbox"
                                 checked={row.selected}
                                 onChange={() => toggleRow(i)}
-                                className="rounded border-slate-300 text-[#3289FF] focus:ring-[#3289FF]"
+                                className="rounded border-slate-300 dark:border-slate-600 text-[#3289FF] focus:ring-[#3289FF]"
                               />
                             </td>
-                            <td className="p-2 text-xs text-slate-400">{i + 1}</td>
-                            <td className="p-2 text-slate-700">{row.name}</td>
+                            <td className="p-2 text-xs text-slate-400 dark:text-slate-500">{i + 1}</td>
+                            <td className="p-2 text-slate-700 dark:text-slate-300">{row.name}</td>
                             <td className="p-2">
                               {row.isDuplicate ? (
-                                <span className="text-[10px] px-1.5 py-0.5 bg-amber-50 text-amber-600 rounded-full border border-amber-200">
+                                <span className="text-[10px] px-1.5 py-0.5 bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-300 rounded-full border border-amber-200 dark:border-amber-800">
                                   Already researched
                                 </span>
                               ) : (
-                                <span className="text-[10px] px-1.5 py-0.5 bg-emerald-50 text-emerald-600 rounded-full border border-emerald-200">
+                                <span className="text-[10px] px-1.5 py-0.5 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-300 rounded-full border border-emerald-200 dark:border-emerald-800">
                                   New
                                 </span>
                               )}
@@ -243,13 +243,13 @@ export default function CSVUpload({ existingSlugs, onSubmit }: CSVUploadProps) {
               )}
 
               {error && (
-                <p className="text-xs text-red-500 mt-3">{error}</p>
+                <p className="text-xs text-red-500 dark:text-red-300 mt-3">{error}</p>
               )}
             </div>
 
             {/* Footer */}
             {rows.length > 0 && (
-              <div className="flex items-center justify-between p-5 border-t border-slate-100">
+              <div className="flex items-center justify-between p-5 border-t border-slate-100 dark:border-slate-700">
                 <button onClick={() => { setRows([]); setError(null); if (fileRef.current) fileRef.current.value = ""; }} className="btn-ghost text-sm">
                   Upload different file
                 </button>

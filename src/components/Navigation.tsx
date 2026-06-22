@@ -3,13 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import ActivityIndicator from "./ActivityIndicator";
+import ThemeToggle from "./ThemeToggle";
 
 export default function Navigation() {
   const pathname = usePathname();
   const { data: session } = useSession();
 
   return (
-    <nav className="bg-white/90 backdrop-blur-md border-b border-[#E2E8F0] sticky top-0 z-40">
+    <nav className="bg-[var(--surface-bg)] border-b border-[var(--surface-border)] sticky top-0 z-40">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-10">
         <div className="flex items-center justify-between h-14">
           <Link href="/" className="flex items-center gap-3">
@@ -46,6 +48,11 @@ export default function Navigation() {
                 </Link>
               );
             })}
+
+            <div className="ml-1.5 flex items-center gap-1">
+              <ActivityIndicator />
+              <ThemeToggle />
+            </div>
 
             {session?.user && (
               <div className="flex items-center gap-2 ml-3 pl-3 border-l border-slate-200">

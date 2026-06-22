@@ -140,12 +140,22 @@ export async function scrapeHarvestProfile(url: string): Promise<Record<string, 
 export async function scrapeApifyPosts(url: string): Promise<Record<string, any>[]> {
   // The actor accepts a few input shapes; `username` (with a full URL) is the
   // validated one, but try fallbacks defensively.
-  // total_posts caps what the actor scrapes (and what we're billed for); limit
-  // bounds the first page. Without these the actor defaults to 100/page.
-  const cap = { total_posts: MAX_POSTS, limit: MAX_POSTS };
+  // COST GUARD: this actor bills $0.005 per post it RETURNS (not per post we
+  // keep). total_posts caps what it scrapes/bills; limit bounds the page;
+  // page_number:1 forbids pagination. Never loop pages here — that multiplies
+  // the bill. Without these the actor defaults to 100/page = ~$0.50/profile.
+  const cap = { total_posts: MAX_POSTS, limit: MAX_POSTS, page_number: 1 };
   for (const input of [{ username: url, ...cap }, { profileUrl: url, ...cap }, { profileUrls: [url], ...cap }, { urls: [url], ...cap }]) {
     try {
       const items = await runApifyActor<Record<string, any>>(APIFY_ACTORS.posts, input);
+      // Tripwire: if the actor ignored the cap we were billed for the overage.
+      // Surface it loudly so a runaway is caught on the first real run, not in
+      // a surprise invoice. (We still slice for synthesis below.)
+      if ((items?.length ?? 0) > MAX_POSTS) {
+        console.warn(
+          `[apify-cost] posts actor returned ${items.length} for ${url} but cap is ${MAX_POSTS} — cap param likely ignored; we were billed for the overage. Verify the actor's input schema.`,
+        );
+      }
       // Drop the "no activity" sentinel ({profile_input, message}, no .text).
       const real = (items || []).filter((p) => p && p.text && !p.message && !p.profile_input);
       if (real.length) return real.slice(0, MAX_POSTS);

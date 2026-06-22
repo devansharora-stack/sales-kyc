@@ -21,6 +21,8 @@ import { runFinancialSignal } from "./financial-signal";
 import { runTriggerScanner } from "./trigger-scanner";
 import { runPainPointAnalyzer } from "./pain-point-analyzer";
 import { runStakeholderResearcher } from "./stakeholder-researcher";
+import { runPartnerLandscape } from "./partner-landscape";
+import { runStakeholderOfferingMapper } from "./stakeholder-offering-mapper";
 import { runSolutionMapper } from "./solution-mapper";
 import { runGTMGenerator } from "./gtm-generator";
 import { runScoringAgent } from "./scoring-agent";
@@ -126,8 +128,8 @@ export const researchCompany = inngest.createFunction(
       // Pain Points runs after triggers (it depends on trigger output)
       // ============================
 
-      const phase2a = await step.run("phase-2a-triggers-and-stakeholders-parallel", async () => {
-        const [triggers, stakeholders] = await Promise.all([
+      const phase2a = await step.run("phase-2a-triggers-stakeholders-partners-parallel", async () => {
+        const [triggers, stakeholders, partnerLandscape] = await Promise.all([
           runAgentStep(jobId, "trigger_scanner", () =>
             runTriggerScanner({
               companyName,
@@ -142,12 +144,38 @@ export const researchCompany = inngest.createFunction(
           runAgentStep(jobId, "stakeholder_researcher", () =>
             runStakeholderResearcher(companyName)
           ),
+          runAgentStep(jobId, "partner_landscape", () =>
+            runPartnerLandscape({
+              companyName,
+              profile: {
+                industry: safe(profile.industry),
+                subSector: safe(profile.subSector),
+                businessDescription: safe(profile.businessDescription),
+              },
+              techLandscape,
+            })
+          ),
         ]);
         await updateJobProgress(jobId, 45);
-        return { triggers, stakeholders };
+        return { triggers, stakeholders, partnerLandscape };
       });
 
-      const { triggers, stakeholders } = phase2a;
+      const { triggers, stakeholders, partnerLandscape } = phase2a;
+      const safePartnerLandscape = Array.isArray(partnerLandscape) ? partnerLandscape : [];
+
+      // Partner Landscape is the authoritative vendor source — derive
+      // techLandscape.knownVendors from it so the two views can never disagree.
+      if (safePartnerLandscape.length > 0 && techLandscape?.knownVendors) {
+        const partnerNames = safePartnerLandscape.map((p) => p.partner).filter(Boolean);
+        const partnerSources = safePartnerLandscape.flatMap((p) => p.sources || []);
+        techLandscape.knownVendors = {
+          value: partnerNames,
+          sources:
+            partnerSources.length > 0
+              ? partnerSources.slice(0, 3)
+              : techLandscape.knownVendors.sources || [],
+        };
+      }
 
       const painPoints = await step.run("phase-2b-pain-points", async () => {
         const result = await runAgentStep(jobId, "pain_point_analyzer", () =>
@@ -224,8 +252,8 @@ export const researchCompany = inngest.createFunction(
         return result;
       });
 
-      const phase3c = await step.run("phase-3c-scoring-and-sales-intel", async () => {
-        const [scores, salesIntelligence] = await Promise.all([
+      const phase3c = await step.run("phase-3c-scoring-sales-intel-matrix", async () => {
+        const [scores, salesIntelligence, stakeholderOfferingMatrix] = await Promise.all([
           runAgentStep(jobId, "scoring_agent", () =>
             runScoringAgent({
               companyName,
@@ -258,12 +286,26 @@ export const researchCompany = inngest.createFunction(
               stakeholders,
             })
           ),
+          runAgentStep(jobId, "stakeholder_offering_mapper", () =>
+            runStakeholderOfferingMapper({
+              companyName,
+              profile: {
+                industry: safe(profile.industry),
+                subSector: safe(profile.subSector),
+                businessDescription: safe(profile.businessDescription),
+              },
+              stakeholders: Array.isArray(stakeholders) ? stakeholders : [],
+              solutionMappings: safeSolutionMappings,
+              painPoints: safePainPoints,
+              gtm,
+            })
+          ),
         ]);
         await updateJobProgress(jobId, 90);
-        return { scores, salesIntelligence };
+        return { scores, salesIntelligence, stakeholderOfferingMatrix };
       });
 
-      const { scores, salesIntelligence } = phase3c;
+      const { scores, salesIntelligence, stakeholderOfferingMatrix } = phase3c;
 
       // ============================
       // Phase 4: Verification + Assembly
@@ -318,6 +360,8 @@ export const researchCompany = inngest.createFunction(
           }
           return sources;
         }),
+        // Partner landscape
+        ...safePartnerLandscape.flatMap((p: { sources?: unknown[] }) => p.sources || []),
         // GTM (all section sources)
         ...(gtm?.sources || []),
         ...(gtm?.briefSources || []),
@@ -364,6 +408,8 @@ export const researchCompany = inngest.createFunction(
         rating,
         geminiStatus,
         stakeholders,
+        partnerLandscape: safePartnerLandscape,
+        stakeholderOfferingMatrix: stakeholderOfferingMatrix || undefined,
         salesIntelligence: salesIntelligence || undefined,
         relatedCompanies: [],
         sources: uniqueSources,

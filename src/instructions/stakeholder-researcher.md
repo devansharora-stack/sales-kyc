@@ -38,8 +38,8 @@ Search for: "{company} CTO CIO CDO Chief Technology Officer", "{company} VP tech
 ## Rules
 - Identify 3-8 stakeholders per company
 - Must include at least 1 Decision Maker and 1 Champion
-- Only include people currently at the company (verify titles are current)
-- LinkedIn profiles, company About pages, and press releases are valid sources
+- Only include people you can verify CURRENTLY hold their role at the target company. If you cannot confirm current employment, OMIT the person — do not guess.
+- Prefer recent, PRIMARY sources (the company's current leadership/about page, the person's own current LinkedIn headline, a press release dated within the last ~12 months) over stale third-party listings (aggregators, old directories, dated articles), which frequently still show people who have already left.
 - Prioritize recently appointed leaders (within last 18 months) — they're more likely to drive change
 - Include the "relevance" field explaining which Techolution solutions this person would care about
 - If the company is very private, focus on job posting clues (e.g., "Reports to VP of Engineering" reveals an org structure)
@@ -50,3 +50,10 @@ Search for: "{company} CTO CIO CDO Chief Technology Officer", "{company} VP tech
 - If you are uncertain about a name, DO NOT include that person. Return 2-3 verified stakeholders rather than 6-8 guessed ones.
 - The sourceUrl MUST be a real page where the person's name can be found (company leadership page, LinkedIn, press release). Do not construct URLs.
 - The verification agent will check every stakeholder against their sourceUrl and remove anyone it can't verify. Fabricated names waste pipeline time.
+
+**CRITICAL — Currency / Still-Employed Check (do this for EVERY person):**
+- A person being named in a company source is NOT proof they still work there. Executives leave.
+- An appointment/promotion/hire press release (e.g. "X named CTO") is a POINT-IN-TIME fact, not proof of current tenure — especially if it is more than ~18 months old. Do NOT treat an old press release as evidence the person is still in the role.
+- Before including anyone, actively look for whether they have since DEPARTED: search "{name} {company} left/departed/former", check whether their current LinkedIn headline still names this company, and prefer the company's CURRENT leadership/about page over historical articles.
+- If you find ANY signal the person has moved on (new company in their headline, "former", a successor announced, founded another company), DO NOT include them — even if a real company source once named them. Their seat is now held by someone else.
+- When in doubt about whether someone is still there, exclude them. A departed exec in a sales matrix is a credibility-killer.

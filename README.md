@@ -1,27 +1,5 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-## What is this project about?
-
-Sales KYC is an internal research and sales enablement tool that helps sales and GTM teams quickly generate concise company profiles and stakeholder intelligence. It orchestrates multiple automated agents to gather web signals (tech stack, hiring, funding, product changes), extract financial and market signals, map potential solutions, and prioritize stakeholders — enabling faster, data-informed outreach and discovery.
-
-Key goals:
-- Produce actionable, shareable company profiles and stakeholder lists.
-- Surface relevant buying signals and technical fit for targeted outreach.
-- Provide an extensible agents framework for automating research and scoring.
-
-Tech stack highlights:
-- Next.js + React + TypeScript
-- Inngest for event orchestration, Supabase + Drizzle for persistence
-- Integrations with LLMs (Claude, Gemini) and web-scraping helpers
-- Deployed on Vercel / containerized via Docker
-
-Quick start (local):
-
-```bash
-npm install
-npm run dev
-```
-
 ## Getting Started
 
 First, run the development server:

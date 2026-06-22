@@ -146,22 +146,30 @@ export async function GET(
     });
   }
 
-  // Get completed company profiles (summary view for list)
-  const profileRows = await db
-    .select({
-      id: companyProfiles.id,
-      slug: companyProfiles.slug,
-      total_score: companyProfiles.totalScore,
-      rating: companyProfiles.rating,
-      industry: companyProfiles.industry,
-      urgency: companyProfiles.urgency,
-      primary_solution: companyProfiles.primarySolution,
-      gemini_status: companyProfiles.geminiStatus,
-      data: companyProfiles.data,
-    })
-    .from(companyProfiles)
-    .where(eq(companyProfiles.projectId, projectId))
-    .orderBy(desc(companyProfiles.totalScore));
+  // Profiles and jobs are independent — fetch in parallel to cut the
+  // (region-distant) DB round-trips on this hot path.
+  const [profileRows, jobRows] = await Promise.all([
+    db
+      .select({
+        id: companyProfiles.id,
+        slug: companyProfiles.slug,
+        total_score: companyProfiles.totalScore,
+        rating: companyProfiles.rating,
+        industry: companyProfiles.industry,
+        urgency: companyProfiles.urgency,
+        primary_solution: companyProfiles.primarySolution,
+        gemini_status: companyProfiles.geminiStatus,
+        data: companyProfiles.data,
+      })
+      .from(companyProfiles)
+      .where(eq(companyProfiles.projectId, projectId))
+      .orderBy(desc(companyProfiles.totalScore)),
+    db
+      .select()
+      .from(researchJobs)
+      .where(eq(researchJobs.projectId, projectId))
+      .orderBy(desc(researchJobs.createdAt)),
+  ]);
 
   const profilesList = profileRows.map((p) => {
     const d = (p.data || {}) as Partial<CompanyDetail>;
@@ -182,13 +190,6 @@ export async function GET(
       salesIntelligence: d.salesIntelligence,
     };
   });
-
-  // Get all research jobs for this project with their steps
-  const jobRows = await db
-    .select()
-    .from(researchJobs)
-    .where(eq(researchJobs.projectId, projectId))
-    .orderBy(desc(researchJobs.createdAt));
 
   const jobIds = jobRows.map((j) => j.id);
   const stepRows = jobIds.length
@@ -260,17 +261,31 @@ export async function POST(
     { agent_name: "trigger_scanner", phase: 2 },
     { agent_name: "pain_point_analyzer", phase: 2 },
     { agent_name: "stakeholder_researcher", phase: 2 },
+    { agent_name: "partner_landscape", phase: 2 },
     { agent_name: "solution_mapper", phase: 3 },
     { agent_name: "gtm_generator", phase: 3 },
     { agent_name: "scoring_agent", phase: 3 },
     { agent_name: "sales_intelligence", phase: 3 },
+    { agent_name: "stakeholder_offering_mapper", phase: 3 },
     { agent_name: "verification", phase: 4 },
   ];
 
   const CACHE_MAX_AGE_DAYS = 7;
   const forceRefresh = body.forceRefresh === true;
+  // When the user has been shown the "already researched" prompt and chose
+  // "Use existing", the frontend re-POSTs with reuse:true to copy the cached
+  // profile. Without reuse (and without forceRefresh) we only DETECT a cache
+  // hit and report it back so the frontend can ask first.
+  const reuse = body.reuse === true;
 
   const jobs = [];
+  const existing: {
+    company_name: string;
+    slug: string;
+    updated_at: Date | null;
+    days_old: number | null;
+    source_project: string | null;
+  }[] = [];
   for (const companyName of companyNames) {
     // Normalize slug for cache lookup
     const normalizedSlug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -281,14 +296,42 @@ export async function POST(
       cutoffDate.setDate(cutoffDate.getDate() - CACHE_MAX_AGE_DAYS);
 
       const [cached] = await db
-        .select()
+        .select({
+          slug: companyProfiles.slug,
+          jobId: companyProfiles.jobId,
+          data: companyProfiles.data,
+          totalScore: companyProfiles.totalScore,
+          rating: companyProfiles.rating,
+          industry: companyProfiles.industry,
+          urgency: companyProfiles.urgency,
+          primarySolution: companyProfiles.primarySolution,
+          geminiStatus: companyProfiles.geminiStatus,
+          updatedAt: companyProfiles.updatedAt,
+          projectName: projects.name,
+        })
         .from(companyProfiles)
+        .leftJoin(projects, eq(companyProfiles.projectId, projects.id))
         .where(and(eq(companyProfiles.slug, normalizedSlug), gte(companyProfiles.updatedAt, cutoffDate)))
         .orderBy(desc(companyProfiles.updatedAt))
         .limit(1);
 
       if (cached) {
-        // Copy cached profile to this project
+        // Not yet confirmed by the user — report the hit and let the
+        // frontend prompt "already researched N days ago, refresh?".
+        if (!reuse) {
+          const daysOld = cached.updatedAt
+            ? Math.max(0, Math.floor((Date.now() - new Date(cached.updatedAt).getTime()) / 86400000))
+            : null;
+          existing.push({
+            company_name: companyName,
+            slug: cached.slug,
+            updated_at: cached.updatedAt,
+            days_old: daysOld,
+            source_project: cached.projectName ?? null,
+          });
+          continue;
+        }
+        // User chose "Use existing" — copy the cached profile to this project
         try {
           await db
             .insert(companyProfiles)
@@ -364,5 +407,5 @@ export async function POST(
     })
     .where(eq(projects.id, projectId));
 
-  return NextResponse.json({ jobs, count: jobs.length });
+  return NextResponse.json({ jobs, count: jobs.length, existing });
 }

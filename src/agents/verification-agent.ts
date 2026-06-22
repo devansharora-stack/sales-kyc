@@ -186,12 +186,14 @@ export async function runVerification(profile: CompanyDetail): Promise<{
     const d = dim as { sources?: Source[] };
     if (d?.sources) collectUrls(d.sources);
   }
+  for (const p of corrected.partnerLandscape || []) collectUrls(p.sources);
 
   // Pre-filter: strip any Vertex AI redirect/grounding URLs that weren't resolved
   // These are Google-internal URLs useless to end users
-  const isVertexUrl = (url: string) =>
-    url.includes("vertexaisearch.cloud.google.com/grounding-api-redirect") ||
-    url.includes("vertexaisearch.google.com/grounding");
+  const isVertexUrl = (url: string | undefined): boolean =>
+    !!url &&
+    (url.includes("vertexaisearch.cloud.google.com/grounding-api-redirect") ||
+      url.includes("vertexaisearch.google.com/grounding"));
 
   const stripVertex = (sources: Source[] | undefined): Source[] =>
     (sources || []).filter((s) => !isVertexUrl(s.url));
@@ -221,6 +223,7 @@ export async function runVerification(profile: CompanyDetail): Promise<{
     const d = dim as { sources?: Source[] };
     if (d?.sources) d.sources = countAndStrip(d.sources);
   }
+  for (const p of corrected.partnerLandscape || []) p.sources = countAndStrip(p.sources);
   // Also strip from stakeholder sourceUrl
   for (const s of corrected.stakeholders || []) {
     if (s.sourceUrl && isVertexUrl(s.sourceUrl)) {
@@ -250,6 +253,7 @@ export async function runVerification(profile: CompanyDetail): Promise<{
     const d = dim as { sources?: Source[] };
     if (d?.sources) collectUrls(d.sources);
   }
+  for (const p of corrected.partnerLandscape || []) collectUrls(p.sources);
 
   const allUniqueUrls = Array.from(allUrlSet);
   if (allUniqueUrls.length > 0) {
@@ -297,6 +301,7 @@ export async function runVerification(profile: CompanyDetail): Promise<{
         const d = dim as { sources?: Source[] };
         if (d?.sources) d.sources = stripDead(d.sources);
       }
+      for (const p of corrected.partnerLandscape || []) p.sources = stripDead(p.sources);
 
       fixes.push({
         field: "sources",

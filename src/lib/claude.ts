@@ -36,12 +36,12 @@ function getModel() {
 export async function callClaude({
   systemPrompt,
   userPrompt,
-  temperature = 0.2,
 }: ClaudeOptions): Promise<string> {
+  // Note: `temperature` is intentionally omitted — the configured Opus model
+  // on Azure Foundry rejects it ("temperature is deprecated for this model").
   const body = {
     model: getModel(),
     max_tokens: 32768,
-    temperature,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
   };
@@ -82,14 +82,12 @@ export async function callClaudeWithTools<T>(options: ToolUseOptions): Promise<T
   const {
     systemPrompt,
     userPrompt,
-    temperature = 0.2,
     maxSearchUses = 10,
   } = options;
 
   const body = {
     model: getModel(),
     max_tokens: 32768,
-    temperature,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
     tools: [

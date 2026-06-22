@@ -23,7 +23,7 @@ export default function Sources({ sources }: { sources?: Source[] }) {
         >
           {linkIcon}
           {s.label}
-          <span className="text-slate-400">({s.date?.slice(0, 7)})</span>
+          <span className="text-slate-400 dark:text-slate-500">({s.date?.slice(0, 7)})</span>
         </a>
       ))}
     </div>

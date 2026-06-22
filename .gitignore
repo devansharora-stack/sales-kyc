@@ -3,7 +3,12 @@
 # dependencies
 /node_modules
 /.pnp
-.pnp.js
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
 # testing
 /coverage
@@ -23,14 +28,37 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
 
-# local env files
-.env*.local
-.env
+# env files (can opt-in for committing if needed)
+.env*
 
 # vercel
 .vercel
 
+# mcp config
+.mcp.json
+
+# GCP service account keys
+gcp-service-account.json
+
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# test files
+test-*.ts
+test-output/
+
+# generated reports / data
+*.pdf
+*.xlsx
+southwire-profile.json
+southwire-report.html
+case studies/
+
+# local-only: dev/debug scripts, DB dumps, supabase cli temp
+/scripts/
+/backups/
+/supabase/.temp/
+src/app/preview/stakeholder/

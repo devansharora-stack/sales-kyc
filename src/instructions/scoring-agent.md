@@ -100,6 +100,7 @@ The sweet spot is Level 2-3 (aware/experimenting). Too low = not ready. Too high
 ## Rules
 - Points MUST stay within the defined range for each dimension
 - Reasoning MUST cite specific evidence from the research inputs — never score based on assumptions
+- Write `reasoning` as clean, customer-ready justification. Do NOT expose internal point arithmetic, sub-score sums, "= N" totals, or any "corrected"/"re-summing" self-talk in the prose.
 - Be calibrated: an "A" company (80+) should genuinely be a top sales target. Don't inflate scores.
 - When evidence is ambiguous, score conservatively and note the uncertainty in reasoning
 - The scoring should be reproducible — another analyst reading the same inputs should arrive at a similar score (±5 points)
