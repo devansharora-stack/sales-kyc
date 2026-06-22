@@ -65,11 +65,16 @@ export default function GlobalStakeholdersPage() {
     return () => clearInterval(interval);
   }, [hasActive, fetchData]);
 
-  const filtered = rows.filter((r) => {
+  const [showDeparted, setShowDeparted] = useState(false);
+
+  const matchesQuery = (r: StakeholderRow) => {
     if (!query) return true;
     const q = query.toLowerCase();
     return r.name.toLowerCase().includes(q) || (r.company || "").toLowerCase().includes(q) || (r.title || "").toLowerCase().includes(q);
-  });
+  };
+
+  const filtered = rows.filter((r) => r.status !== "departed" && matchesQuery(r));
+  const departed = rows.filter((r) => r.status === "departed" && matchesQuery(r));
 
   return (
     <div className="animate-fade-in">
@@ -93,12 +98,12 @@ export default function GlobalStakeholdersPage() {
 
       {loading ? (
         <div className="card p-4"><div className="h-10 bg-slate-50 rounded animate-pulse" /></div>
-      ) : filtered.length === 0 ? (
+      ) : filtered.length === 0 && departed.length === 0 ? (
         <div className="card p-12 text-center">
           <p className="text-sm text-slate-500 mb-1">{rows.length === 0 ? "No stakeholders analyzed yet" : "No stakeholders match your search."}</p>
           {rows.length === 0 && <p className="text-xs text-slate-400">Open a project and use &ldquo;Import Stakeholders&rdquo; to get started.</p>}
         </div>
-      ) : (
+      ) : filtered.length === 0 ? null : (
         <div className="card overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -126,6 +131,39 @@ export default function GlobalStakeholdersPage() {
               ))}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {!loading && departed.length > 0 && (
+        <div className="mt-4">
+          <button
+            onClick={() => setShowDeparted((v) => !v)}
+            className="text-xs text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+          >
+            {showDeparted ? "Hide" : "Show"} departed / no longer at company ({departed.length})
+          </button>
+          {showDeparted && (
+            <div className="card overflow-hidden mt-2 opacity-60">
+              <table className="w-full text-sm">
+                <tbody>
+                  {departed.map((r) => (
+                    <tr key={r.id} className="border-b border-[#E2E8F0] last:border-0">
+                      <td className="p-3">
+                        <Link href={`/projects/${r.project_id}/stakeholder/${r.id}`} className="text-sm font-medium text-slate-500 line-through hover:text-[#3289FF] transition-colors">
+                          {r.name}
+                        </Link>
+                      </td>
+                      <td className="p-3 text-xs text-slate-400">{r.company || "—"}</td>
+                      <td className="p-3 text-xs text-slate-400">{r.title || "—"}</td>
+                      <td className="p-3 text-center">
+                        <span className={`badge border ${STATUS_STYLES[r.status]}`}>{STATUS_LABEL[r.status]}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

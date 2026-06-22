@@ -56,6 +56,10 @@ export default function ProjectStakeholdersPage() {
   const [loading, setLoading] = useState(true);
   const [pendingReuse, setPendingReuse] = useState<PendingReuse[]>([]);
   const [resolvingReuse, setResolvingReuse] = useState<string | null>(null);
+  const [showDeparted, setShowDeparted] = useState(false);
+
+  const activeRows = rows.filter((r) => r.status !== "departed");
+  const departedRows = rows.filter((r) => r.status === "departed");
 
   const fetchData = useCallback(async () => {
     try {
@@ -170,7 +174,7 @@ export default function ProjectStakeholdersPage() {
           <p className="text-sm text-slate-500 mb-1">No stakeholders analyzed yet</p>
           <p className="text-xs text-slate-400">Use &ldquo;Import Stakeholders&rdquo; to deep-analyze individuals by name + company.</p>
         </div>
-      ) : (
+      ) : activeRows.length === 0 ? null : (
         <div className="card overflow-hidden">
           <table className="w-full text-sm">
             <thead>
@@ -182,7 +186,7 @@ export default function ProjectStakeholdersPage() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => {
+              {activeRows.map((r) => {
                 const active = ACTIVE.includes(r.status);
                 return (
                   <tr key={r.id} className="border-b border-[#E2E8F0] last:border-0 hover:bg-[rgba(50,137,255,0.02)] transition-colors">
@@ -212,6 +216,42 @@ export default function ProjectStakeholdersPage() {
               })}
             </tbody>
           </table>
+        </div>
+      )}
+
+      {!loading && departedRows.length > 0 && (
+        <div className="mt-4">
+          <button
+            onClick={() => setShowDeparted((v) => !v)}
+            className="text-xs text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+          >
+            {showDeparted ? "Hide" : "Show"} departed / no longer at company ({departedRows.length})
+          </button>
+          {showDeparted && (
+            <div className="card overflow-hidden mt-2 opacity-60">
+              <table className="w-full text-sm">
+                <tbody>
+                  {departedRows.map((r) => (
+                    <tr key={r.id} className="border-b border-[#E2E8F0] last:border-0">
+                      <td className="p-3">
+                        <Link href={`/projects/${projectId}/stakeholder/${r.id}`} className="text-sm font-medium text-slate-500 line-through hover:text-[#3289FF] transition-colors">
+                          {r.name}
+                        </Link>
+                        {r.error_message && (
+                          <p className="text-[10px] text-slate-400 mt-0.5 truncate max-w-xs">{r.error_message}</p>
+                        )}
+                      </td>
+                      <td className="p-3 text-xs text-slate-400">{r.company || "—"}</td>
+                      <td className="p-3 text-xs text-slate-400">{r.title || "—"}</td>
+                      <td className="p-3 text-center">
+                        <span className={`badge border ${STATUS_STYLES[r.status]}`}>{STATUS_LABEL[r.status]}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       )}
     </div>

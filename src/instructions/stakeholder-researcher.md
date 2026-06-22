@@ -38,8 +38,8 @@ Search for: "{company} CTO CIO CDO Chief Technology Officer", "{company} VP tech
 ## Rules
 - Identify 3-8 stakeholders per company
 - Must include at least 1 Decision Maker and 1 Champion
-- Only include people currently at the company (verify titles are current)
-- LinkedIn profiles, company About pages, and press releases are valid sources
+- Only include people you can verify CURRENTLY hold their role at the target company. If you cannot confirm current employment, OMIT the person — do not guess.
+- Prefer recent, PRIMARY sources (the company's current leadership/about page, the person's own current LinkedIn headline, a press release dated within the last ~12 months) over stale third-party listings (aggregators, old directories, dated articles), which frequently still show people who have already left.
 - Prioritize recently appointed leaders (within last 18 months) — they're more likely to drive change
 - Include the "relevance" field explaining which Techolution solutions this person would care about
 - If the company is very private, focus on job posting clues (e.g., "Reports to VP of Engineering" reveals an org structure)
