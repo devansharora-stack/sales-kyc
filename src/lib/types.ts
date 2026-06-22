@@ -396,6 +396,7 @@ export interface MatrixRow {
   title: string;
   powerLabel: string; // e.g. "PRIMARY DECISION MAKER", "BUDGET APPROVER", "EXEC SPONSOR"
   cells: MatrixCell[]; // one per solution column, in solutionColumns order
+  enriched?: boolean; // true when built using this person's deep-research intel brief
 }
 
 export interface StakeholderOfferingMatrix {

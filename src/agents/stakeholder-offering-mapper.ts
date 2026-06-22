@@ -10,6 +10,7 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { callClaudeJSON } from "@/lib/claude";
 import { ALL_SOLUTIONS } from "@/lib/types";
+import { normalizeStakeholderName } from "@/lib/names";
 import type {
   StakeholderOfferingMatrix,
   MatrixRow,
@@ -18,6 +19,7 @@ import type {
   PainPoint,
   GTMStrategy,
   SolutionId,
+  StakeholderIntelBrief,
 } from "@/lib/types";
 
 const systemPrompt = readFileSync(
@@ -46,6 +48,10 @@ interface StakeholderOfferingMapperInput {
   solutionMappings: SolutionMapping[];
   painPoints: PainPoint[];
   gtm: GTMStrategy;
+  // Completed deep-research briefs, matched to stakeholders by name. When a
+  // stakeholder has one, the mapper uses their verified priorities/pains and
+  // engagement angle to sharpen that row instead of guessing from title alone.
+  deepProfiles?: { name: string; intelBrief: StakeholderIntelBrief }[];
 }
 
 export async function runStakeholderOfferingMapper(
@@ -73,12 +79,26 @@ export async function runStakeholderOfferingMapper(
     return { solutionColumns, rows: [] };
   }
 
-  const stakeholderSummary = stakeholders.map((s) => ({
-    name: s.name,
-    title: s.title,
-    tier: s.tier,
-    relevance: s.relevance,
-  }));
+  const deepByName = new Map(
+    (input.deepProfiles || []).map((d) => [normalizeStakeholderName(d.name), d.intelBrief]),
+  );
+
+  const stakeholderSummary = stakeholders.map((s) => {
+    const base = { name: s.name, title: s.title, tier: s.tier, relevance: s.relevance };
+    const brief = deepByName.get(normalizeStakeholderName(s.name));
+    if (!brief) return base;
+    // Condense the deep brief to the fields that sharpen a matrix cell.
+    return {
+      ...base,
+      deepIntel: {
+        summary: brief.executiveSummary,
+        priorities: (brief.verifiedPriorities || []).slice(0, 4).map((p) => p.priority),
+        painPoints: (brief.painPoints || []).slice(0, 4).map((p) => p.pain),
+        openingAngle: brief.engagementApproach?.openingAngle,
+        talkingPoints: brief.engagementApproach?.talkingPoints,
+      },
+    };
+  });
   const columnSummary = solutionColumns.map((c) => ({ id: c.id, name: c.name }));
   const painSummary = (input.painPoints || []).map((p) => ({
     title: p.title,
@@ -95,6 +115,8 @@ Company profile:
 
 Stakeholders (these are the ROWS):
 ${JSON.stringify(stakeholderSummary, null, 2)}
+
+Some stakeholders include a "deepIntel" block from verified deep research (LinkedIn-based). When present, ground that row's roles and rationale in their verified priorities, pain points and engagement angle — do NOT contradict it or fall back to title-only guessing.
 
 Offering COLUMNS (use these exact ids/names, in this order, one cell per column per row):
 ${JSON.stringify(columnSummary, null, 2)}
@@ -136,6 +158,7 @@ Respond ONLY with a JSON object: { "rows": [...] } matching the output schema.`,
       title: row.title || "",
       powerLabel: row.powerLabel || "",
       cells,
+      enriched: deepByName.has(normalizeStakeholderName(row.stakeholderName)),
     };
   });
 

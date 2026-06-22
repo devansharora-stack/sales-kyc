@@ -21,6 +21,7 @@ import { resolveLinkedInUrl } from "./linkedin-url-resolver";
 import { scrapeHarvestProfile, scrapeApifyPosts } from "@/lib/apify";
 import { scrapeBrightDataProfile } from "@/lib/brightdata";
 import { synthesizeStakeholder } from "./stakeholder-synthesizer";
+import { rebuildStakeholderOfferingMatrix } from "@/lib/rebuild-matrix";
 import type {
   DeepStakeholderProfile,
   StakeholderStatus,
@@ -147,6 +148,19 @@ export const analyzeStakeholder = inngest.createFunction(
           data: { raw: { bright, profile, posts } as Record<string, unknown>, profile: full },
         });
       });
+
+      // ── 6. Refresh the company's Stakeholder × Offering matrix with this
+      // person's verified intel. Best-effort — never fail the run over it.
+      if (row.companyProfileId) {
+        await step.run("rebuild-matrix", async () => {
+          try {
+            await rebuildStakeholderOfferingMatrix(row.companyProfileId!);
+          } catch (e) {
+            console.log(`[stakeholder] matrix rebuild failed: ${e instanceof Error ? e.message : e}`);
+          }
+          return null;
+        });
+      }
 
       return { status: "completed", stakeholderId };
     } catch (error) {

@@ -133,6 +133,11 @@ export default function StakeholderMatrixPanel({ matrix, projectId, deepByName, 
                       );
                     })()}
                   </div>
+                  {row.enriched && (
+                    <span className="block mt-1 text-[10px] font-medium text-[#3289FF]" title="This row was built using verified deep-research intel">
+                      ✦ deep-informed
+                    </span>
+                  )}
                 </td>
                 {row.cells.map((cell, ci) => {
                   const styles = strengthStyles[cell.strength] || strengthStyles.none;
