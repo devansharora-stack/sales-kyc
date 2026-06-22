@@ -1,0 +1,46 @@
+name: DB Backup
+
+# Daily logical backup of the sales_kyc schema. GitHub runners cannot reach
+# AlloyDB directly, so we call the deployed app's /api/backup endpoint (which
+# runs inside GCP and can reach the DB), signing the request with NEXTAUTH_SECRET.
+# Restore with scripts/restore-from-backup.mjs.
+#
+# Required repo secrets:
+#   BACKUP_URL        e.g. https://sales-kyc-693246358019.us-central1.run.app/api/backup
+#   NEXTAUTH_SECRET   the same value the deployed app uses
+
+on:
+  schedule:
+    - cron: "0 2 * * *" # 02:00 UTC daily
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Pull DB dump from the app
+        env:
+          BACKUP_URL: ${{ secrets.BACKUP_URL }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BACKUP_URL:-}" ] || [ -z "${NEXTAUTH_SECRET:-}" ]; then
+            echo "Missing BACKUP_URL or NEXTAUTH_SECRET secret"; exit 1
+          fi
+          TS=$(date +%s)
+          SIG=$(printf "%s" "$TS" | openssl dgst -sha256 -hmac "$NEXTAUTH_SECRET" | awk '{print $NF}')
+          OUT="sales_kyc-$(date +%F).json"
+          curl -fsS --max-time 120 \
+            -H "x-backup-timestamp: $TS" \
+            -H "x-backup-signature: $SIG" \
+            "$BACKUP_URL" -o "$OUT"
+          # Sanity check: must be JSON with a tables object.
+          node -e "const d=require('./'+process.argv[1]); if(!d.tables||!d.tables.users) {console.error('bad dump'); process.exit(1)}; console.log('users:', d.tables.users.length, 'projects:', (d.tables.projects||[]).length)" "$OUT"
+          echo "OUT=$OUT" >> "$GITHUB_ENV"
+
+      - name: Upload backup artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: db-backup-${{ github.run_id }}
+          path: sales_kyc-*.json
+          retention-days: 90
