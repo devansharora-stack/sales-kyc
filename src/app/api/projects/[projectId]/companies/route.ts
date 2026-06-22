@@ -146,22 +146,30 @@ export async function GET(
     });
   }
 
-  // Get completed company profiles (summary view for list)
-  const profileRows = await db
-    .select({
-      id: companyProfiles.id,
-      slug: companyProfiles.slug,
-      total_score: companyProfiles.totalScore,
-      rating: companyProfiles.rating,
-      industry: companyProfiles.industry,
-      urgency: companyProfiles.urgency,
-      primary_solution: companyProfiles.primarySolution,
-      gemini_status: companyProfiles.geminiStatus,
-      data: companyProfiles.data,
-    })
-    .from(companyProfiles)
-    .where(eq(companyProfiles.projectId, projectId))
-    .orderBy(desc(companyProfiles.totalScore));
+  // Profiles and jobs are independent — fetch in parallel to cut the
+  // (region-distant) DB round-trips on this hot path.
+  const [profileRows, jobRows] = await Promise.all([
+    db
+      .select({
+        id: companyProfiles.id,
+        slug: companyProfiles.slug,
+        total_score: companyProfiles.totalScore,
+        rating: companyProfiles.rating,
+        industry: companyProfiles.industry,
+        urgency: companyProfiles.urgency,
+        primary_solution: companyProfiles.primarySolution,
+        gemini_status: companyProfiles.geminiStatus,
+        data: companyProfiles.data,
+      })
+      .from(companyProfiles)
+      .where(eq(companyProfiles.projectId, projectId))
+      .orderBy(desc(companyProfiles.totalScore)),
+    db
+      .select()
+      .from(researchJobs)
+      .where(eq(researchJobs.projectId, projectId))
+      .orderBy(desc(researchJobs.createdAt)),
+  ]);
 
   const profilesList = profileRows.map((p) => {
     const d = (p.data || {}) as Partial<CompanyDetail>;
@@ -182,13 +190,6 @@ export async function GET(
       salesIntelligence: d.salesIntelligence,
     };
   });
-
-  // Get all research jobs for this project with their steps
-  const jobRows = await db
-    .select()
-    .from(researchJobs)
-    .where(eq(researchJobs.projectId, projectId))
-    .orderBy(desc(researchJobs.createdAt));
 
   const jobIds = jobRows.map((j) => j.id);
   const stepRows = jobIds.length
