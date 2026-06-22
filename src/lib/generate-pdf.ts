@@ -8,6 +8,11 @@ import { ALL_SOLUTIONS, RATING_LABELS } from "@/lib/types";
 const solName = (id: SolutionId | string) =>
   ALL_SOLUTIONS.find(s => s.id === id)?.name ?? id;
 
+// Agent jsonb fields are typed as arrays but the LLM sometimes returns a string.
+// Safely render either form as a joined string (never call .join on a non-array).
+const joinVal = (v: unknown, sep = ", "): string =>
+  Array.isArray(v) ? v.filter(Boolean).join(sep) : typeof v === "string" ? v : "";
+
 // Colors
 const BLUE = [50, 137, 255] as const;
 const DARK = [15, 23, 42] as const;
@@ -212,7 +217,7 @@ export function generateCompanyPDF(company: CompanyDetail) {
     ["HEADQUARTERS", `${company.hqCity}, ${company.state}`],
     ["REVENUE", company.revenue?.value || "N/A"],
     ["EMPLOYEES", company.employees?.value || "N/A"],
-    ["CLOUD", company.techLandscape?.cloudProviders?.value?.join(", ") || "N/A"],
+    ["CLOUD", joinVal(company.techLandscape?.cloudProviders?.value) || "N/A"],
     ["COLLABORATION", company.techLandscape?.workspacePlatform?.value || "N/A"],
   ];
 
@@ -392,8 +397,8 @@ export function generateCompanyPDF(company: CompanyDetail) {
       const impactText = typeof m.estimatedImpact === "string"
         ? m.estimatedImpact
         : (m.estimatedImpact as EstimatedImpact).summary +
-          ((m.estimatedImpact as EstimatedImpact).reasoning?.length
-            ? " " + (m.estimatedImpact as EstimatedImpact).reasoning.join(" ")
+          (joinVal((m.estimatedImpact as EstimatedImpact).reasoning, " ")
+            ? " " + joinVal((m.estimatedImpact as EstimatedImpact).reasoning, " ")
             : "");
       body(impactText, 4);
     }
@@ -491,7 +496,7 @@ export function generateCompanyPDF(company: CompanyDetail) {
   const painTableData = (company.painPoints || []).map(p => [
     p.title,
     p.severity,
-    p.techolutionSolutions?.map(s => solName(s)).join(", ") || "—",
+    (Array.isArray(p.techolutionSolutions) ? p.techolutionSolutions.map(s => solName(s)).join(", ") : "") || "—",
   ]);
 
   if (painTableData.length > 0) {
@@ -530,11 +535,15 @@ export function generateCompanyPDF(company: CompanyDetail) {
   const tl = company.techLandscape;
   if (tl) {
     const techData: string[][] = [];
-    if (tl.cloudProviders?.value?.length) techData.push(["Cloud", tl.cloudProviders.value.join(", ")]);
+    const cloud = joinVal(tl.cloudProviders?.value);
+    if (cloud) techData.push(["Cloud", cloud]);
     if (tl.workspacePlatform?.value) techData.push(["Workspace", tl.workspacePlatform.value]);
-    if (tl.knownAIDeployments?.value?.length) techData.push(["AI Deployments", tl.knownAIDeployments.value.join(", ")]);
-    if (tl.knownVendors?.value?.length) techData.push(["Known Vendors", tl.knownVendors.value.join(", ")]);
-    if (tl.knownSystems?.value?.length) techData.push(["Known Systems", tl.knownSystems.value.join(", ")]);
+    const aiDep = joinVal(tl.knownAIDeployments?.value);
+    if (aiDep) techData.push(["AI Deployments", aiDep]);
+    const vendors = joinVal(tl.knownVendors?.value);
+    if (vendors) techData.push(["Known Vendors", vendors]);
+    const systems = joinVal(tl.knownSystems?.value);
+    if (systems) techData.push(["Known Systems", systems]);
 
     if (techData.length > 0) {
       autoTable(doc, {
