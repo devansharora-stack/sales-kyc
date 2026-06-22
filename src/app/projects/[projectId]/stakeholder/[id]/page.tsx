@@ -2,8 +2,9 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
-import type { DeepStakeholderProfile, StakeholderStatus } from "@/lib/types";
+import type { DeepStakeholderProfile, StakeholderScriptSet, StakeholderStatus } from "@/lib/types";
 import StakeholderProfileView from "@/components/StakeholderProfileView";
+import StakeholderScriptsPanel from "@/components/stakeholder/StakeholderScriptsPanel";
 
 interface StakeholderResponse {
   id: string;
@@ -15,7 +16,7 @@ interface StakeholderResponse {
   linkedin_url: string | null;
   url_confidence: string | null;
   error_message: string | null;
-  data: { profile?: DeepStakeholderProfile } | null;
+  data: { profile?: DeepStakeholderProfile; scripts?: StakeholderScriptSet } | null;
 }
 
 const ACTIVE: StakeholderStatus[] = ["queued", "resolving", "scraping", "synthesizing"];
@@ -177,6 +178,7 @@ export default function StakeholderDetailPage() {
       )}
 
       {profile && <StakeholderProfileView p={profile} />}
+      {profile && <StakeholderScriptsPanel stakeholderId={id} initialScripts={s.data?.scripts} />}
     </div>
   );
 }

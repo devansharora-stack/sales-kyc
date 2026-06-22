@@ -230,6 +230,38 @@ export interface DeepStakeholderProfile {
   dataRichness: StakeholderDataRichness;
 }
 
+// === Per-stakeholder sales scripts ===
+
+export type ScriptTone = "receptive" | "analytical" | "skeptical";
+
+export interface ScriptLine {
+  speaker: "rep" | "prospect" | "direction"; // direction = [pause] / stage note
+  text: string;
+}
+
+export interface ScriptObjection {
+  objection: string;
+  response: string;
+}
+
+export interface StakeholderScript {
+  tone: ScriptTone;
+  toneLabel: string; // e.g. "The Open Book", "The Neutral Professional"
+  scenario: string; // 1-line setting grounded in this person's role/context
+  lines: ScriptLine[];
+  objections: ScriptObjection[];
+  leaveBehind: string;
+}
+
+export interface StakeholderScriptSet {
+  offeringId: string; // SolutionId or KB offering id actually pitched
+  offeringName: string;
+  predictedTone: ScriptTone;
+  predictedToneReason: string;
+  generatedAt: string; // ISO
+  variants: StakeholderScript[]; // exactly 3, one per tone
+}
+
 export type StakeholderStatus =
   | "queued" | "resolving" | "needs_confirmation" | "scraping"
   | "synthesizing" | "completed" | "failed" | "cancelled" | "departed";
@@ -247,7 +279,7 @@ export interface StakeholderRecord {
   input_type: "manual" | "csv" | "company" | null;
   status: StakeholderStatus;
   progress: number;
-  data: { raw?: Record<string, unknown>; profile?: DeepStakeholderProfile } | null;
+  data: { raw?: Record<string, unknown>; profile?: DeepStakeholderProfile; scripts?: StakeholderScriptSet } | null;
   error_message: string | null;
   created_at: string;
   updated_at: string;
