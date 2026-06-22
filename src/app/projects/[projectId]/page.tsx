@@ -82,7 +82,7 @@ export default function ProjectDetailPage() {
   const [newCompanies, setNewCompanies] = useState("");
   const [retrying, setRetrying] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>("score");
-  const [pendingReuse, setPendingReuse] = useState<{ company_name: string; slug: string; updated_at: string | null }[]>([]);
+  const [pendingReuse, setPendingReuse] = useState<{ company_name: string; slug: string; updated_at: string | null; days_old?: number | null; source_project?: string | null }[]>([]);
   const [resolvingReuse, setResolvingReuse] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -122,7 +122,7 @@ export default function ProjectDetailPage() {
       body: JSON.stringify({ companies: names, ...opts }),
     });
     const data = await res.json().catch(() => ({}));
-    const found = (data?.existing ?? []) as { company_name: string; slug: string; updated_at: string | null }[];
+    const found = (data?.existing ?? []) as { company_name: string; slug: string; updated_at: string | null; days_old?: number | null; source_project?: string | null }[];
     if (found.length > 0) {
       setPendingReuse((prev) => {
         const seen = new Set(prev.map((p) => p.slug));
@@ -297,10 +297,14 @@ export default function ProjectDetailPage() {
             <div key={p.slug} className="card p-4 flex items-center justify-between border-amber-200 bg-amber-50/40">
               <div>
                 <p className="text-sm font-medium text-slate-800">
-                  Research for <span className="font-semibold">{p.company_name}</span> already exists
+                  Found recent research for <span className="font-semibold">{p.company_name}</span>
+                  {typeof p.days_old === "number" && (
+                    <span className="text-slate-500 font-normal"> ({p.days_old === 0 ? "today" : `${p.days_old} day${p.days_old === 1 ? "" : "s"} old`})</span>
+                  )}
                 </p>
                 <p className="text-xs text-slate-500">
-                  Last updated {p.updated_at ? new Date(p.updated_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "recently"}
+                  Last researched {p.updated_at ? new Date(p.updated_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "recently"}
+                  {p.source_project ? ` · in "${p.source_project}"` : ""}
                 </p>
               </div>
               <div className="flex gap-2">

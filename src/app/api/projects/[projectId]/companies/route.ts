@@ -279,7 +279,13 @@ export async function POST(
   const reuse = body.reuse === true;
 
   const jobs = [];
-  const existing: { company_name: string; slug: string; updated_at: Date | null }[] = [];
+  const existing: {
+    company_name: string;
+    slug: string;
+    updated_at: Date | null;
+    days_old: number | null;
+    source_project: string | null;
+  }[] = [];
   for (const companyName of companyNames) {
     // Normalize slug for cache lookup
     const normalizedSlug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
@@ -290,17 +296,39 @@ export async function POST(
       cutoffDate.setDate(cutoffDate.getDate() - CACHE_MAX_AGE_DAYS);
 
       const [cached] = await db
-        .select()
+        .select({
+          slug: companyProfiles.slug,
+          jobId: companyProfiles.jobId,
+          data: companyProfiles.data,
+          totalScore: companyProfiles.totalScore,
+          rating: companyProfiles.rating,
+          industry: companyProfiles.industry,
+          urgency: companyProfiles.urgency,
+          primarySolution: companyProfiles.primarySolution,
+          geminiStatus: companyProfiles.geminiStatus,
+          updatedAt: companyProfiles.updatedAt,
+          projectName: projects.name,
+        })
         .from(companyProfiles)
+        .leftJoin(projects, eq(companyProfiles.projectId, projects.id))
         .where(and(eq(companyProfiles.slug, normalizedSlug), gte(companyProfiles.updatedAt, cutoffDate)))
         .orderBy(desc(companyProfiles.updatedAt))
         .limit(1);
 
       if (cached) {
         // Not yet confirmed by the user — report the hit and let the
-        // frontend prompt "already researched on <date>, refresh?".
+        // frontend prompt "already researched N days ago, refresh?".
         if (!reuse) {
-          existing.push({ company_name: companyName, slug: cached.slug, updated_at: cached.updatedAt });
+          const daysOld = cached.updatedAt
+            ? Math.max(0, Math.floor((Date.now() - new Date(cached.updatedAt).getTime()) / 86400000))
+            : null;
+          existing.push({
+            company_name: companyName,
+            slug: cached.slug,
+            updated_at: cached.updatedAt,
+            days_old: daysOld,
+            source_project: cached.projectName ?? null,
+          });
           continue;
         }
         // User chose "Use existing" — copy the cached profile to this project
