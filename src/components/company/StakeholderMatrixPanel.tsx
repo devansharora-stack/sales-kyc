@@ -36,12 +36,12 @@ interface MatrixPanelProps {
 }
 
 function deepLabel(status: string): string {
-  if (status === "completed") return "Deep profile ✓";
+  if (status === "completed") return "Analyzed ✓ ▸";
   if (ACTIVE_DEEP.includes(status)) return "Analyzing…";
   if (status === "needs_confirmation") return "Needs URL";
   if (status === "departed") return "Departed";
   if (status === "failed") return "Failed";
-  return "View";
+  return "View ▸";
 }
 
 export default function StakeholderMatrixPanel({ matrix, deepByName, onDeepResearch, onOpenDeep }: MatrixPanelProps) {
@@ -114,10 +114,15 @@ export default function StakeholderMatrixPanel({ matrix, deepByName, onDeepResea
                     {(() => {
                       const deep = deepByName.get(normalizeStakeholderName(row.stakeholderName));
                       if (deep) {
+                        const isDone = deep.status === "completed";
+                        const chipClass = isDone
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                          : "bg-[rgba(50,137,255,0.08)] text-[#3289FF] border-[#3289FF]/20 hover:underline";
                         return (
                           <button
                             onClick={() => onOpenDeep(deep.id, row.stakeholderName, row.title)}
-                            className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[rgba(50,137,255,0.08)] text-[#3289FF] border border-[#3289FF]/20 hover:underline cursor-pointer"
+                            title={isDone ? "Open deep profile (already analyzed)" : undefined}
+                            className={`text-[10px] font-medium px-1.5 py-0.5 rounded border cursor-pointer ${chipClass}`}
                           >
                             {deepLabel(deep.status)}
                           </button>

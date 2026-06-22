@@ -113,10 +113,13 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
         className="absolute inset-0 bg-slate-900/30 backdrop-blur-[1px] animate-fade-in"
         onClick={onClose}
       />
-      {/* Drawer */}
-      <div className={`absolute right-0 top-0 h-full w-[480px] max-w-[90vw] bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-transform duration-200 ease-out ${shown ? "translate-x-0" : "translate-x-full"}`}>
-        {/* Header */}
-        <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-100 shrink-0">
+      {/* Drawer — starts below the 56px (h-14) sticky nav so its header is never clipped */}
+      <div
+        className={`absolute right-0 top-14 w-[480px] max-w-[90vw] bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-transform duration-200 ease-out ${shown ? "translate-x-0" : "translate-x-full"}`}
+        style={{ height: "calc(100vh - 56px)" }}
+      >
+        {/* Header — sticky so it stays visible while the body scrolls */}
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 px-5 pt-5 pb-4 border-b border-slate-100 bg-white shrink-0">
           <div className="min-w-0">
             <h2 className="text-lg font-semibold text-slate-800 truncate">{displayName}</h2>
             {displayTitle && <p className="text-sm text-slate-500 truncate">{displayTitle}</p>}

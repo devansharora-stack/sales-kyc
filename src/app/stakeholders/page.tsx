@@ -30,12 +30,12 @@ const STATUS_STYLES: Record<StakeholderStatus, string> = {
 };
 
 const STATUS_LABEL: Record<StakeholderStatus, string> = {
-  queued: "Queued",
-  resolving: "Resolving",
+  queued: "Analyzing…",
+  resolving: "Analyzing…",
   needs_confirmation: "Needs URL",
-  scraping: "Scraping",
-  synthesizing: "Synthesizing",
-  completed: "Completed",
+  scraping: "Analyzing…",
+  synthesizing: "Analyzing…",
+  completed: "Analyzed ✓",
   failed: "Failed",
   cancelled: "Cancelled",
   departed: "No longer at company",
@@ -112,6 +112,7 @@ export default function GlobalStakeholdersPage() {
                 <th className="text-left p-3">Company</th>
                 <th className="text-left p-3">Title</th>
                 <th className="text-center p-3">Status</th>
+                <th className="text-right p-3" />
               </tr>
             </thead>
             <tbody>
@@ -126,6 +127,16 @@ export default function GlobalStakeholdersPage() {
                   <td className="p-3 text-xs text-slate-500">{r.title || "—"}</td>
                   <td className="p-3 text-center">
                     <span className={`badge border ${STATUS_STYLES[r.status]}`}>{STATUS_LABEL[r.status]}</span>
+                  </td>
+                  <td className="p-3 text-right">
+                    {r.status === "completed" && (
+                      <Link
+                        href={`/projects/${r.project_id}/stakeholder/${r.id}`}
+                        className="text-xs font-medium text-[#3289FF] hover:underline whitespace-nowrap"
+                      >
+                        View →
+                      </Link>
+                    )}
                   </td>
                 </tr>
               ))}

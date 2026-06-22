@@ -33,12 +33,12 @@ const STATUS_STYLES: Record<StakeholderStatus, string> = {
 };
 
 const STATUS_LABEL: Record<StakeholderStatus, string> = {
-  queued: "Queued",
-  resolving: "Resolving",
+  queued: "Analyzing…",
+  resolving: "Analyzing…",
   needs_confirmation: "Needs URL",
-  scraping: "Scraping",
-  synthesizing: "Synthesizing",
-  completed: "Completed",
+  scraping: "Analyzing…",
+  synthesizing: "Analyzing…",
+  completed: "Analyzed ✓",
   failed: "Failed",
   cancelled: "Cancelled",
   departed: "No longer at company",
@@ -154,11 +154,16 @@ export default function ProjectStakeholdersPage() {
                     {resolvingReuse === key ? "Working..." : "Use existing"}
                   </button>
                   <button
-                    onClick={() => handleReuseDecision(item, "refresh")}
+                    onClick={() => {
+                      if (window.confirm("Re-analyzing runs a fresh LinkedIn scrape (paid). The existing profile is still up to date — re-analyze anyway?")) {
+                        handleReuseDecision(item, "refresh");
+                      }
+                    }}
                     disabled={resolvingReuse === key}
-                    className="btn-ghost disabled:opacity-50"
+                    title="Runs a fresh paid scrape"
+                    className="btn-ghost text-slate-400 hover:text-slate-600 disabled:opacity-50"
                   >
-                    Re-analyze
+                    Re-analyze (paid)
                   </button>
                 </div>
               </div>
@@ -183,6 +188,7 @@ export default function ProjectStakeholdersPage() {
                 <th className="text-left p-3">Company</th>
                 <th className="text-left p-3">Title</th>
                 <th className="text-center p-3">Status</th>
+                <th className="text-right p-3" />
               </tr>
             </thead>
             <tbody>
@@ -210,6 +216,16 @@ export default function ProjectStakeholdersPage() {
                     <td className="p-3 text-xs text-slate-500">{r.title || "—"}</td>
                     <td className="p-3 text-center">
                       <span className={`badge border ${STATUS_STYLES[r.status]}`}>{STATUS_LABEL[r.status]}</span>
+                    </td>
+                    <td className="p-3 text-right">
+                      {r.status === "completed" && (
+                        <Link
+                          href={`/projects/${projectId}/stakeholder/${r.id}`}
+                          className="text-xs font-medium text-[#3289FF] hover:underline whitespace-nowrap"
+                        >
+                          View →
+                        </Link>
+                      )}
                     </td>
                   </tr>
                 );

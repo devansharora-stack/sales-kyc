@@ -219,6 +219,14 @@ export default function CompanyPage() {
     fetchDeep(projectId);
   }
 
+  // Re-analyze a single stakeholder that already has a completed deep profile —
+  // force a fresh run (de-emphasized secondary action on the Stakeholders tab).
+  async function handleReanalyze(name: string, title: string) {
+    if (!company) return;
+    await postPeople([{ name, company: company.name, title: title || null }], { forceRefresh: true });
+    fetchDeep(projectId);
+  }
+
   // Matrix per-stakeholder trigger: reuse a fresh saved profile if one exists,
   // otherwise queue a fresh analysis — no prompt (silent reuse).
   async function handleMatrixDeepResearch(name: string, title: string) {
@@ -340,6 +348,14 @@ export default function CompanyPage() {
             <span className="text-slate-400 text-xs">/100</span>
           </span>
           <RatingBadge rating={company.rating} size="md" />
+          {company.salesIntelligence && (
+            <span className="hidden sm:inline-flex items-center gap-1 text-xs text-slate-400 truncate min-w-0">
+              <span className="text-slate-500 font-medium">Opp:</span>
+              <span className="text-slate-600">{company.salesIntelligence.opportunityValue.estimatedFirstYear}</span>
+              <span className="text-slate-300">&middot;</span>
+              <span className="text-slate-600">{company.salesIntelligence.salesMotion.motion}</span>
+            </span>
+          )}
           <div className="ml-auto">
             <PdfMenu company={company} />
           </div>
@@ -414,8 +430,8 @@ export default function CompanyPage() {
       </div>{/* end sticky top panel */}
       <div className="mb-6" />
 
-      {/* Sales Intelligence Panel — always visible above tabs */}
-      {company.salesIntelligence && (
+      {/* Sales Intelligence Panel — shown on Overview tab only (redundant elsewhere) */}
+      {activeTab === "overview" && company.salesIntelligence && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
           {/* Opportunity Value */}
           <div className="card p-5">
@@ -801,26 +817,40 @@ export default function CompanyPage() {
                     <div className="grid md:grid-cols-2 gap-2">
                       {tierList.map((s, i) => {
                         const deep = deepByName.get(normalizeStakeholderName(s.name));
+                        const isAnalyzed = deep?.status === "completed";
+                        const isAnalyzing = deep != null && !isAnalyzed;
                         return (
                         <div key={i} className={`${tc.bg} border ${tc.border} rounded-lg p-3`}>
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-start gap-2 min-w-0">
-                              <input
-                                type="checkbox"
-                                checked={selected.has(s.name)}
-                                onChange={() => toggleSelect(s.name)}
-                                className="mt-1 shrink-0 accent-[#3289FF] cursor-pointer"
-                              />
+                              {!deep ? (
+                                <input
+                                  type="checkbox"
+                                  checked={selected.has(s.name)}
+                                  onChange={() => toggleSelect(s.name)}
+                                  className="mt-1 shrink-0 accent-[#3289FF] cursor-pointer"
+                                />
+                              ) : (
+                                <span className="mt-0.5 shrink-0 w-4 flex justify-center" aria-hidden="true">
+                                  {isAnalyzed ? (
+                                    <span className="text-emerald-600 text-sm leading-none">&#10003;</span>
+                                  ) : (
+                                    <span className="inline-block w-3 h-3 rounded-full border-2 border-[#3289FF]/30 border-t-[#3289FF] animate-spin" />
+                                  )}
+                                </span>
+                              )}
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <p className="text-sm font-semibold text-slate-800">{s.name}</p>
-                                  {deep && (
-                                    <button
-                                      onClick={() => openDrawer(deep.id, { name: s.name, title: s.title, company: company.name })}
-                                      className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[rgba(50,137,255,0.08)] text-[#3289FF] border border-[#3289FF]/20 hover:underline cursor-pointer"
-                                    >
-                                      {deep.status === "completed" ? "View profile" : "Analyzing…"}
-                                    </button>
+                                  {isAnalyzed && (
+                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                      Analyzed &#10003;
+                                    </span>
+                                  )}
+                                  {isAnalyzing && (
+                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[rgba(50,137,255,0.08)] text-[#3289FF] border border-[#3289FF]/20">
+                                      Analyzing&hellip;
+                                    </span>
                                   )}
                                 </div>
                                 <p className="text-xs text-slate-500 mt-0.5">{s.title}</p>
@@ -828,6 +858,22 @@ export default function CompanyPage() {
                             </div>
                             <span className={`text-xs font-medium px-1.5 py-0.5 rounded shrink-0 ${tc.badge}`}>{s.tier}</span>
                           </div>
+                          {isAnalyzed && deep && (
+                            <div className="flex items-center gap-3 mt-2">
+                              <button
+                                onClick={() => openDrawer(deep.id, { name: s.name, title: s.title, company: company.name })}
+                                className="btn-primary text-xs"
+                              >
+                                View profile
+                              </button>
+                              <button
+                                onClick={() => handleReanalyze(s.name, s.title)}
+                                className="text-[11px] text-slate-400 hover:text-slate-600 hover:underline cursor-pointer"
+                              >
+                                Re-analyze
+                              </button>
+                            </div>
+                          )}
                           <p className="text-xs text-slate-600 mt-2 leading-relaxed">{s.relevance}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <p className="text-xs text-slate-400">
