@@ -10,11 +10,11 @@ const strengthStyles: Record<CellStrength, { cell: string; badge: string }> = {
     badge: "bg-[#3289FF] text-white",
   },
   conditional: {
-    cell: "bg-amber-50 border-amber-200",
-    badge: "bg-amber-200 text-amber-900",
+    cell: "bg-amber-50 dark:bg-amber-900/30 border-amber-200 dark:border-amber-800",
+    badge: "bg-amber-200 dark:bg-amber-900/40 text-amber-900 dark:text-amber-300",
   },
   none: {
-    cell: "bg-slate-50/40 border-slate-100",
+    cell: "bg-slate-50/40 dark:bg-slate-800/60 border-slate-100 dark:border-slate-700",
     badge: "",
   },
 };
@@ -62,7 +62,7 @@ export default function StakeholderMatrixPanel({ matrix, deepByName, onDeepResea
 
   if (!matrix?.rows?.length || !matrix?.solutionColumns?.length) {
     return (
-      <p className="text-sm text-slate-400 py-6 text-center">
+      <p className="text-sm text-slate-400 dark:text-slate-500 py-6 text-center">
         No stakeholder matrix available. Re-run research on this company to generate it.
       </p>
     );
@@ -71,27 +71,27 @@ export default function StakeholderMatrixPanel({ matrix, deepByName, onDeepResea
   return (
     <div className="space-y-4">
       {/* Legend */}
-      <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+      <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500 dark:text-slate-400">
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm bg-[#3289FF]" /> Strong
         </span>
         <span className="flex items-center gap-1.5">
           <span className="w-3 h-3 rounded-sm bg-amber-300" /> Conditional
         </span>
-        <span className="text-slate-400">Each cell: who sponsors/approves the offering and how to approach them.</span>
+        <span className="text-slate-400 dark:text-slate-500">Each cell: who sponsors/approves the offering and how to approach them.</span>
       </div>
 
-      <div className="overflow-x-auto border border-slate-200 rounded-lg">
+      <div className="overflow-x-auto border border-slate-200 dark:border-slate-700 rounded-lg">
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="bg-slate-50 border-b border-slate-200">
-              <th className="text-left text-label px-4 py-2.5 sticky left-0 bg-slate-50 z-10 min-w-[180px]">
+            <tr className="bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+              <th className="text-left text-label px-4 py-2.5 sticky left-0 bg-slate-50 dark:bg-slate-800 z-10 min-w-[180px]">
                 Stakeholder
               </th>
               {matrix.solutionColumns.map((col) => (
                 <th
                   key={col.id}
-                  className="text-left text-label px-3 py-2.5 min-w-[160px] border-l border-slate-200"
+                  className="text-left text-label px-3 py-2.5 min-w-[160px] border-l border-slate-200 dark:border-slate-700"
                   title={col.name}
                 >
                   {col.shortName}
@@ -101,12 +101,12 @@ export default function StakeholderMatrixPanel({ matrix, deepByName, onDeepResea
           </thead>
           <tbody>
             {matrix.rows.map((row, ri) => (
-              <tr key={ri} className="border-b border-slate-100 last:border-0 align-top">
-                <td className="px-4 py-3 sticky left-0 bg-white z-10 border-r border-slate-100">
-                  <p className="font-semibold text-slate-800">{row.stakeholderName}</p>
-                  {row.title && <p className="text-xs text-slate-500 mt-0.5">{row.title}</p>}
+              <tr key={ri} className="border-b border-slate-100 dark:border-slate-700 last:border-0 align-top">
+                <td className="px-4 py-3 sticky left-0 bg-white dark:bg-slate-900 z-10 border-r border-slate-100 dark:border-slate-700">
+                  <p className="font-semibold text-slate-800 dark:text-slate-100">{row.stakeholderName}</p>
+                  {row.title && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{row.title}</p>}
                   {row.powerLabel && (
-                    <span className="inline-block mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 uppercase tracking-wide">
+                    <span className="inline-block mt-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 uppercase tracking-wide">
                       {row.powerLabel}
                     </span>
                   )}
@@ -116,7 +116,7 @@ export default function StakeholderMatrixPanel({ matrix, deepByName, onDeepResea
                       if (deep) {
                         const isDone = deep.status === "completed";
                         const chipClass = isDone
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                          ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
                           : "bg-[rgba(50,137,255,0.08)] text-[#3289FF] border-[#3289FF]/20 hover:underline";
                         return (
                           <button
@@ -132,7 +132,7 @@ export default function StakeholderMatrixPanel({ matrix, deepByName, onDeepResea
                         <button
                           onClick={() => handleResearch(row.stakeholderName, row.title)}
                           disabled={busy.has(row.stakeholderName)}
-                          className="text-[10px] font-medium px-1.5 py-0.5 rounded border border-slate-200 text-slate-500 hover:text-[#3289FF] hover:border-[#3289FF]/30 disabled:opacity-50 cursor-pointer"
+                          className="text-[10px] font-medium px-1.5 py-0.5 rounded border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:text-[#3289FF] hover:border-[#3289FF]/30 disabled:opacity-50 cursor-pointer"
                         >
                           {busy.has(row.stakeholderName) ? "Queuing…" : "Deep research"}
                         </button>
@@ -155,11 +155,11 @@ export default function StakeholderMatrixPanel({ matrix, deepByName, onDeepResea
                             {cell.role}
                           </span>
                           {cell.rationale && (
-                            <p className="text-xs text-slate-600 mt-1.5 leading-snug">{cell.rationale}</p>
+                            <p className="text-xs text-slate-600 dark:text-slate-300 mt-1.5 leading-snug">{cell.rationale}</p>
                           )}
                         </>
                       ) : (
-                        <span className="text-slate-300 text-xs">—</span>
+                        <span className="text-slate-300 dark:text-slate-500 text-xs">—</span>
                       )}
                     </td>
                   );

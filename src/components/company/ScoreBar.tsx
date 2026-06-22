@@ -16,14 +16,14 @@ export default function ScoreBar({ scores, total, compact = false }: {
   if (compact) {
     return (
       <div className="flex items-center gap-1.5">
-        <div className="flex h-2 w-24 rounded-full overflow-hidden bg-slate-100">
+        <div className="flex h-2 w-24 rounded-full overflow-hidden bg-slate-100 dark:bg-slate-800">
           {dimensions.map((d) => {
             const pts = scores[d.key]?.points ?? 0;
             const pct = (pts / 100) * 100;
             return <div key={d.key} className={`${d.color}`} style={{ width: `${pct}%` }} />;
           })}
         </div>
-        <span className="text-xs font-semibold text-slate-700">{total}</span>
+        <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{total}</span>
       </div>
     );
   }
@@ -37,10 +37,10 @@ export default function ScoreBar({ scores, total, compact = false }: {
         return (
           <div key={d.key} className="flex items-center gap-3">
             <span className="text-label w-14 shrink-0">{d.label}</span>
-            <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+            <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
               <div className={`h-full rounded-full ${d.color}`} style={{ width: `${pct}%` }} />
             </div>
-            <span className="text-xs font-medium text-slate-600 w-10 text-right">{dim.points}/{d.max}</span>
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-300 w-10 text-right">{dim.points}/{d.max}</span>
           </div>
         );
       })}

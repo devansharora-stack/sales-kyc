@@ -30,9 +30,9 @@ const STATUS_LABEL: Record<StakeholderStatus, string> = {
 };
 
 const qualityStyles: Record<IntelQuality, string> = {
-  HIGH: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  MEDIUM: "bg-blue-50 text-blue-700 border-blue-200",
-  LOW: "bg-amber-50 text-amber-700 border-amber-200",
+  HIGH: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-slate-700",
+  MEDIUM: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-slate-700",
+  LOW: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-slate-700",
 };
 
 interface DrawerProps {
@@ -115,20 +115,20 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
       />
       {/* Drawer — starts below the 56px (h-14) sticky nav so its header is never clipped */}
       <div
-        className={`absolute right-0 top-14 w-[480px] max-w-[90vw] bg-white shadow-2xl border-l border-slate-200 flex flex-col transition-transform duration-200 ease-out ${shown ? "translate-x-0" : "translate-x-full"}`}
+        className={`absolute right-0 top-14 w-[480px] max-w-[90vw] bg-white dark:bg-slate-900 shadow-2xl border-l border-slate-200 dark:border-slate-700 flex flex-col transition-transform duration-200 ease-out ${shown ? "translate-x-0" : "translate-x-full"}`}
         style={{ height: "calc(100vh - 56px)" }}
       >
         {/* Header — sticky so it stays visible while the body scrolls */}
-        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 px-5 pt-5 pb-4 border-b border-slate-100 bg-white shrink-0">
+        <div className="sticky top-0 z-10 flex items-start justify-between gap-3 px-5 pt-5 pb-4 border-b border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 shrink-0">
           <div className="min-w-0">
-            <h2 className="text-lg font-semibold text-slate-800 truncate">{displayName}</h2>
-            {displayTitle && <p className="text-sm text-slate-500 truncate">{displayTitle}</p>}
-            {displayCompany && <p className="text-xs text-slate-400 truncate mt-0.5">{displayCompany}</p>}
+            <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100 truncate">{displayName}</h2>
+            {displayTitle && <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{displayTitle}</p>}
+            {displayCompany && <p className="text-xs text-slate-400 dark:text-slate-500 truncate mt-0.5">{displayCompany}</p>}
           </div>
           <button
             onClick={onClose}
             aria-label="Close"
-            className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 hover:text-slate-700 hover:bg-slate-100 transition-colors cursor-pointer"
+            className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
@@ -140,14 +140,14 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
           {loading && (
             <div className="space-y-3">
-              <div className="h-4 w-32 bg-slate-100 rounded animate-pulse" />
-              <div className="h-20 w-full bg-slate-50 rounded animate-pulse" />
-              <div className="h-16 w-full bg-slate-50 rounded animate-pulse" />
+              <div className="h-4 w-32 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+              <div className="h-20 w-full bg-slate-50 dark:bg-slate-800/60 rounded animate-pulse" />
+              <div className="h-16 w-full bg-slate-50 dark:bg-slate-800/60 rounded animate-pulse" />
             </div>
           )}
 
           {!loading && error && (
-            <p className="text-sm text-slate-500">Failed to load this profile.</p>
+            <p className="text-sm text-slate-500 dark:text-slate-400">Failed to load this profile.</p>
           )}
 
           {!loading && !error && s && (
@@ -157,7 +157,7 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
                 {s.status !== "completed" && (
                   <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full border ${
                     s.status === "failed" || s.status === "cancelled" || s.status === "departed"
-                      ? "bg-red-50 text-red-600 border-red-200"
+                      ? "bg-red-50 text-red-600 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-slate-700"
                       : "bg-[rgba(50,137,255,0.08)] text-[#3289FF] border-[#3289FF]/20"
                   }`}>
                     {STATUS_LABEL[s.status] || s.status}
@@ -170,18 +170,18 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
                   </span>
                 )}
                 {richness && (
-                  <span className="text-[11px] text-slate-400">{richness.score}% data richness</span>
+                  <span className="text-[11px] text-slate-400 dark:text-slate-500">{richness.score}% data richness</span>
                 )}
               </div>
 
               {ACTIVE.includes(s.status) && !brief && (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   Deep research is in progress. This view will fill in automatically when it completes.
                 </p>
               )}
 
               {s.status === "needs_confirmation" && (
-                <p className="text-sm text-slate-500">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
                   We could not confirm a LinkedIn URL automatically. Open the full page to provide one.
                 </p>
               )}
@@ -191,14 +191,14 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
                   {/* Executive summary */}
                   {brief.executiveSummary && (
                     <Section title="Executive summary">
-                      <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{brief.executiveSummary}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">{brief.executiveSummary}</p>
                     </Section>
                   )}
 
                   {brief.keyInsight && (
                     <div className="bg-[rgba(50,137,255,0.04)] border border-[#3289FF]/15 rounded-lg px-4 py-3">
                       <p className="text-label text-[#3289FF] mb-1">Key insight</p>
-                      <p className="text-sm text-slate-700 leading-relaxed">{brief.keyInsight}</p>
+                      <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{brief.keyInsight}</p>
                     </div>
                   )}
 
@@ -208,8 +208,8 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
                       <ul className="space-y-2">
                         {brief.verifiedPriorities.map((p, i) => (
                           <li key={i} className="border-l-2 border-emerald-300 pl-3">
-                            <p className="text-sm font-medium text-slate-800">{p.priority}</p>
-                            {p.evidence && <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{p.evidence}</p>}
+                            <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{p.priority}</p>
+                            {p.evidence && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{p.evidence}</p>}
                           </li>
                         ))}
                       </ul>
@@ -222,8 +222,8 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
                       <ul className="space-y-2">
                         {brief.painPoints.map((p, i) => (
                           <li key={i} className="border-l-2 border-orange-300 pl-3">
-                            <p className="text-sm font-medium text-slate-800">{p.pain}</p>
-                            {p.evidence && <p className="text-xs text-slate-500 mt-0.5 leading-relaxed">{p.evidence}</p>}
+                            <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{p.pain}</p>
+                            {p.evidence && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{p.evidence}</p>}
                           </li>
                         ))}
                       </ul>
@@ -234,7 +234,7 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
                   {brief.engagementApproach && (
                     <Section title="Engagement approach">
                       {brief.engagementApproach.openingAngle && (
-                        <p className="text-sm text-slate-700 leading-relaxed mb-2">
+                        <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed mb-2">
                           <span className="font-medium">Opening angle: </span>
                           {brief.engagementApproach.openingAngle}
                         </p>
@@ -244,7 +244,7 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
                           <p className="text-label mb-1">Talking points</p>
                           <ul className="space-y-1">
                             {brief.engagementApproach.talkingPoints.map((t, i) => (
-                              <li key={i} className="flex gap-2 text-sm text-slate-600 leading-relaxed">
+                              <li key={i} className="flex gap-2 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                                 <span className="text-[#3289FF] shrink-0">•</span>
                                 <span>{t}</span>
                               </li>
@@ -257,7 +257,7 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
                           <p className="text-label text-red-500 mb-1">Avoid</p>
                           <ul className="space-y-1">
                             {brief.engagementApproach.avoidTopics.map((t, i) => (
-                              <li key={i} className="flex gap-2 text-sm text-slate-500 leading-relaxed">
+                              <li key={i} className="flex gap-2 text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                                 <span className="text-red-400 shrink-0">×</span>
                                 <span>{t}</span>
                               </li>
@@ -272,14 +272,14 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
 
               {/* No deep data — basic card already covered by header; nothing more to show. */}
               {!brief && !ACTIVE.includes(s.status) && s.status !== "needs_confirmation" && (
-                <p className="text-sm text-slate-400">No deep intelligence available for this contact yet.</p>
+                <p className="text-sm text-slate-400 dark:text-slate-500">No deep intelligence available for this contact yet.</p>
               )}
             </>
           )}
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-3 border-t border-slate-100 shrink-0">
+        <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-700 shrink-0">
           <Link
             href={`/projects/${projectId}/stakeholder/${stakeholderId}`}
             className="text-xs font-medium text-[#3289FF] hover:underline inline-flex items-center gap-1"

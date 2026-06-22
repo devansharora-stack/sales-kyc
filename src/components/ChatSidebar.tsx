@@ -49,7 +49,7 @@ export default function ChatSidebar({ children }: { children: React.ReactNode })
     <div className="flex" style={{ height: "calc(100vh - 56px)" }}>
       {/* Chat panel */}
       <div
-        className="bg-[#F8FAFF] border-r border-[#E2E8F0] flex flex-col shrink-0"
+        className="bg-[#F8FAFF] dark:bg-slate-800/60 border-r border-[#E2E8F0] dark:border-slate-700 flex flex-col shrink-0"
         style={{ width }}
       >
         <ChatPanel />
@@ -58,7 +58,7 @@ export default function ChatSidebar({ children }: { children: React.ReactNode })
       {/* Drag handle */}
       <div
         onMouseDown={onMouseDown}
-        className="w-1.5 shrink-0 cursor-col-resize hover:bg-[#3289FF]/20 active:bg-[#3289FF]/30 transition-colors"
+        className="w-1.5 shrink-0 cursor-col-resize hover:bg-[#3289FF]/20 active:bg-[#3289FF]/30 dark:hover:bg-[#3289FF]/30 transition-colors"
       />
 
       {/* Main content */}

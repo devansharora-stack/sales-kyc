@@ -37,7 +37,7 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
   }
 
   return (
-    <div className="p-3 border-t border-[#E2E8F0] bg-[#F8FAFF]">
+    <div className="p-3 border-t border-[#E2E8F0] dark:border-slate-700 bg-[#F8FAFF] dark:bg-slate-800/60">
       <div className="flex items-end gap-2">
         <textarea
           ref={textareaRef}
@@ -62,7 +62,7 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
           <span className="text-white text-lg font-bold leading-none">&uarr;</span>
         </button>
       </div>
-      <p className="text-[10px] text-slate-400 mt-1.5 text-center">
+      <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5 text-center">
         Shift + Enter for new line
       </p>
     </div>

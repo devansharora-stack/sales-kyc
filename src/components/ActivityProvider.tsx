@@ -129,18 +129,18 @@ export default function ActivityProvider({ children }: { children: React.ReactNo
         {toasts.map((t) => (
           <div
             key={t.id}
-            className="pointer-events-auto flex items-center gap-3 bg-white border border-[#E2E8F0] shadow-lg rounded-xl px-4 py-3 min-w-[260px] max-w-[340px] animate-in"
+            className="pointer-events-auto flex items-center gap-3 bg-white dark:bg-slate-900 border border-[#E2E8F0] dark:border-slate-700 shadow-lg rounded-xl px-4 py-3 min-w-[260px] max-w-[340px] animate-in"
             style={{ animation: "kg-toast-in 200ms ease-out" }}
           >
             <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[rgba(50,137,255,0.08)] flex items-center justify-center text-[#3289FF] text-sm font-semibold">
               {"✓"}
             </span>
-            <span className="text-xs font-medium text-slate-600 leading-snug flex-1">
+            <span className="text-xs font-medium text-slate-600 dark:text-slate-300 leading-snug flex-1">
               {t.message.replace(/^✓\s*/, "")}
             </span>
             <button
               onClick={() => dismissToast(t.id)}
-              className="flex-shrink-0 text-slate-300 hover:text-slate-500 transition-colors cursor-pointer"
+              className="flex-shrink-0 text-slate-300 dark:text-slate-500 hover:text-slate-500 dark:hover:text-slate-300 transition-colors cursor-pointer"
               aria-label="Dismiss"
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">

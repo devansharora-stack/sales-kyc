@@ -73,8 +73,8 @@ export default function StakeholderScriptsPanel({
       <div className="card p-6 mb-4">
         <div className="flex items-start justify-between gap-4 flex-wrap">
           <div>
-            <h2 className="text-base font-bold text-slate-800">Conversation Scripts</h2>
-            <p className="text-sm text-slate-400 mt-1">
+            <h2 className="text-base font-bold text-slate-800 dark:text-slate-100">Conversation Scripts</h2>
+            <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">
               Three persona-tuned elevator pitches for this person, built from their intel profile.
             </p>
           </div>
@@ -91,9 +91,9 @@ export default function StakeholderScriptsPanel({
 
         {/* Empty state */}
         {!scripts && (
-          <div className="mt-5 border border-dashed border-slate-200 rounded-lg py-10 px-6 text-center">
-            <p className="text-sm text-slate-500 mb-1">No scripts generated yet.</p>
-            <p className="text-xs text-slate-400 mb-5 max-w-md mx-auto">
+          <div className="mt-5 border border-dashed border-slate-200 dark:border-slate-700 rounded-lg py-10 px-6 text-center">
+            <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">No scripts generated yet.</p>
+            <p className="text-xs text-slate-400 dark:text-slate-500 mb-5 max-w-md mx-auto">
               We&apos;ll write three 5-minute pitch variants — receptive, analytical, and skeptical —
               for the offering that best matches this account.
             </p>
@@ -107,16 +107,16 @@ export default function StakeholderScriptsPanel({
         {/* Results */}
         {scripts && (
           <div className="mt-5">
-            <div className="flex items-center gap-3 flex-wrap text-xs mb-4 pb-4 border-b border-slate-100">
-              <span className="text-slate-400">Pitching:</span>
-              <span className="font-semibold text-slate-700">{scripts.offeringName}</span>
-              <span className="text-slate-300">·</span>
-              <span className="text-slate-400">Likely disposition:</span>
+            <div className="flex items-center gap-3 flex-wrap text-xs mb-4 pb-4 border-b border-slate-100 dark:border-slate-700">
+              <span className="text-slate-400 dark:text-slate-500">Pitching:</span>
+              <span className="font-semibold text-slate-700 dark:text-slate-300">{scripts.offeringName}</span>
+              <span className="text-slate-300 dark:text-slate-500">·</span>
+              <span className="text-slate-400 dark:text-slate-500">Likely disposition:</span>
               <span className="px-2 py-0.5 rounded bg-[#3289FF]/10 text-[#1C57FF] font-semibold">
                 {TONE_META[scripts.predictedTone].label}
               </span>
               {scripts.predictedToneReason && (
-                <span className="text-slate-400 italic">— {scripts.predictedToneReason}</span>
+                <span className="text-slate-400 dark:text-slate-500 italic">— {scripts.predictedToneReason}</span>
               )}
             </div>
 
@@ -132,11 +132,11 @@ export default function StakeholderScriptsPanel({
                     className={`px-3 py-1.5 rounded-full border text-xs font-medium transition-colors ${
                       isActive
                         ? "bg-[#3289FF] text-white border-[#3289FF]"
-                        : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                        : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300"
                     }`}
                   >
                     {TONE_META[tone].label}
-                    <span className={isActive ? "text-blue-100" : "text-slate-300"}> · {TONE_META[tone].tab}</span>
+                    <span className={isActive ? "text-blue-100" : "text-slate-300 dark:text-slate-500"}> · {TONE_META[tone].tab}</span>
                     {isPredicted && <span className={isActive ? "text-blue-100" : "text-[#3289FF]"}> ★</span>}
                   </button>
                 );
@@ -147,7 +147,7 @@ export default function StakeholderScriptsPanel({
             {active && (
               <div>
                 <div className="flex items-start justify-between gap-4 mb-4">
-                  <p className="text-sm text-slate-500 italic flex-1">{active.scenario}</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 italic flex-1">{active.scenario}</p>
                   <button onClick={copyActive} className="btn-ghost text-xs shrink-0">
                     {copied ? "Copied ✓" : "Copy script"}
                   </button>
@@ -158,7 +158,7 @@ export default function StakeholderScriptsPanel({
                   {active.lines.map((l, i) => {
                     if (l.speaker === "direction") {
                       return (
-                        <p key={i} className="text-xs text-slate-400 italic text-center py-1">
+                        <p key={i} className="text-xs text-slate-400 dark:text-slate-500 italic text-center py-1">
                           {l.text}
                         </p>
                       );
@@ -167,11 +167,11 @@ export default function StakeholderScriptsPanel({
                     return (
                       <div key={i} className="flex gap-2.5 text-sm">
                         <span
-                          className={`font-bold shrink-0 w-5 ${isRep ? "text-[#3289FF]" : "text-slate-400"}`}
+                          className={`font-bold shrink-0 w-5 ${isRep ? "text-[#3289FF]" : "text-slate-400 dark:text-slate-500"}`}
                         >
                           {isRep ? "T:" : "C:"}
                         </span>
-                        <span className={isRep ? "text-slate-800" : "text-slate-500"}>{l.text}</span>
+                        <span className={isRep ? "text-slate-800 dark:text-slate-100" : "text-slate-500 dark:text-slate-400"}>{l.text}</span>
                       </div>
                     );
                   })}
@@ -179,15 +179,15 @@ export default function StakeholderScriptsPanel({
 
                 {/* Objections */}
                 {active.objections.length > 0 && (
-                  <div className="mt-6 pt-5 border-t border-slate-100">
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+                  <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-700">
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
                       Likely Objections
                     </h3>
                     <div className="space-y-3">
                       {active.objections.map((o, i) => (
                         <div key={i} className="border-l-[3px] border-amber-300 pl-3">
-                          <p className="text-sm font-semibold text-slate-700">{o.objection}</p>
-                          <p className="text-sm text-slate-500 mt-0.5">{o.response}</p>
+                          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{o.objection}</p>
+                          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">{o.response}</p>
                         </div>
                       ))}
                     </div>
@@ -196,8 +196,8 @@ export default function StakeholderScriptsPanel({
 
                 {/* Leave-behind */}
                 {active.leaveBehind && (
-                  <div className="mt-5 text-xs text-slate-500">
-                    <span className="font-semibold text-slate-600">Leave-behind: </span>
+                  <div className="mt-5 text-xs text-slate-500 dark:text-slate-400">
+                    <span className="font-semibold text-slate-600 dark:text-slate-300">Leave-behind: </span>
                     {active.leaveBehind}
                   </div>
                 )}

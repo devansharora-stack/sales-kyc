@@ -57,20 +57,20 @@ export default function ActivityIndicator() {
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-72 bg-white border border-[#E2E8F0] rounded-xl shadow-lg overflow-hidden z-50">
-          <div className="px-4 py-2.5 border-b border-[#E2E8F0]">
-            <span className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+        <div className="absolute right-0 mt-2 w-72 bg-white dark:bg-slate-900 border border-[#E2E8F0] dark:border-slate-700 rounded-xl shadow-lg overflow-hidden z-50">
+          <div className="px-4 py-2.5 border-b border-[#E2E8F0] dark:border-slate-700">
+            <span className="text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
               In Progress ({count})
             </span>
           </div>
           <div className="max-h-80 overflow-y-auto">
             {active.map((item) => {
               const inner = (
-                <div className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-slate-50 transition-colors">
+                <div className="flex items-center gap-2.5 px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
                   <span className="flex-shrink-0 w-1.5 h-1.5 rounded-full bg-[#3289FF] animate-pulse" />
                   <div className="min-w-0 flex-1">
-                    <div className="text-xs font-medium text-slate-700 truncate">{labelFor(item)}</div>
-                    <div className="text-[10px] text-slate-400">
+                    <div className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{labelFor(item)}</div>
+                    <div className="text-[10px] text-slate-400 dark:text-slate-500">
                       {item.type === "company" ? "Company" : "Stakeholder"} · {statusLabel(item.status)}
                     </div>
                   </div>

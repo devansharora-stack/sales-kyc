@@ -34,26 +34,26 @@ const TABS = [
 ];
 
 const categoryBadgeColors: Record<string, string> = {
-  "M&A": "bg-purple-100 text-purple-800",
-  Leadership: "bg-blue-100 text-blue-800",
-  "Earnings Pressure": "bg-red-100 text-red-800",
-  Regulatory: "bg-orange-100 text-orange-800",
-  "Legacy Systems": "bg-amber-100 text-amber-800",
-  "Competitor Pressure": "bg-pink-100 text-pink-800",
-  "Digital Transformation": "bg-emerald-100 text-emerald-800",
-  Workforce: "bg-cyan-100 text-cyan-800",
+  "M&A": "bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300",
+  Leadership: "bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300",
+  "Earnings Pressure": "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+  Regulatory: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+  "Legacy Systems": "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300",
+  "Competitor Pressure": "bg-pink-100 text-pink-800 dark:bg-pink-900/30 dark:text-pink-300",
+  "Digital Transformation": "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300",
+  Workforce: "bg-cyan-100 text-cyan-800 dark:bg-cyan-900/30 dark:text-cyan-300",
 };
 
 const severityBadgeColors: Record<string, string> = {
-  Critical: "bg-red-100 text-red-800",
-  High: "bg-orange-100 text-orange-800",
-  Medium: "bg-yellow-100 text-yellow-800",
+  Critical: "bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300",
+  High: "bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-300",
+  Medium: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300",
 };
 
 const tierColors = {
   "Decision Maker": { bg: "bg-[rgba(50,137,255,0.04)]", border: "border-[#3289FF]/20", badge: "bg-[rgba(50,137,255,0.08)] text-[#3289FF]" },
-  "Champion": { bg: "bg-emerald-50/50", border: "border-emerald-200/60", badge: "bg-emerald-100 text-emerald-800" },
-  "Influencer": { bg: "bg-amber-50/50", border: "border-amber-200/60", badge: "bg-amber-100 text-amber-800" },
+  "Champion": { bg: "bg-emerald-50/50 dark:bg-slate-800/60", border: "border-emerald-200/60 dark:border-slate-700", badge: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" },
+  "Influencer": { bg: "bg-amber-50/50 dark:bg-slate-800/60", border: "border-amber-200/60 dark:border-slate-700", badge: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" },
 } as const;
 
 interface DeepStakeholderRow {
@@ -68,7 +68,7 @@ function PdfMenu({ company }: { company: CompanyDetail }) {
     <div className="relative shrink-0">
       <button
         onClick={() => setOpen(o => !o)}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-[#3289FF] bg-white border border-slate-200 hover:border-[#3289FF]/30 rounded-lg transition-colors cursor-pointer"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-[#3289FF] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-[#3289FF]/30 rounded-lg transition-colors cursor-pointer"
         title="Download PDF"
       >
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -82,11 +82,11 @@ function PdfMenu({ company }: { company: CompanyDetail }) {
       {open && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
-          <div className="absolute right-0 mt-1 w-44 bg-white border border-slate-200 rounded-lg shadow-lg z-50 overflow-hidden">
-            <button onClick={() => { generateCompanyPDF(company); setOpen(false); }} className="block w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 cursor-pointer">
+          <div className="absolute right-0 mt-1 w-44 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-50 overflow-hidden">
+            <button onClick={() => { generateCompanyPDF(company); setOpen(false); }} className="block w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
               Full report
             </button>
-            <button onClick={() => { generateCompanyOnePager(company); setOpen(false); }} className="block w-full text-left px-3 py-2 text-xs text-slate-700 hover:bg-slate-50 border-t border-slate-100 cursor-pointer">
+            <button onClick={() => { generateCompanyOnePager(company); setOpen(false); }} className="block w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 border-t border-slate-100 dark:border-slate-700 cursor-pointer">
               One-pager
             </button>
           </div>
@@ -252,45 +252,45 @@ export default function CompanyPage() {
 
   if (error) return (
     <div className="text-center py-20">
-      <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
-        <span className="text-red-400 text-xl">!</span>
+      <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-3">
+        <span className="text-red-400 dark:text-red-500 text-xl">!</span>
       </div>
-      <p className="text-sm text-slate-500 mb-3">Company not found.</p>
+      <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">Company not found.</p>
       <Link href={`/projects/${projectId}`} className="btn-ghost text-sm">Back to Project</Link>
     </div>
   );
 
   if (!company) return (
     <div className="animate-fade-in space-y-6">
-      <div className="h-4 w-32 bg-slate-100 rounded animate-pulse" />
+      <div className="h-4 w-32 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
       <div className="card p-0 overflow-hidden">
-        <div className="px-6 py-5 border-b border-slate-100">
+        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-700">
           <div className="flex justify-between">
             <div className="space-y-2">
-              <div className="h-8 w-64 bg-slate-100 rounded animate-pulse" />
-              <div className="h-4 w-48 bg-slate-50 rounded animate-pulse" />
+              <div className="h-8 w-64 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+              <div className="h-4 w-48 bg-slate-50 dark:bg-slate-800/60 rounded animate-pulse" />
             </div>
             <div className="space-y-2 items-end flex flex-col">
-              <div className="h-8 w-16 bg-slate-100 rounded animate-pulse" />
+              <div className="h-8 w-16 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
               <div className="flex gap-2">
-                <div className="h-5 w-20 bg-slate-100 rounded animate-pulse" />
-                <div className="h-5 w-16 bg-slate-100 rounded animate-pulse" />
+                <div className="h-5 w-20 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+                <div className="h-5 w-16 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
               </div>
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-4 divide-x divide-slate-100">
+        <div className="grid grid-cols-4 divide-x divide-slate-100 dark:divide-slate-700">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="px-5 py-3">
-              <div className="h-3 w-14 bg-slate-50 rounded animate-pulse mb-1" />
-              <div className="h-4 w-20 bg-slate-100 rounded animate-pulse" />
+              <div className="h-3 w-14 bg-slate-50 dark:bg-slate-800/60 rounded animate-pulse mb-1" />
+              <div className="h-4 w-20 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
             </div>
           ))}
         </div>
       </div>
       <div className="card p-6 space-y-3">
-        <div className="h-5 w-40 bg-slate-100 rounded animate-pulse" />
-        <div className="h-20 w-full bg-slate-50 rounded animate-pulse" />
+        <div className="h-5 w-40 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+        <div className="h-20 w-full bg-slate-50 dark:bg-slate-800/60 rounded animate-pulse" />
       </div>
     </div>
   );
@@ -329,7 +329,7 @@ export default function CompanyPage() {
 
   return (
     <div className="animate-fade-in">
-      <Link href={`/projects/${projectId}`} className="text-sm text-slate-500 hover:text-[#3289FF] mb-4 inline-flex items-center gap-1 transition-colors">&larr; Back to Project</Link>
+      <Link href={`/projects/${projectId}`} className="text-sm text-slate-500 dark:text-slate-400 hover:text-[#3289FF] mb-4 inline-flex items-center gap-1 transition-colors">&larr; Back to Project</Link>
 
       {/* Sentinel: when this scrolls above the nav line, collapse the hero. */}
       <div ref={sentinelRef} className="h-px" />
@@ -338,22 +338,22 @@ export default function CompanyPage() {
           top-0 because the scroll container (ChatSidebar's overflow-y-auto) already
           starts below the fixed 56px nav — using top-14 here would pin it 56px too
           low and let content scroll through the gap above it. */}
-      <div className="sticky top-0 z-30 bg-[#F8FAFC] -mx-4 lg:-mx-8 px-4 lg:px-8 pt-2">
+      <div className="sticky top-0 z-30 bg-[#F8FAFC] dark:bg-slate-900 -mx-4 lg:-mx-8 px-4 lg:px-8 pt-2">
       {/* Condensed bar — shown only once scrolled, keeps name + score + tabs visible */}
       {condensed && (
         <div className="card px-4 py-2.5 mb-2 flex items-center gap-3 overflow-hidden">
-          <h2 className="font-semibold text-slate-800 truncate">{company.name}</h2>
+          <h2 className="font-semibold text-slate-800 dark:text-slate-100 truncate">{company.name}</h2>
           <span className="flex items-baseline gap-0.5 shrink-0">
             <span className="stat-value text-lg">{company.totalScore}</span>
-            <span className="text-slate-400 text-xs">/100</span>
+            <span className="text-slate-400 dark:text-slate-500 text-xs">/100</span>
           </span>
           <RatingBadge rating={company.rating} size="md" />
           {company.salesIntelligence && (
-            <span className="hidden sm:inline-flex items-center gap-1 text-xs text-slate-400 truncate min-w-0">
-              <span className="text-slate-500 font-medium">Opp:</span>
-              <span className="text-slate-600">{company.salesIntelligence.opportunityValue.estimatedFirstYear}</span>
-              <span className="text-slate-300">&middot;</span>
-              <span className="text-slate-600">{company.salesIntelligence.salesMotion.motion}</span>
+            <span className="hidden sm:inline-flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500 truncate min-w-0">
+              <span className="text-slate-500 dark:text-slate-400 font-medium">Opp:</span>
+              <span className="text-slate-600 dark:text-slate-300">{company.salesIntelligence.opportunityValue.estimatedFirstYear}</span>
+              <span className="text-slate-300 dark:text-slate-500">&middot;</span>
+              <span className="text-slate-600 dark:text-slate-300">{company.salesIntelligence.salesMotion.motion}</span>
             </span>
           )}
           <div className="ml-auto">
@@ -364,17 +364,17 @@ export default function CompanyPage() {
       {/* Company Hero Card — full detail, hidden once condensed */}
       {!condensed && (
       <div className="card p-0 mb-3 overflow-hidden">
-        <div className="bg-gradient-to-r from-[#F8FAFF] to-white px-6 py-5 border-b border-slate-100">
+        <div className="bg-gradient-to-r from-[#F8FAFF] to-white dark:from-slate-800/60 dark:to-slate-900 px-6 py-5 border-b border-slate-100 dark:border-slate-700">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
             <div>
               <h1 className="heading-display text-3xl mb-1">{company.name}</h1>
-              {company.fullName !== company.name && <p className="text-sm text-slate-500">{company.fullName}</p>}
-              <p className="text-sm text-slate-400 mt-1">{company.industry} &middot; {company.subSector} &middot; {company.hqCity}, {company.state}</p>
+              {company.fullName !== company.name && <p className="text-sm text-slate-500 dark:text-slate-400">{company.fullName}</p>}
+              <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">{company.industry} &middot; {company.subSector} &middot; {company.hqCity}, {company.state}</p>
             </div>
             <div className="flex flex-col items-end gap-2 shrink-0">
               <div className="flex items-baseline gap-1.5">
                 <span className="stat-value text-3xl">{company.totalScore}</span>
-                <span className="text-slate-400 text-sm">/100</span>
+                <span className="text-slate-400 dark:text-slate-500 text-sm">/100</span>
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <RatingBadge rating={company.rating} showLabel size="md" />
@@ -385,33 +385,33 @@ export default function CompanyPage() {
             </div>
           </div>
         </div>
-        <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 divide-x-0 lg:divide-x divide-slate-100">
+        <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 divide-x-0 lg:divide-x divide-slate-100 dark:divide-slate-700">
           <div className="px-5 py-3">
             <p className="text-label">Revenue</p>
-            <p className="text-sm font-medium text-slate-800 mt-0.5">{company.revenue?.value || "N/A"}</p>
+            <p className="text-sm font-medium text-slate-800 dark:text-slate-100 mt-0.5">{company.revenue?.value || "N/A"}</p>
           </div>
           <div className="px-5 py-3">
             <p className="text-label">Employees</p>
-            <p className="text-sm font-medium text-slate-800 mt-0.5">{company.employees?.value || "N/A"}</p>
+            <p className="text-sm font-medium text-slate-800 dark:text-slate-100 mt-0.5">{company.employees?.value || "N/A"}</p>
           </div>
           <div className="px-5 py-3">
             <p className="text-label">Triggers</p>
-            <p className="text-sm font-medium text-slate-800 mt-0.5">{company.triggerEvents?.length || 0} events</p>
+            <p className="text-sm font-medium text-slate-800 dark:text-slate-100 mt-0.5">{company.triggerEvents?.length || 0} events</p>
           </div>
           <div className="px-5 py-3">
             <p className="text-label">Stakeholders</p>
-            <p className="text-sm font-medium text-slate-800 mt-0.5">{company.stakeholders?.length || 0} contacts</p>
+            <p className="text-sm font-medium text-slate-800 dark:text-slate-100 mt-0.5">{company.stakeholders?.length || 0} contacts</p>
           </div>
         </div>
-        <div className="px-6 py-3 border-t border-slate-100 bg-white">
+        <div className="px-6 py-3 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900">
           <ScoreBar scores={company.scores} total={company.totalScore} />
         </div>
       </div>
       )}
 
       {/* Tab Navigation */}
-      <div className="bg-white/90 backdrop-blur-sm">
-        <div className="flex border-b border-[#E2E8F0] overflow-x-auto no-scrollbar">
+      <div className="bg-white/90 dark:bg-slate-900 backdrop-blur-sm">
+        <div className="flex border-b border-[#E2E8F0] dark:border-slate-700 overflow-x-auto no-scrollbar">
           {TABS.map(tab => (
             <button
               key={tab.id}
@@ -419,7 +419,7 @@ export default function CompanyPage() {
               className={`px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
                 activeTab === tab.id
                   ? "border-[#3289FF] text-[#3289FF]"
-                  : "border-transparent text-slate-500 hover:text-slate-700"
+                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
               }`}
             >
               {tab.label}
@@ -436,55 +436,55 @@ export default function CompanyPage() {
           {/* Opportunity Value */}
           <div className="card p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-slate-700">Opportunity Value</h3>
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Opportunity Value</h3>
               <div className="flex items-center gap-1.5">
                 <span className={`text-lg font-bold ${
                   company.salesIntelligence.opportunityValue.score >= 7 ? "text-emerald-600" :
                   company.salesIntelligence.opportunityValue.score >= 5 ? "text-[#3289FF]" :
                   "text-amber-600"
                 }`}>{company.salesIntelligence.opportunityValue.score}</span>
-                <span className="text-xs text-slate-400">/10</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500">/10</span>
               </div>
             </div>
             <div className="space-y-2">
               <div className="flex justify-between text-xs">
-                <span className="text-slate-500">First Year</span>
-                <span className="font-medium text-slate-700">{company.salesIntelligence.opportunityValue.estimatedFirstYear}</span>
+                <span className="text-slate-500 dark:text-slate-400">First Year</span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">{company.salesIntelligence.opportunityValue.estimatedFirstYear}</span>
               </div>
               <div className="flex justify-between text-xs">
-                <span className="text-slate-500">Expansion</span>
-                <span className="font-medium text-slate-700">{company.salesIntelligence.opportunityValue.estimatedExpansion}</span>
+                <span className="text-slate-500 dark:text-slate-400">Expansion</span>
+                <span className="font-medium text-slate-700 dark:text-slate-300">{company.salesIntelligence.opportunityValue.estimatedExpansion}</span>
               </div>
             </div>
-            <p className="text-xs text-slate-500 mt-3 leading-relaxed">{company.salesIntelligence.opportunityValue.reasoning}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-3 leading-relaxed">{company.salesIntelligence.opportunityValue.reasoning}</p>
           </div>
 
           {/* Sales Motion */}
           <div className="card p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-slate-700">Sales Motion</h3>
+              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Sales Motion</h3>
               <div className="flex items-center gap-1.5">
                 <span className={`text-lg font-bold ${
                   company.salesIntelligence.salesMotion.score >= 7 ? "text-emerald-600" :
                   company.salesIntelligence.salesMotion.score >= 5 ? "text-[#3289FF]" :
                   "text-amber-600"
                 }`}>{company.salesIntelligence.salesMotion.score}</span>
-                <span className="text-xs text-slate-400">/10</span>
+                <span className="text-xs text-slate-400 dark:text-slate-500">/10</span>
               </div>
             </div>
             <div className="flex items-center gap-2 mb-3">
               <SalesMotionBadge motion={company.salesIntelligence.salesMotion.motion} />
-              <span className="text-xs text-slate-400">{company.salesIntelligence.salesMotion.cycleLength}</span>
+              <span className="text-xs text-slate-400 dark:text-slate-500">{company.salesIntelligence.salesMotion.cycleLength}</span>
             </div>
             <div className="flex justify-between text-xs mb-2">
-              <span className="text-slate-500">Build vs Buy Risk</span>
+              <span className="text-slate-500 dark:text-slate-400">Build vs Buy Risk</span>
               <span className={`font-medium ${
                 company.salesIntelligence.salesMotion.buildVsBuyRisk === "Low" ? "text-emerald-600" :
                 company.salesIntelligence.salesMotion.buildVsBuyRisk === "Medium" ? "text-amber-600" :
                 "text-red-600"
               }`}>{company.salesIntelligence.salesMotion.buildVsBuyRisk}</span>
             </div>
-            <p className="text-xs text-slate-500 mt-2 leading-relaxed">{company.salesIntelligence.salesMotion.reasoning}</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2 leading-relaxed">{company.salesIntelligence.salesMotion.reasoning}</p>
           </div>
         </div>
       )}
@@ -493,12 +493,12 @@ export default function CompanyPage() {
       {activeTab === "overview" && (
         <div className="space-y-6">
           <Card title="Executive Summary">
-            <p className="text-sm text-slate-700 leading-relaxed whitespace-pre-line">{company.execSummary}</p>
+            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">{company.execSummary}</p>
           </Card>
 
           {company.businessDescription && (
             <Card title="Business Overview">
-              <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-line">{company.businessDescription}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed whitespace-pre-line">{company.businessDescription}</p>
             </Card>
           )}
 
@@ -516,22 +516,22 @@ export default function CompanyPage() {
                 if (!dim) return null;
                 const pct = (dim.points / max) * 100;
                 return (
-                  <div key={key} className="border border-slate-100 rounded-lg p-3">
+                  <div key={key} className="border border-slate-100 dark:border-slate-700 rounded-lg p-3">
                     <div className="flex items-center justify-between mb-1.5">
                       <span className="text-label">{label}</span>
                       <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                        pct >= 80 ? "bg-emerald-100 text-emerald-700" :
+                        pct >= 80 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300" :
                         pct >= 60 ? "bg-[rgba(50,137,255,0.08)] text-[#3289FF]" :
-                        pct >= 40 ? "bg-amber-100 text-amber-700" :
-                        "bg-red-100 text-red-700"
+                        pct >= 40 ? "bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300" :
+                        "bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300"
                       }`}>{dim.points}/{max}</span>
                     </div>
-                    <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden mb-2">
+                    <div className="h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden mb-2">
                       <div className={`h-full rounded-full ${
                         pct >= 80 ? "bg-emerald-500" : pct >= 60 ? "bg-[#3289FF]" : pct >= 40 ? "bg-amber-500" : "bg-red-500"
                       }`} style={{ width: `${pct}%` }} />
                     </div>
-                    <p className="text-sm text-slate-600 leading-relaxed">{dim.reasoning}</p>
+                    <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{dim.reasoning}</p>
                     <Sources sources={dim.sources} />
                   </div>
                 );
@@ -560,15 +560,15 @@ export default function CompanyPage() {
                     <div>
                       <div className="flex flex-wrap items-center gap-2 mb-0.5">
                         <span className="badge">{t.date}</span>
-                        <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${categoryBadgeColors[t.category] || "bg-slate-100 text-slate-600"}`}>{t.category}</span>
+                        <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${categoryBadgeColors[t.category] || "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300"}`}>{t.category}</span>
                       </div>
-                      <p className="text-sm font-semibold text-slate-800">{t.event}</p>
+                      <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{t.event}</p>
                     </div>
                   }
                 >
-                  <p className="text-sm text-slate-600 leading-relaxed mb-2">{t.detail}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-2">{t.detail}</p>
                   <div className="bg-[rgba(50,137,255,0.04)] border border-[#3289FF]/10 rounded px-3 py-2">
-                    <p className="text-sm text-slate-700"><span className="font-semibold text-[#3289FF]">Impact:</span> {t.impact}</p>
+                    <p className="text-sm text-slate-700 dark:text-slate-300"><span className="font-semibold text-[#3289FF]">Impact:</span> {t.impact}</p>
                   </div>
                   <Sources sources={t.sources} />
                 </CollapsibleItem>
@@ -585,11 +585,11 @@ export default function CompanyPage() {
                   header={
                     <div className="flex items-center gap-2">
                       <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${severityBadgeColors[p.severity] || ""}`}>{p.severity}</span>
-                      <span className="text-sm font-semibold text-slate-800">{p.title}</span>
+                      <span className="text-sm font-semibold text-slate-800 dark:text-slate-100">{p.title}</span>
                     </div>
                   }
                 >
-                  <p className="text-sm text-slate-600 leading-relaxed mb-2">{p.description}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-2">{p.description}</p>
                   <div className="flex flex-wrap gap-1 mb-2">
                     {p.affectedFunctions?.map(f => (
                       <span key={f} className="badge">{f}</span>
@@ -597,7 +597,7 @@ export default function CompanyPage() {
                   </div>
                   {p.techolutionSolutions?.length > 0 && (
                     <div className="flex flex-wrap gap-1">
-                      <span className="text-xs text-slate-400">Solutions:</span>
+                      <span className="text-xs text-slate-400 dark:text-slate-500">Solutions:</span>
                       {p.techolutionSolutions.map(s => (
                         <span key={s} className="text-xs bg-[rgba(50,137,255,0.08)] text-[#3289FF] px-1.5 py-0.5 rounded">{solName(s)}</span>
                       ))}
@@ -616,48 +616,48 @@ export default function CompanyPage() {
         <div className="space-y-6">
           <div className="bg-[rgba(50,137,255,0.04)] border border-[#3289FF]/15 rounded-lg px-5 py-4 flex gap-3">
             <span className="text-[#3289FF] text-lg shrink-0">i</span>
-            <p className="text-sm text-slate-600 leading-relaxed">
+            <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
               These strategic recommendations represent analytical assessment, inferred from publicly available research, financial reports, and organizational data collected for this company. Expand <strong>&ldquo;Why this recommendation&rdquo;</strong> on any section to see the underlying reasoning and sources.
             </p>
           </div>
 
           <Card title="1-Page GTM Brief">
-            <p className="text-sm text-slate-700 leading-relaxed">{company.gtm.brief}</p>
+            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{company.gtm.brief}</p>
             {company.gtm.briefSources && company.gtm.briefSources.length > 0 && <Sources sources={company.gtm.briefSources} />}
           </Card>
 
           <Card title="Entry Strategy" subtitle="How we get in the door and expand over time.">
             <div className="bg-[rgba(50,137,255,0.04)] border border-[#3289FF]/15 rounded-lg px-4 py-3 mb-4">
               <p className="text-label text-[#3289FF] mb-1">Recommended Entry</p>
-              <p className="text-sm font-semibold text-slate-800">{solName(company.gtm.entrySolution)}</p>
+              <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{solName(company.gtm.entrySolution)}</p>
             </div>
 
             <div className="space-y-2 mb-4">
               {company.gtm.entryStrategy?.map((s, i) => (
                 <div key={i} className="flex gap-3">
                   <span className="w-5 h-5 rounded-full bg-[rgba(50,137,255,0.08)] text-[#3289FF] text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
-                  <p className="text-sm text-slate-700 leading-relaxed">{s}</p>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{s}</p>
                 </div>
               ))}
             </div>
 
-            <div className="bg-orange-50/50 border border-orange-200/60 rounded-lg px-4 py-3 mb-4">
-              <p className="text-label text-orange-600 mb-1">Urgency</p>
+            <div className="bg-orange-50/50 dark:bg-orange-900/30 border border-orange-200/60 dark:border-slate-700 rounded-lg px-4 py-3 mb-4">
+              <p className="text-label text-orange-600 dark:text-orange-300 mb-1">Urgency</p>
               <div className="flex items-center gap-2 mb-1">
                 <UrgencyBadge urgency={company.gtm.urgency} />
               </div>
-              <p className="text-sm text-slate-600 leading-relaxed">{company.gtm.urgencyReasoning}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">{company.gtm.urgencyReasoning}</p>
               {company.gtm.urgencySources && company.gtm.urgencySources.length > 0 && <Sources sources={company.gtm.urgencySources} />}
             </div>
 
             {company.gtm.expandPath && (
               <div className="mb-4">
-                <p className="text-label text-purple-600 mb-2">Expansion Path</p>
+                <p className="text-label text-purple-600 dark:text-purple-300 mb-2">Expansion Path</p>
                 <div className="flex flex-wrap items-center gap-2">
                   {company.gtm.expandPath.split(/→|->|➜|➡|,|;|\d+\.\s+/).map(s => s.trim()).filter(Boolean).map((step, i, arr) => (
                     <span key={i} className="flex items-center gap-2">
-                      <span className="bg-slate-100 text-slate-700 px-3 py-1.5 rounded-lg text-xs font-medium">{step}</span>
-                      {i < arr.length - 1 && <span className="text-slate-400">&rarr;</span>}
+                      <span className="bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 px-3 py-1.5 rounded-lg text-xs font-medium">{step}</span>
+                      {i < arr.length - 1 && <span className="text-slate-400 dark:text-slate-500">&rarr;</span>}
                     </span>
                   ))}
                 </div>
@@ -666,7 +666,7 @@ export default function CompanyPage() {
 
             <div className="mb-4">
               <p className="text-label mb-2">Competitive Positioning</p>
-              <div className="bg-slate-50 border border-slate-100 rounded-lg px-4 py-3">
+              <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700 rounded-lg px-4 py-3">
                 <NumberedList text={company.gtm.competitivePositioning} />
                 {company.gtm.competitiveSources && company.gtm.competitiveSources.length > 0 && <Sources sources={company.gtm.competitiveSources} />}
               </div>
@@ -677,8 +677,8 @@ export default function CompanyPage() {
 
           {company.gtm.pilotStrategy && (
             <Card title="Pilot Strategy" subtitle="The first project we propose to prove value.">
-              <div className="bg-emerald-50/50 border border-emerald-200/60 rounded-lg p-4">
-                <p className="text-base font-semibold text-emerald-800 mb-3">{company.gtm.pilotStrategy.title}</p>
+              <div className="bg-emerald-50/50 dark:bg-emerald-900/30 border border-emerald-200/60 dark:border-slate-700 rounded-lg p-4">
+                <p className="text-base font-semibold text-emerald-800 dark:text-emerald-300 mb-3">{company.gtm.pilotStrategy.title}</p>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                   {([
                     ["Scope", company.gtm.pilotStrategy.scope],
@@ -687,8 +687,8 @@ export default function CompanyPage() {
                     ["Budget", company.gtm.pilotStrategy.estimatedBudget],
                   ] as const).map(([label, val]) => (
                     <div key={label}>
-                      <span className="text-label text-emerald-600">{label}:</span>
-                      <span className="text-sm text-slate-700 ml-2">{val}</span>
+                      <span className="text-label text-emerald-600 dark:text-emerald-300">{label}:</span>
+                      <span className="text-sm text-slate-700 dark:text-slate-300 ml-2">{val}</span>
                     </div>
                   ))}
                 </div>
@@ -707,7 +707,7 @@ export default function CompanyPage() {
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b border-slate-200">
+                  <tr className="border-b border-slate-200 dark:border-slate-700">
                     <th className="text-center text-label px-3 py-2 w-10">#</th>
                     <th className="text-left text-label px-3 py-2">Problem</th>
                     <th className="text-left text-label px-3 py-2">Techolution Capability</th>
@@ -741,12 +741,12 @@ export default function CompanyPage() {
           {pendingReuse.length > 0 && (
             <div className="space-y-2">
               {pendingReuse.map(p => (
-                <div key={p.name} className="card p-4 flex items-center justify-between border-amber-200 bg-amber-50/40">
+                <div key={p.name} className="card p-4 flex items-center justify-between border-amber-200 dark:border-slate-700 bg-amber-50/40 dark:bg-slate-800/60">
                   <div>
-                    <p className="text-sm font-medium text-slate-800">
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
                       <span className="font-semibold">{p.name}</span> already analyzed
                     </p>
-                    <p className="text-xs text-slate-500">
+                    <p className="text-xs text-slate-500 dark:text-slate-400">
                       Last updated {p.updated_at ? new Date(p.updated_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "recently"} &middot; reusing skips the LinkedIn scrape
                     </p>
                   </div>
@@ -784,28 +784,28 @@ export default function CompanyPage() {
                 </button>
               }
             >
-              <div className="flex flex-wrap gap-4 mb-4 pb-3 border-b border-slate-100">
+              <div className="flex flex-wrap gap-4 mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
                 <div className="flex items-center gap-1.5">
                   <span className="inline-block w-2.5 h-2.5 rounded-full bg-[#3289FF]" />
-                  <span className="text-xs text-slate-600"><span className="font-semibold">Decision Maker</span> — Budget authority & final sign-off</span>
+                  <span className="text-xs text-slate-600 dark:text-slate-300"><span className="font-semibold">Decision Maker</span> — Budget authority & final sign-off</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-500" />
-                  <span className="text-xs text-slate-600"><span className="font-semibold">Champion</span> — Internal advocate driving tech adoption</span>
+                  <span className="text-xs text-slate-600 dark:text-slate-300"><span className="font-semibold">Champion</span> — Internal advocate driving tech adoption</span>
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="inline-block w-2.5 h-2.5 rounded-full bg-amber-500" />
-                  <span className="text-xs text-slate-600"><span className="font-semibold">Influencer</span> — Domain expert shaping decisions</span>
+                  <span className="text-xs text-slate-600 dark:text-slate-300"><span className="font-semibold">Influencer</span> — Domain expert shaping decisions</span>
                 </div>
               </div>
-              <div className="flex flex-wrap gap-3 mb-5 pb-4 border-b border-slate-100">
-                <span className="text-[10px] text-slate-500 font-medium">Confidence:</span>
-                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">Verified</span>
-                <span className="text-[10px] text-slate-400">Name confirmed on source page</span>
-                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200">Likely</span>
-                <span className="text-[10px] text-slate-400">Known executive, source behind paywall</span>
-                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">Unverified</span>
-                <span className="text-[10px] text-slate-400">Confirm before outreach</span>
+              <div className="flex flex-wrap gap-3 mb-5 pb-4 border-b border-slate-100 dark:border-slate-700">
+                <span className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Confidence:</span>
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-slate-700">Verified</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500">Name confirmed on source page</span>
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-slate-700">Likely</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500">Known executive, source behind paywall</span>
+                <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-slate-700">Unverified</span>
+                <span className="text-[10px] text-slate-400 dark:text-slate-500">Confirm before outreach</span>
               </div>
               {(["Decision Maker", "Champion", "Influencer"] as const).map(tier => {
                 const tierList = company.stakeholders.filter(s => s.tier === tier);
@@ -841,9 +841,9 @@ export default function CompanyPage() {
                               )}
                               <div className="min-w-0">
                                 <div className="flex items-center gap-1.5 flex-wrap">
-                                  <p className="text-sm font-semibold text-slate-800">{s.name}</p>
+                                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{s.name}</p>
                                   {isAnalyzed && (
-                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                    <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-slate-700">
                                       Analyzed &#10003;
                                     </span>
                                   )}
@@ -853,7 +853,7 @@ export default function CompanyPage() {
                                     </span>
                                   )}
                                 </div>
-                                <p className="text-xs text-slate-500 mt-0.5">{s.title}</p>
+                                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{s.title}</p>
                               </div>
                             </div>
                             <span className={`text-xs font-medium px-1.5 py-0.5 rounded shrink-0 ${tc.badge}`}>{s.tier}</span>
@@ -868,24 +868,24 @@ export default function CompanyPage() {
                               </button>
                               <button
                                 onClick={() => handleReanalyze(s.name, s.title)}
-                                className="text-[11px] text-slate-400 hover:text-slate-600 hover:underline cursor-pointer"
+                                className="text-[11px] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:underline cursor-pointer"
                               >
                                 Re-analyze
                               </button>
                             </div>
                           )}
-                          <p className="text-xs text-slate-600 mt-2 leading-relaxed">{s.relevance}</p>
+                          <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">{s.relevance}</p>
                           <div className="flex items-center gap-2 mt-1">
-                            <p className="text-xs text-slate-400">
+                            <p className="text-xs text-slate-400 dark:text-slate-500">
                               Source: {s.sourceUrl
                                 ? <a href={s.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[#3289FF] hover:underline">{s.source}</a>
                                 : s.source}
                             </p>
                             {s.confidence && (
                               <span className={`text-[10px] font-medium px-1.5 py-0.5 rounded ${
-                                s.confidence === "verified" ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
-                                s.confidence === "likely" ? "bg-blue-50 text-blue-700 border border-blue-200" :
-                                "bg-amber-50 text-amber-700 border border-amber-200"
+                                s.confidence === "verified" ? "bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-slate-700" :
+                                s.confidence === "likely" ? "bg-blue-50 text-blue-700 border border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-slate-700" :
+                                "bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-slate-700"
                               }`}>
                                 {s.confidence === "verified" ? "Verified" : s.confidence === "likely" ? "Likely" : "Unverified"}
                               </span>
@@ -916,7 +916,7 @@ export default function CompanyPage() {
                 onOpenDeep={(id, name, title) => openDrawer(id, { name, title, company: company.name })}
               />
             ) : (
-              <p className="text-sm text-slate-400 py-6 text-center">
+              <p className="text-sm text-slate-400 dark:text-slate-500 py-6 text-center">
                 No stakeholder matrix available. Re-run research on this company to generate it.
               </p>
             )}
@@ -930,10 +930,10 @@ export default function CompanyPage() {
           <div className="space-y-1.5">
             {allSources.map((s, i) => (
               <div key={i} className="text-xs flex gap-2 items-start py-0.5">
-                <span className="text-slate-400 shrink-0 font-mono w-6 text-right">[{i + 1}]</span>
+                <span className="text-slate-400 dark:text-slate-500 shrink-0 font-mono w-6 text-right">[{i + 1}]</span>
                 <div className="min-w-0">
                   <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-[#3289FF] hover:underline">{s.label}</a>
-                  <span className="text-slate-400 ml-1">&mdash; {s.type} &mdash; {s.date}</span>
+                  <span className="text-slate-400 dark:text-slate-500 ml-1">&mdash; {s.type} &mdash; {s.date}</span>
                 </div>
               </div>
             ))}
@@ -958,7 +958,7 @@ function Card({ title, subtitle, action, children }: { title: string; subtitle?:
       <div className="flex items-start justify-between gap-3">
         <div>
           <h2 className="heading-section text-xl mb-0.5">{title}</h2>
-          {subtitle && <p className="text-xs text-slate-400 mb-4">{subtitle}</p>}
+          {subtitle && <p className="text-xs text-slate-400 dark:text-slate-500 mb-4">{subtitle}</p>}
           {!subtitle && <div className="mb-4" />}
         </div>
         {action && <div className="shrink-0">{action}</div>}
@@ -992,11 +992,11 @@ function TruncatedText({ text, maxChars, className = "" }: { text: string; maxCh
 function ScoringMethodology() {
   const [open, setOpen] = useState(false);
   return (
-    <div className="mb-4 bg-[#F8FAFF] border border-slate-100 rounded-lg px-4 py-3">
+    <div className="mb-4 bg-[#F8FAFF] dark:bg-slate-800/60 border border-slate-100 dark:border-slate-700 rounded-lg px-4 py-3">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-[#3289FF] text-sm font-bold">100</span>
-          <p className="text-xs text-slate-600">
+          <p className="text-xs text-slate-600 dark:text-slate-300">
             Each company is scored on a <span className="font-semibold">100-point scale</span> across 5 dimensions.
             Rating: A (80+) &middot; B (65-79) &middot; C (50-64) &middot; D (&lt;50)
           </p>
@@ -1009,7 +1009,7 @@ function ScoringMethodology() {
         </button>
       </div>
       {open && (
-        <div className="mt-3 pt-3 border-t border-slate-200 space-y-5">
+        <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 space-y-5">
           {[
             {
               label: "Budget Signal", pts: "25 pts",
@@ -1062,19 +1062,19 @@ function ScoringMethodology() {
               ],
             },
           ].map((d) => (
-            <div key={d.label} className="border border-slate-100 rounded-lg p-3">
+            <div key={d.label} className="border border-slate-100 dark:border-slate-700 rounded-lg p-3">
               <div className="flex items-center gap-2 mb-1.5">
                 <span className="text-xs font-bold text-[#3289FF] bg-[rgba(50,137,255,0.08)] px-2 py-0.5 rounded">{d.pts}</span>
-                <p className="text-xs font-semibold text-slate-700">{d.label}</p>
+                <p className="text-xs font-semibold text-slate-700 dark:text-slate-300">{d.label}</p>
               </div>
-              <p className="text-xs text-slate-500 mb-2 leading-relaxed">{d.desc}</p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-2 leading-relaxed">{d.desc}</p>
               <div className="space-y-1.5">
                 {d.rubric.map((r, i) => (
                   <div key={r.range} className="flex gap-2">
                     <span className={`text-[10px] font-bold w-12 shrink-0 text-right mt-0.5 ${
-                      i === 0 ? "text-emerald-600" : i === 1 ? "text-[#3289FF]" : i === 2 ? "text-amber-600" : "text-slate-400"
+                      i === 0 ? "text-emerald-600" : i === 1 ? "text-[#3289FF]" : i === 2 ? "text-amber-600" : "text-slate-400 dark:text-slate-500"
                     }`}>{r.range}</span>
-                    <p className="text-[11px] text-slate-600 leading-relaxed">{r.criteria}</p>
+                    <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">{r.criteria}</p>
                   </div>
                 ))}
               </div>
@@ -1093,7 +1093,7 @@ function FitScoreMethodology() {
     <div>
       <button
         onClick={() => setOpen(!open)}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 hover:text-[#3289FF] border border-slate-200 hover:border-[#3289FF]/30 rounded-lg transition-colors cursor-pointer"
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-500 dark:text-slate-400 hover:text-[#3289FF] border border-slate-200 dark:border-slate-700 hover:border-[#3289FF]/30 rounded-lg transition-colors cursor-pointer"
       >
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -1101,9 +1101,9 @@ function FitScoreMethodology() {
         How Scoring Works
       </button>
       {open && (
-        <div className="mt-3 bg-[#F8FAFF] border border-slate-200 rounded-lg p-5 text-left">
-          <p className="text-sm font-semibold text-slate-700 mb-1">Each solution is scored on a <span className="font-bold">100-point scale</span> across 4 dimensions. Rating: 85+ Strong &middot; 70-84 Good &middot; 55-69 Fair &middot; &lt;55 Weak</p>
-          <div className="border-t border-slate-200 my-3" />
+        <div className="mt-3 bg-[#F8FAFF] dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 rounded-lg p-5 text-left">
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 mb-1">Each solution is scored on a <span className="font-bold">100-point scale</span> across 4 dimensions. Rating: 85+ Strong &middot; 70-84 Good &middot; 55-69 Fair &middot; &lt;55 Weak</p>
+          <div className="border-t border-slate-200 dark:border-slate-700 my-3" />
           <div className="space-y-4">
             {[
               { label: "Pain Severity & Specificity", pts: "25 pts", color: "bg-blue-500",
@@ -1115,14 +1115,14 @@ function FitScoreMethodology() {
               { label: "Impact Magnitude", pts: "25 pts", color: "bg-purple-500",
                 rubric: ["22-25 · Transformative impact — 8-figure savings or major competitive advantage.", "17-21 · Significant operational improvement with clear ROI.", "10-16 · Moderate efficiency gains, limited strategic differentiation.", "0-9 · Marginal improvement, hard to quantify value."] },
             ].map(d => (
-              <div key={d.label} className="border border-slate-100 rounded-lg p-3">
+              <div key={d.label} className="border border-slate-100 dark:border-slate-700 rounded-lg p-3">
                 <div className="flex items-center gap-2 mb-1.5">
                   <span className={`w-2.5 h-2.5 rounded-sm ${d.color} shrink-0`} />
-                  <span className="text-xs font-semibold text-slate-700">{d.pts} &middot; {d.label}</span>
+                  <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">{d.pts} &middot; {d.label}</span>
                 </div>
                 <div className="ml-[18px] space-y-0.5">
                   {d.rubric.map((r, i) => (
-                    <p key={i} className={`text-[10px] leading-relaxed ${i === 0 ? "text-emerald-600" : i === 1 ? "text-[#3289FF]" : i === 2 ? "text-amber-600" : "text-slate-400"}`}>{r}</p>
+                    <p key={i} className={`text-[10px] leading-relaxed ${i === 0 ? "text-emerald-600" : i === 1 ? "text-[#3289FF]" : i === 2 ? "text-amber-600" : "text-slate-400 dark:text-slate-500"}`}>{r}</p>
                   ))}
                 </div>
               </div>
@@ -1149,37 +1149,37 @@ function SolutionMappingRow({ index, mapping: m }: { index: number; mapping: Sol
     ? m.fitScore >= 85 ? "bg-emerald-500" : m.fitScore >= 70 ? "bg-blue-500" : m.fitScore >= 55 ? "bg-amber-500" : "bg-slate-400"
     : "bg-slate-300";
   const badgeColor = m.fitScore != null
-    ? m.fitScore >= 85 ? "text-emerald-700" : m.fitScore >= 70 ? "text-blue-700" : m.fitScore >= 55 ? "text-amber-700" : "text-slate-600"
-    : "text-slate-500";
+    ? m.fitScore >= 85 ? "text-emerald-700 dark:text-emerald-400" : m.fitScore >= 70 ? "text-blue-700 dark:text-blue-400" : m.fitScore >= 55 ? "text-amber-700 dark:text-amber-400" : "text-slate-600 dark:text-slate-300"
+    : "text-slate-500 dark:text-slate-400";
   const bd = m.fitScoreBreakdown;
   return (
     <>
       <tr
-        className={`border-t border-slate-100 group ${open ? "bg-slate-50/50" : "hover:bg-[rgba(50,137,255,0.03)]"} transition-colors cursor-pointer`}
+        className={`border-t border-slate-100 dark:border-slate-700 group ${open ? "bg-slate-50/50 dark:bg-slate-800/60" : "hover:bg-[rgba(50,137,255,0.03)]"} transition-colors cursor-pointer`}
         onClick={() => setOpen(!open)}
       >
-        <td className="px-3 py-3 text-center text-slate-400 text-xs font-medium">{index}</td>
-        <td className="px-3 py-3 text-slate-700">{m.painPoint}</td>
+        <td className="px-3 py-3 text-center text-slate-400 dark:text-slate-500 text-xs font-medium">{index}</td>
+        <td className="px-3 py-3 text-slate-700 dark:text-slate-300">{m.painPoint}</td>
         <td className="px-3 py-3"><span className="text-[#3289FF] font-medium">{m.solutionName}</span></td>
         <td className="px-3 py-3">
           {m.fitScore != null && (
             <div className="flex items-center gap-2 min-w-[120px]">
-              <div className="flex-1 h-1.5 rounded-full bg-slate-100 overflow-hidden">
+              <div className="flex-1 h-1.5 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                 <div className={`h-full rounded-full ${barColor}`} style={{ width: `${m.fitScore}%` }} />
               </div>
               <span className={`text-xs font-bold w-8 text-right shrink-0 ${badgeColor}`}>{m.fitScore}</span>
             </div>
           )}
-          {m.fitScore == null && <span className="text-xs text-slate-400">&mdash;</span>}
+          {m.fitScore == null && <span className="text-xs text-slate-400 dark:text-slate-500">&mdash;</span>}
         </td>
-        <td className="px-3 py-3 text-slate-600">
+        <td className="px-3 py-3 text-slate-600 dark:text-slate-300">
           <div className="flex items-center justify-between gap-2">
             <span>{m.value}</span>
             <span className="flex items-center gap-1 shrink-0">
-              <span className="text-[10px] text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity">
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 opacity-0 group-hover:opacity-100 transition-opacity">
                 {open ? "Hide" : "Details"}
               </span>
-              <svg className={`w-4 h-4 text-slate-400 group-hover:text-[#3289FF] transition-all ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <svg className={`w-4 h-4 text-slate-400 dark:text-slate-500 group-hover:text-[#3289FF] transition-all ${open ? "rotate-180" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
               </svg>
             </span>
@@ -1189,26 +1189,26 @@ function SolutionMappingRow({ index, mapping: m }: { index: number; mapping: Sol
       {open && (
         <tr>
           <td colSpan={5} className="px-3 pb-4 pt-0">
-            <div className="bg-[#F8FAFF] border border-slate-200/80 rounded-lg p-4 space-y-3">
+            <div className="bg-[#F8FAFF] dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-lg p-4 space-y-3">
               {bd && (
                 <div>
-                  <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-2">Fit Score Breakdown</p>
+                  <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-2">Fit Score Breakdown</p>
                   <div className="space-y-1.5 max-w-sm">
                     {FIT_DIMENSIONS.map(d => {
                       const pts = bd[d.key] ?? 0;
                       const pct = (pts / 25) * 100;
                       return (
                         <div key={d.key} className="flex items-center gap-2">
-                          <span className="text-[11px] text-slate-500 w-24 shrink-0">{d.label}</span>
-                          <div className="flex-1 h-2 rounded-full bg-slate-100 overflow-hidden">
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400 w-24 shrink-0">{d.label}</span>
+                          <div className="flex-1 h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
                             <div className={`h-full rounded-full ${d.color}`} style={{ width: `${pct}%` }} />
                           </div>
-                          <span className="text-xs font-medium text-slate-600 w-10 text-right">{pts}/25</span>
+                          <span className="text-xs font-medium text-slate-600 dark:text-slate-300 w-10 text-right">{pts}/25</span>
                         </div>
                       );
                     })}
-                    <div className="flex items-center gap-2 pt-1 border-t border-slate-200/60">
-                      <span className="text-[11px] font-semibold text-slate-600 w-24 shrink-0">Total</span>
+                    <div className="flex items-center gap-2 pt-1 border-t border-slate-200/60 dark:border-slate-700">
+                      <span className="text-[11px] font-semibold text-slate-600 dark:text-slate-300 w-24 shrink-0">Total</span>
                       <div className="flex-1" />
                       <span className={`text-sm font-bold ${badgeColor}`}>{m.fitScore}/100</span>
                     </div>
@@ -1216,8 +1216,8 @@ function SolutionMappingRow({ index, mapping: m }: { index: number; mapping: Sol
                 </div>
               )}
               <div>
-                <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Why This Solution Fits</p>
-                <p className="text-sm text-slate-700 leading-relaxed">{m.reasoning}</p>
+                <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Why This Solution Fits</p>
+                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{m.reasoning}</p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                 {m.estimatedImpact && (
@@ -1225,8 +1225,8 @@ function SolutionMappingRow({ index, mapping: m }: { index: number; mapping: Sol
                 )}
                 {m.proofPoint && (
                   <div>
-                    <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Proof Point</p>
-                    <p className="text-xs text-slate-600 leading-relaxed">
+                    <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Proof Point</p>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                       <span className="font-medium">{m.proofPoint.client}</span>
                       {m.proofPoint.relevance && <> &mdash; {m.proofPoint.relevance}</>}
                       {m.proofPoint.outcome && <><br /><span className="text-emerald-600">{m.proofPoint.outcome}</span></>}
@@ -1251,8 +1251,8 @@ function ImpactSection({ impact }: { impact: string | EstimatedImpact }) {
   if (typeof impact === "string") {
     return (
       <div>
-        <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Estimated Impact</p>
-        <p className="text-xs text-slate-600 leading-relaxed">{impact}</p>
+        <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Estimated Impact</p>
+        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{impact}</p>
       </div>
     );
   }
@@ -1260,8 +1260,8 @@ function ImpactSection({ impact }: { impact: string | EstimatedImpact }) {
   // Structured: summary + reasoning breakdown
   return (
     <div className="col-span-full">
-      <p className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">Estimated Impact</p>
-      <p className="text-sm font-medium text-slate-700 mb-1">{impact.summary}</p>
+      <p className="text-[10px] font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-1">Estimated Impact</p>
+      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{impact.summary}</p>
       {impact.reasoning?.length > 0 && (
         <>
           <button
@@ -1274,11 +1274,11 @@ function ImpactSection({ impact }: { impact: string | EstimatedImpact }) {
             How we got this number
           </button>
           {showReasoning && (
-            <div className="bg-slate-50 border border-slate-200/80 rounded-lg p-3 space-y-1.5">
+            <div className="bg-slate-50 dark:bg-slate-800/60 border border-slate-200/80 dark:border-slate-700 rounded-lg p-3 space-y-1.5">
               {impact.reasoning.map((line, i) => (
                 <div key={i} className="flex gap-2 items-start">
-                  <span className="text-[10px] text-slate-400 font-mono mt-0.5 shrink-0">{i + 1}.</span>
-                  <p className="text-xs text-slate-600 leading-relaxed">{line}</p>
+                  <span className="text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-0.5 shrink-0">{i + 1}.</span>
+                  <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">{line}</p>
                 </div>
               ))}
               {impact.sources && impact.sources.length > 0 && <Sources sources={impact.sources} />}
@@ -1292,15 +1292,15 @@ function ImpactSection({ impact }: { impact: string | EstimatedImpact }) {
 
 /* Sales Motion Badge */
 const MOTION_STYLES: Record<SalesMotionType, string> = {
-  "Quick Win": "bg-emerald-100 text-emerald-800 border-emerald-200",
-  "Land & Expand": "bg-blue-100 text-blue-800 border-blue-200",
-  "Strategic Sale": "bg-amber-100 text-amber-800 border-amber-200",
-  "Long Cycle": "bg-red-100 text-red-800 border-red-200",
+  "Quick Win": "bg-emerald-100 text-emerald-800 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-slate-700",
+  "Land & Expand": "bg-blue-100 text-blue-800 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-slate-700",
+  "Strategic Sale": "bg-amber-100 text-amber-800 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-slate-700",
+  "Long Cycle": "bg-red-100 text-red-800 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-slate-700",
 };
 
 function SalesMotionBadge({ motion }: { motion: SalesMotionType }) {
   return (
-    <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${MOTION_STYLES[motion] || "bg-slate-100 text-slate-600"}`}>
+    <span className={`text-xs font-medium px-2 py-0.5 rounded-full border ${MOTION_STYLES[motion] || "bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700"}`}>
       {motion}
     </span>
   );
@@ -1310,10 +1310,10 @@ function SalesMotionBadge({ motion }: { motion: SalesMotionType }) {
 function WhyRecommendation({ reasoning, sources, label }: { reasoning: string; sources?: Source[]; label?: string }) {
   const [open, setOpen] = useState(false);
   return (
-    <div className="mt-3 border-t border-slate-100 pt-2">
+    <div className="mt-3 border-t border-slate-100 dark:border-slate-700 pt-2">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-1.5 text-xs text-slate-500 hover:text-[#3289FF] transition-colors cursor-pointer"
+        className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-[#3289FF] transition-colors cursor-pointer"
       >
         <svg className={`w-3 h-3 transition-transform ${open ? "rotate-90" : ""}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
@@ -1321,9 +1321,9 @@ function WhyRecommendation({ reasoning, sources, label }: { reasoning: string; s
         {label || "Why this recommendation"}
       </button>
       {open && (
-        <div className="mt-2 bg-emerald-50/50 border border-emerald-200/60 rounded-lg px-4 py-3">
-          <p className="text-label text-emerald-600 mb-1">Why This Works</p>
-          <p className="text-sm text-slate-700 leading-relaxed">{reasoning}</p>
+        <div className="mt-2 bg-emerald-50/50 dark:bg-emerald-900/30 border border-emerald-200/60 dark:border-slate-700 rounded-lg px-4 py-3">
+          <p className="text-label text-emerald-600 dark:text-emerald-300 mb-1">Why This Works</p>
+          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{reasoning}</p>
           {sources && <Sources sources={sources} />}
         </div>
       )}

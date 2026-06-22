@@ -84,7 +84,7 @@ function PhaseProgressBar({ steps }: { steps: ResearchStep[] }) {
                         ? "bg-[#3289FF] text-white"
                         : status === "failed"
                         ? "bg-red-500 text-white"
-                        : "bg-slate-200 text-slate-400"
+                        : "bg-slate-200 dark:bg-slate-700 text-slate-400 dark:text-slate-500"
                     }`}
                   >
                     {status === "completed" ? "✓" : phase.id}
@@ -92,22 +92,22 @@ function PhaseProgressBar({ steps }: { steps: ResearchStep[] }) {
                   <span
                     className={`text-xs font-medium ${
                       status === "completed"
-                        ? "text-emerald-600"
+                        ? "text-emerald-600 dark:text-emerald-300"
                         : status === "running"
                         ? "text-[#3289FF]"
                         : status === "failed"
-                        ? "text-red-500"
-                        : "text-slate-400"
+                        ? "text-red-500 dark:text-red-300"
+                        : "text-slate-400 dark:text-slate-500"
                     }`}
                   >
                     {phase.label}
                   </span>
                 </div>
-                <span className="text-[10px] text-slate-400">
+                <span className="text-[10px] text-slate-400 dark:text-slate-500">
                   {completed}/{total}
                 </span>
               </div>
-              <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                 <div
                   className={`h-full rounded-full transition-all duration-700 ${
                     status === "completed"
@@ -116,7 +116,7 @@ function PhaseProgressBar({ steps }: { steps: ResearchStep[] }) {
                       ? "bg-[#3289FF]"
                       : status === "failed"
                       ? "bg-red-500"
-                      : "bg-slate-200"
+                      : "bg-slate-200 dark:bg-slate-700"
                   }`}
                   style={{ width: `${total > 0 ? (completed / total) * 100 : 0}%` }}
                 />
@@ -124,7 +124,7 @@ function PhaseProgressBar({ steps }: { steps: ResearchStep[] }) {
             </div>
             {i < PHASES.length - 1 && (
               <div className={`w-6 h-px mx-1 mt-3 ${
-                status === "completed" ? "bg-emerald-300" : "bg-slate-200"
+                status === "completed" ? "bg-emerald-300" : "bg-slate-200 dark:bg-slate-700"
               }`} />
             )}
           </div>
@@ -139,27 +139,27 @@ function PhaseProgressBar({ steps }: { steps: ResearchStep[] }) {
 function CompanyProfilePreview({ data }: { data: StepOutput }) {
   return (
     <div className="space-y-2">
-      <p className="text-sm font-medium text-slate-700">{data.fullName as string || data.name as string}</p>
+      <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{data.fullName as string || data.name as string}</p>
       <div className="grid grid-cols-2 gap-2 text-xs">
         <div>
-          <span className="text-slate-400">Industry:</span>{" "}
-          <span className="text-slate-600">{data.industry as string}</span>
+          <span className="text-slate-400 dark:text-slate-500">Industry:</span>{" "}
+          <span className="text-slate-600 dark:text-slate-300">{data.industry as string}</span>
         </div>
         <div>
-          <span className="text-slate-400">HQ:</span>{" "}
-          <span className="text-slate-600">{data.hqCity as string}, {data.state as string}</span>
+          <span className="text-slate-400 dark:text-slate-500">HQ:</span>{" "}
+          <span className="text-slate-600 dark:text-slate-300">{data.hqCity as string}, {data.state as string}</span>
         </div>
         <div>
-          <span className="text-slate-400">Revenue:</span>{" "}
-          <span className="text-slate-600">{(data.revenue as { value?: string })?.value || "—"}</span>
+          <span className="text-slate-400 dark:text-slate-500">Revenue:</span>{" "}
+          <span className="text-slate-600 dark:text-slate-300">{(data.revenue as { value?: string })?.value || "—"}</span>
         </div>
         <div>
-          <span className="text-slate-400">Employees:</span>{" "}
-          <span className="text-slate-600">{(data.employees as { value?: string })?.value || "—"}</span>
+          <span className="text-slate-400 dark:text-slate-500">Employees:</span>{" "}
+          <span className="text-slate-600 dark:text-slate-300">{(data.employees as { value?: string })?.value || "—"}</span>
         </div>
       </div>
       {data.execSummary ? (
-        <p className="text-[11px] text-slate-500 line-clamp-3">{String(data.execSummary)}</p>
+        <p className="text-[11px] text-slate-500 dark:text-slate-400 line-clamp-3">{String(data.execSummary)}</p>
       ) : null}
     </div>
   );
@@ -174,9 +174,9 @@ function TechStackPreview({ data }: { data: StepOutput }) {
   const ai = Array.isArray(rawAi) ? rawAi : Array.isArray((rawAi as any)?.value) ? (rawAi as any).value : [];
   return (
     <div className="space-y-1.5 text-xs">
-      <div><span className="text-slate-400">Cloud:</span> <span className="text-slate-600">{cloud.join(", ") || "—"}</span></div>
-      <div><span className="text-slate-400">Workspace:</span> <span className="text-slate-600">{workspace}</span></div>
-      <div><span className="text-slate-400">AI/ML:</span> <span className="text-slate-600">{ai.join(", ") || "—"}</span></div>
+      <div><span className="text-slate-400 dark:text-slate-500">Cloud:</span> <span className="text-slate-600 dark:text-slate-300">{cloud.join(", ") || "—"}</span></div>
+      <div><span className="text-slate-400 dark:text-slate-500">Workspace:</span> <span className="text-slate-600 dark:text-slate-300">{workspace}</span></div>
+      <div><span className="text-slate-400 dark:text-slate-500">AI/ML:</span> <span className="text-slate-600 dark:text-slate-300">{ai.join(", ") || "—"}</span></div>
     </div>
   );
 }
@@ -190,7 +190,7 @@ function FinancialSignalPreview({ data }: { data: StepOutput }) {
       {visible.map((s, i) => (
         <div key={i} className="flex items-start gap-1.5">
           <span className="text-emerald-500 mt-0.5">$</span>
-          <span className="text-slate-600">{s.signal || s.evidence || JSON.stringify(s).slice(0, 80)}</span>
+          <span className="text-slate-600 dark:text-slate-300">{s.signal || s.evidence || JSON.stringify(s).slice(0, 80)}</span>
         </div>
       ))}
       {signals.length > 3 && (
@@ -199,7 +199,7 @@ function FinancialSignalPreview({ data }: { data: StepOutput }) {
         </button>
       )}
       {signals.length === 0 && (
-        <p className="text-slate-400">Budget signals extracted</p>
+        <p className="text-slate-400 dark:text-slate-500">Budget signals extracted</p>
       )}
     </div>
   );
@@ -216,8 +216,8 @@ function TriggersPreview({ data }: { data: StepOutput }) {
         <div key={i} className="flex items-start gap-1.5">
           <span className="text-amber-500 mt-0.5">&#9889;</span>
           <div>
-            <span className="text-slate-600">{t.event}</span>
-            <span className="text-slate-400 ml-1">({t.category})</span>
+            <span className="text-slate-600 dark:text-slate-300">{t.event}</span>
+            <span className="text-slate-400 dark:text-slate-500 ml-1">({t.category})</span>
           </div>
         </div>
       ))}
@@ -240,7 +240,7 @@ function PainPointsPreview({ data }: { data: StepOutput }) {
       {visible.map((p, i) => (
         <div key={i} className="flex items-start gap-1.5">
           <span className={`mt-0.5 ${p.severity === "Critical" ? "text-red-500" : p.severity === "High" ? "text-orange-500" : "text-amber-500"}`}>&#9679;</span>
-          <span className="text-slate-600">{p.title}</span>
+          <span className="text-slate-600 dark:text-slate-300">{p.title}</span>
         </div>
       ))}
       {items.length > 4 && (
@@ -263,8 +263,8 @@ function StakeholdersPreview({ data }: { data: StepOutput }) {
         <div key={i} className="flex items-start gap-1.5">
           <span className="text-[#3289FF] mt-0.5">&#9679;</span>
           <div>
-            <span className="text-slate-700 font-medium">{s.name}</span>
-            <span className="text-slate-400 ml-1">— {s.title}</span>
+            <span className="text-slate-700 dark:text-slate-300 font-medium">{s.name}</span>
+            <span className="text-slate-400 dark:text-slate-500 ml-1">— {s.title}</span>
           </div>
         </div>
       ))}
@@ -288,10 +288,10 @@ function SolutionMappingPreview({ data }: { data: StepOutput }) {
         <div key={i} className="flex items-start gap-1.5">
           <span className={`text-[10px] px-1 py-0.5 rounded font-medium ${
             m.priority === "Primary" ? "bg-[rgba(50,137,255,0.08)] text-[#3289FF]" :
-            m.priority === "Secondary" ? "bg-emerald-50 text-emerald-600" :
-            "bg-slate-100 text-slate-500"
+            m.priority === "Secondary" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300" :
+            "bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400"
           }`}>{m.priority}</span>
-          <span className="text-slate-600">{m.solutionName}</span>
+          <span className="text-slate-600 dark:text-slate-300">{m.solutionName}</span>
         </div>
       ))}
       {items.length > 4 && (
@@ -306,17 +306,17 @@ function SolutionMappingPreview({ data }: { data: StepOutput }) {
 function GTMPreview({ data }: { data: StepOutput }) {
   return (
     <div className="space-y-1.5 text-xs">
-      {data.brief ? <p className="text-slate-600 line-clamp-2">{String(data.brief)}</p> : null}
+      {data.brief ? <p className="text-slate-600 dark:text-slate-300 line-clamp-2">{String(data.brief)}</p> : null}
       <div className="flex gap-3">
         {data.urgency ? (
           <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-            String(data.urgency) === "Very High" ? "bg-red-50 text-red-600" :
-            String(data.urgency) === "High" ? "bg-orange-50 text-orange-600" :
-            "bg-amber-50 text-amber-600"
+            String(data.urgency) === "Very High" ? "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300" :
+            String(data.urgency) === "High" ? "bg-orange-50 text-orange-600 dark:bg-orange-900/30 dark:text-orange-300" :
+            "bg-amber-50 text-amber-600 dark:bg-amber-900/30 dark:text-amber-300"
           }`}>{String(data.urgency)}</span>
         ) : null}
         {data.entrySolution ? (
-          <span className="text-slate-400">Entry: <span className="text-slate-600">{String(data.entrySolution).replace(/-/g, " ")}</span></span>
+          <span className="text-slate-400 dark:text-slate-500">Entry: <span className="text-slate-600 dark:text-slate-300">{String(data.entrySolution).replace(/-/g, " ")}</span></span>
         ) : null}
       </div>
     </div>
@@ -338,14 +338,14 @@ function ScoringPreview({ data }: { data: StepOutput }) {
         const pts = score?.points ?? 0;
         return (
           <div key={d.key} className="flex items-center gap-2 text-xs">
-            <span className="text-slate-400 w-20">{d.label}</span>
-            <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden">
+            <span className="text-slate-400 dark:text-slate-500 w-20">{d.label}</span>
+            <div className="flex-1 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-[#3289FF] rounded-full"
                 style={{ width: `${(pts / d.max) * 100}%` }}
               />
             </div>
-            <span className="text-slate-600 font-medium w-10 text-right">{pts}/{d.max}</span>
+            <span className="text-slate-600 dark:text-slate-300 font-medium w-10 text-right">{pts}/{d.max}</span>
           </div>
         );
       })}
@@ -355,20 +355,20 @@ function ScoringPreview({ data }: { data: StepOutput }) {
 
 function VerificationPreview({ data }: { data: StepOutput }) {
   const result = data.result as { valid?: boolean; qualityScore?: number; errors?: string[]; warnings?: string[] } | undefined;
-  if (!result) return <p className="text-xs text-slate-400">Processing...</p>;
+  if (!result) return <p className="text-xs text-slate-400 dark:text-slate-500">Processing...</p>;
   return (
     <div className="space-y-1.5 text-xs">
       <div className="flex items-center gap-2">
-        <span className={`px-1.5 py-0.5 rounded font-medium ${result.valid ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"}`}>
+        <span className={`px-1.5 py-0.5 rounded font-medium ${result.valid ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-red-50 text-red-600 dark:bg-red-900/30 dark:text-red-300"}`}>
           {result.valid ? "Valid" : "Issues Found"}
         </span>
-        <span className="text-slate-400">Quality: <span className="text-slate-700 font-medium">{result.qualityScore}/100</span></span>
+        <span className="text-slate-400 dark:text-slate-500">Quality: <span className="text-slate-700 dark:text-slate-300 font-medium">{result.qualityScore}/100</span></span>
       </div>
       {(result.errors?.length ?? 0) > 0 && (
-        <p className="text-red-500">{result.errors?.length} error(s)</p>
+        <p className="text-red-500 dark:text-red-300">{result.errors?.length} error(s)</p>
       )}
       {(result.warnings?.length ?? 0) > 0 && (
-        <p className="text-amber-500">{result.warnings?.length} warning(s)</p>
+        <p className="text-amber-500 dark:text-amber-300">{result.warnings?.length} warning(s)</p>
       )}
     </div>
   );
@@ -462,15 +462,15 @@ export default function ResearchProgressPage() {
   if (loading) {
     return (
       <div className="animate-fade-in space-y-4 py-8">
-        <div className="h-6 w-48 bg-slate-100 rounded animate-pulse" />
+        <div className="h-6 w-48 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
         <div className="flex gap-2">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="flex-1 h-12 bg-slate-50 rounded animate-pulse" />
+            <div key={i} className="flex-1 h-12 bg-slate-50 dark:bg-slate-800/60 rounded animate-pulse" />
           ))}
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <div className="card p-4 h-60 animate-pulse bg-slate-50" />
-          <div className="card p-4 h-60 animate-pulse bg-slate-50" />
+          <div className="card p-4 h-60 animate-pulse bg-slate-50 dark:bg-slate-800/60" />
+          <div className="card p-4 h-60 animate-pulse bg-slate-50 dark:bg-slate-800/60" />
         </div>
       </div>
     );
@@ -479,7 +479,7 @@ export default function ResearchProgressPage() {
   if (!job) {
     return (
       <div className="text-center py-20">
-        <p className="text-sm text-slate-500 mb-3">Research job not found.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">Research job not found.</p>
         <Link href={`/projects/${projectId}`} className="btn-ghost text-sm">Back to Project</Link>
       </div>
     );
@@ -506,7 +506,7 @@ export default function ResearchProgressPage() {
     <div className="animate-fade-in">
       <Link
         href={`/projects/${projectId}`}
-        className="text-sm text-slate-500 hover:text-[#3289FF] mb-4 inline-flex items-center gap-1 transition-colors"
+        className="text-sm text-slate-500 dark:text-slate-400 hover:text-[#3289FF] mb-4 inline-flex items-center gap-1 transition-colors"
       >
         &larr; Back to Project
       </Link>
@@ -514,8 +514,8 @@ export default function ResearchProgressPage() {
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="text-xl font-bold text-slate-800">{job.company_name}</h1>
-          <p className="text-xs text-slate-400 mt-0.5">
+          <h1 className="text-xl font-bold text-slate-800 dark:text-slate-100">{job.company_name}</h1>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">
             {isComplete
               ? "Research complete — redirecting to full profile..."
               : isFailed
@@ -542,7 +542,7 @@ export default function ResearchProgressPage() {
       <PhaseProgressBar steps={steps} />
 
       {/* Phase selector tabs */}
-      <div className="flex gap-1 mb-4 border-b border-slate-100">
+      <div className="flex gap-1 mb-4 border-b border-slate-100 dark:border-slate-700">
         {PHASES.map((phase) => {
           const { status } = PhaseStatus({ steps, phase });
           const isSelected = selectedPhase === phase.id;
@@ -554,10 +554,10 @@ export default function ResearchProgressPage() {
                 isSelected
                   ? "border-[#3289FF] text-[#3289FF]"
                   : status === "completed"
-                  ? "border-transparent text-emerald-600 hover:text-emerald-700"
+                  ? "border-transparent text-emerald-600 dark:text-emerald-300 hover:text-emerald-700"
                   : status === "running"
                   ? "border-transparent text-[#3289FF]/60 hover:text-[#3289FF]"
-                  : "border-transparent text-slate-400 hover:text-slate-500"
+                  : "border-transparent text-slate-400 dark:text-slate-500 hover:text-slate-500"
               }`}
             >
               Phase {phase.id}: {phase.label}
@@ -601,21 +601,21 @@ export default function ResearchProgressPage() {
                       <span className="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center text-[10px]">✗</span>
                     )}
                     {step.status === "pending" && (
-                      <span className="w-5 h-5 rounded-full bg-slate-200 flex items-center justify-center">
-                        <span className="w-2 h-2 rounded-full bg-slate-400" />
+                      <span className="w-5 h-5 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                        <span className="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500" />
                       </span>
                     )}
                     <span className={`text-sm font-medium ${
                       step.status === "running" ? "text-[#3289FF]" :
-                      step.status === "completed" ? "text-slate-700" :
-                      step.status === "failed" ? "text-red-600" :
-                      "text-slate-400"
+                      step.status === "completed" ? "text-slate-700 dark:text-slate-300" :
+                      step.status === "failed" ? "text-red-600 dark:text-red-300" :
+                      "text-slate-400 dark:text-slate-500"
                     }`}>
                       {AGENT_LABELS[step.agent_name] || step.agent_name}
                     </span>
                   </div>
                   {step.duration_ms && (
-                    <span className="text-[10px] text-slate-400">{(step.duration_ms / 1000).toFixed(1)}s</span>
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500">{(step.duration_ms / 1000).toFixed(1)}s</span>
                   )}
                 </div>
 
@@ -633,14 +633,14 @@ export default function ResearchProgressPage() {
 
                 {/* Output preview */}
                 {step.status === "completed" && hasOutput && Renderer && (
-                  <div className="mt-1 pt-2 border-t border-slate-100">
+                  <div className="mt-1 pt-2 border-t border-slate-100 dark:border-slate-700">
                     <Renderer data={step.output as StepOutput} />
                   </div>
                 )}
 
                 {/* Error state */}
                 {step.status === "failed" && step.error_message && (
-                  <p className="text-xs text-red-500 mt-1">{step.error_message}</p>
+                  <p className="text-xs text-red-500 dark:text-red-300 mt-1">{step.error_message}</p>
                 )}
               </div>
             );
@@ -648,7 +648,7 @@ export default function ResearchProgressPage() {
 
           {phaseSteps.length === 0 && (
             <div className="card p-8 text-center">
-              <p className="text-xs text-slate-400">This phase hasn&apos;t started yet</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500">This phase hasn&apos;t started yet</p>
             </div>
           )}
         </div>
@@ -656,67 +656,67 @@ export default function ResearchProgressPage() {
         {/* Right: Activity feed (1 col) */}
         <div className="space-y-3">
           <div className="card p-4">
-            <h3 className="text-xs font-semibold text-slate-600 mb-3">Live Activity</h3>
+            <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">Live Activity</h3>
 
             {/* Currently running */}
             {runningSteps.map((step) => (
-              <div key={step.id} className="flex items-start gap-2 mb-3 pb-3 border-b border-slate-100 last:border-0">
+              <div key={step.id} className="flex items-start gap-2 mb-3 pb-3 border-b border-slate-100 dark:border-slate-700 last:border-0">
                 <span className="w-2 h-2 rounded-full bg-[#3289FF] mt-1 animate-pulse-dot flex-shrink-0" />
                 <div>
                   <p className="text-xs font-medium text-[#3289FF]">
                     {AGENT_LABELS[step.agent_name]}
                   </p>
-                  <p className="text-[10px] text-slate-400">Running...</p>
+                  <p className="text-[10px] text-slate-400 dark:text-slate-500">Running...</p>
                 </div>
               </div>
             ))}
 
             {/* Failed */}
             {failedSteps.map((step) => (
-              <div key={step.id} className="flex items-start gap-2 mb-3 pb-3 border-b border-slate-100 last:border-0">
+              <div key={step.id} className="flex items-start gap-2 mb-3 pb-3 border-b border-slate-100 dark:border-slate-700 last:border-0">
                 <span className="text-red-500 text-xs mt-0.5 flex-shrink-0">✗</span>
                 <div>
-                  <p className="text-xs font-medium text-red-500">
+                  <p className="text-xs font-medium text-red-500 dark:text-red-300">
                     {AGENT_LABELS[step.agent_name]}
                   </p>
-                  <p className="text-[10px] text-red-400 line-clamp-2">{step.error_message}</p>
+                  <p className="text-[10px] text-red-400 dark:text-red-300 line-clamp-2">{step.error_message}</p>
                 </div>
               </div>
             ))}
 
             {runningSteps.length === 0 && failedSteps.length === 0 && !isComplete && (
-              <p className="text-xs text-slate-400 mb-3">Waiting for next agent...</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mb-3">Waiting for next agent...</p>
             )}
 
             {isComplete && (
-              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2 mb-3 pb-3 border-b border-slate-100 dark:border-slate-700">
                 <span className="text-emerald-500">✓</span>
-                <p className="text-xs font-medium text-emerald-600">Research complete!</p>
+                <p className="text-xs font-medium text-emerald-600 dark:text-emerald-300">Research complete!</p>
               </div>
             )}
           </div>
 
           {/* Recently completed */}
           <div className="card p-4">
-            <h3 className="text-xs font-semibold text-slate-600 mb-3">Completed Steps</h3>
+            <h3 className="text-xs font-semibold text-slate-600 dark:text-slate-300 mb-3">Completed Steps</h3>
             <div className="space-y-2">
               {completedSteps.map((step) => (
                 <div key={step.id} className="flex items-center justify-between">
                   <div className="flex items-center gap-1.5">
                     <span className="text-emerald-500 text-[10px]">✓</span>
-                    <span className="text-[11px] text-slate-600">
+                    <span className="text-[11px] text-slate-600 dark:text-slate-300">
                       {AGENT_LABELS[step.agent_name]}
                     </span>
                   </div>
                   {step.duration_ms && (
-                    <span className="text-[10px] text-slate-400">
+                    <span className="text-[10px] text-slate-400 dark:text-slate-500">
                       {(step.duration_ms / 1000).toFixed(0)}s
                     </span>
                   )}
                 </div>
               ))}
               {completedSteps.length === 0 && (
-                <p className="text-[11px] text-slate-400">No steps completed yet</p>
+                <p className="text-[11px] text-slate-400 dark:text-slate-500">No steps completed yet</p>
               )}
             </div>
           </div>

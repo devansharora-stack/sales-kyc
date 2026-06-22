@@ -51,7 +51,7 @@ export default function ChatMessage({ role, content, timestamp, isStreaming }: C
           className={
             isUser
               ? "bg-[#3289FF] text-white rounded-2xl rounded-tr-sm px-4 py-2.5 text-sm leading-relaxed"
-              : "bg-[#F0F4FA] text-slate-700 rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed"
+              : "bg-[#F0F4FA] dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl rounded-tl-sm px-4 py-2.5 text-sm leading-relaxed"
           }
         >
           {isUser ? (
@@ -66,7 +66,7 @@ export default function ChatMessage({ role, content, timestamp, isStreaming }: C
           )}
         </div>
         {showTime && formattedTime && (
-          <p className={`text-[10px] text-slate-400 font-mono mt-1 ${isUser ? "text-right mr-1" : "ml-1"}`}>
+          <p className={`text-[10px] text-slate-400 dark:text-slate-500 font-mono mt-1 ${isUser ? "text-right mr-1" : "ml-1"}`}>
             {formattedTime}
           </p>
         )}

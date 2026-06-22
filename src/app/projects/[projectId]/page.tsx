@@ -7,12 +7,12 @@ import type { Project, ResearchJob, ResearchStep, Rating, SalesIntelligence, Sal
 import CSVUpload from "@/components/CSVUpload";
 
 const RATING_STYLES: Record<Rating, string> = {
-  A: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  B: "bg-blue-50 text-blue-700 border-blue-200",
-  C: "bg-amber-50 text-amber-700 border-amber-200",
-  D: "bg-orange-50 text-orange-700 border-orange-200",
-  E: "bg-red-50 text-red-700 border-red-200",
-  F: "bg-slate-50 text-slate-700 border-slate-200",
+  A: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-slate-700",
+  B: "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-slate-700",
+  C: "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-slate-700",
+  D: "bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-900/30 dark:text-orange-300 dark:border-slate-700",
+  E: "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-slate-700",
+  F: "bg-slate-50 text-slate-700 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700",
 };
 
 interface CompanyRow {
@@ -41,10 +41,10 @@ const SORT_OPTIONS: { key: SortKey; label: string }[] = [
 ];
 
 const MOTION_STYLES: Record<SalesMotionType, string> = {
-  "Quick Win": "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "Land & Expand": "bg-blue-50 text-blue-700 border-blue-200",
-  "Strategic Sale": "bg-amber-50 text-amber-700 border-amber-200",
-  "Long Cycle": "bg-red-50 text-red-700 border-red-200",
+  "Quick Win": "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-slate-700",
+  "Land & Expand": "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-300 dark:border-slate-700",
+  "Strategic Sale": "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-slate-700",
+  "Long Cycle": "bg-red-50 text-red-700 border-red-200 dark:bg-red-900/30 dark:text-red-300 dark:border-slate-700",
 };
 
 function sortProfiles(profiles: CompanyRow[], sortBy: SortKey): CompanyRow[] {
@@ -174,16 +174,16 @@ export default function ProjectDetailPage() {
   if (loading) {
     return (
       <div className="animate-fade-in space-y-4 py-8">
-        <div className="h-8 w-48 bg-slate-100 rounded animate-pulse" />
+        <div className="h-8 w-48 bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
         <div className="grid grid-cols-4 gap-3">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="card p-4">
-              <div className="h-6 w-12 bg-slate-100 rounded animate-pulse mb-1" />
-              <div className="h-3 w-16 bg-slate-50 rounded animate-pulse" />
+              <div className="h-6 w-12 bg-slate-100 dark:bg-slate-800 rounded animate-pulse mb-1" />
+              <div className="h-3 w-16 bg-slate-50 dark:bg-slate-800/60 rounded animate-pulse" />
             </div>
           ))}
         </div>
-        <div className="card p-4"><div className="h-10 bg-slate-50 rounded animate-pulse" /></div>
+        <div className="card p-4"><div className="h-10 bg-slate-50 dark:bg-slate-800/60 rounded animate-pulse" /></div>
       </div>
     );
   }
@@ -191,10 +191,10 @@ export default function ProjectDetailPage() {
   if (error || !project) {
     return (
       <div className="text-center py-20">
-        <div className="w-12 h-12 rounded-full bg-red-50 flex items-center justify-center mx-auto mb-3">
-          <span className="text-red-400 text-xl">!</span>
+        <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-center mx-auto mb-3">
+          <span className="text-red-400 dark:text-red-300 text-xl">!</span>
         </div>
-        <p className="text-sm text-slate-500 mb-3">Project not found or failed to load.</p>
+        <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">Project not found or failed to load.</p>
         <button onClick={() => router.push("/")} className="btn-ghost text-sm">
           Back to Dashboard
         </button>
@@ -210,16 +210,16 @@ export default function ProjectDetailPage() {
     <div className="animate-fade-in">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <button onClick={() => router.push("/")} className="text-xs text-slate-400 hover:text-[#3289FF] mb-1 cursor-pointer">
+          <button onClick={() => router.push("/")} className="text-xs text-slate-400 dark:text-slate-500 hover:text-[#3289FF] mb-1 cursor-pointer">
             &larr; Dashboard
           </button>
-          <h1 className="text-2xl font-bold text-slate-800 tracking-tight">{project.name}</h1>
+          <h1 className="text-2xl font-bold text-slate-800 dark:text-slate-100 tracking-tight">{project.name}</h1>
           {project.description && (
-            <p className="text-sm text-slate-400 mt-0.5">{project.description}</p>
+            <p className="text-sm text-slate-400 dark:text-slate-500 mt-0.5">{project.description}</p>
           )}
         </div>
         <div className="flex items-center gap-2">
-          <span className={`badge ${project.status === "active" ? "bg-emerald-50 text-emerald-600" : "bg-slate-50 text-slate-400"}`}>
+          <span className={`badge ${project.status === "active" ? "bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-300" : "bg-slate-50 text-slate-400 dark:bg-slate-800/60 dark:text-slate-500"}`}>
             {project.status}
           </span>
           <button onClick={handleArchive} className="btn-ghost text-xs">
@@ -233,7 +233,7 @@ export default function ProjectDetailPage() {
           </Link>
           <button
             onClick={() => { if (confirm("Delete this project and all its data?")) handleDelete(); }}
-            className="btn-ghost text-xs text-red-400 hover:text-red-600 hover:border-red-200"
+            className="btn-ghost text-xs text-red-400 dark:text-red-300 hover:text-red-600 hover:border-red-200"
           >
             Delete
           </button>
@@ -255,7 +255,7 @@ export default function ProjectDetailPage() {
           <p className="text-label">Failed</p>
         </div>
         <div className="card p-4">
-          <p className="text-xl font-bold text-slate-400">{jobs.length}</p>
+          <p className="text-xl font-bold text-slate-400 dark:text-slate-500">{jobs.length}</p>
           <p className="text-label">Total Jobs</p>
         </div>
       </div>
@@ -294,15 +294,15 @@ export default function ProjectDetailPage() {
       {pendingReuse.length > 0 && (
         <div className="mb-6 space-y-2">
           {pendingReuse.map((p) => (
-            <div key={p.slug} className="card p-4 flex items-center justify-between border-amber-200 bg-amber-50/40">
+            <div key={p.slug} className="card p-4 flex items-center justify-between border-amber-200 dark:border-slate-700 bg-amber-50/40 dark:bg-amber-900/30">
               <div>
-                <p className="text-sm font-medium text-slate-800">
+                <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
                   Found recent research for <span className="font-semibold">{p.company_name}</span>
                   {typeof p.days_old === "number" && (
-                    <span className="text-slate-500 font-normal"> ({p.days_old === 0 ? "today" : `${p.days_old} day${p.days_old === 1 ? "" : "s"} old`})</span>
+                    <span className="text-slate-500 dark:text-slate-400 font-normal"> ({p.days_old === 0 ? "today" : `${p.days_old} day${p.days_old === 1 ? "" : "s"} old`})</span>
                   )}
                 </p>
-                <p className="text-xs text-slate-500">
+                <p className="text-xs text-slate-500 dark:text-slate-400">
                   Last researched {p.updated_at ? new Date(p.updated_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "recently"}
                   {p.source_project ? ` · in "${p.source_project}"` : ""}
                 </p>
@@ -331,7 +331,7 @@ export default function ProjectDetailPage() {
       {/* Active Research */}
       {activeJobs.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-sm font-semibold text-slate-600 mb-3">Active Research</h2>
+          <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3">Active Research</h2>
           <div className="space-y-2">
             {activeJobs.map((job) => {
               const completedSteps = job.research_steps?.filter((s) => s.status === "completed").length || 0;
@@ -340,7 +340,7 @@ export default function ProjectDetailPage() {
               return (
                 <Link key={job.id} href={`/projects/${projectId}/research/${job.id}`} className="card p-3 block hover:border-[#3289FF]/30 transition-colors">
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-sm font-medium text-slate-700">{job.company_name}</p>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{job.company_name}</p>
                     <span className="text-[10px] text-[#3289FF] font-medium">{completedSteps}/{totalSteps}</span>
                   </div>
                   {runningStep && (
@@ -349,7 +349,7 @@ export default function ProjectDetailPage() {
                       Running: {runningStep.agent_name.replace(/_/g, " ")}
                     </p>
                   )}
-                  <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                     <div
                       className="h-full bg-[#3289FF] rounded-full transition-all duration-500"
                       style={{ width: `${(completedSteps / totalSteps) * 100}%` }}
@@ -365,15 +365,15 @@ export default function ProjectDetailPage() {
       {/* Failed Jobs */}
       {failedJobs.length > 0 && (
         <div className="mb-6">
-          <h2 className="text-sm font-semibold text-red-500 mb-3">Failed Research</h2>
+          <h2 className="text-sm font-semibold text-red-500 dark:text-red-300 mb-3">Failed Research</h2>
           <div className="space-y-2">
             {failedJobs.map((job) => (
-              <div key={job.id} className="card p-3 border-red-100">
+              <div key={job.id} className="card p-3 border-red-100 dark:border-slate-700">
                 <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-sm font-medium text-slate-700">{job.company_name}</p>
+                    <p className="text-sm font-medium text-slate-700 dark:text-slate-300">{job.company_name}</p>
                     {job.error_message && (
-                      <p className="text-[10px] text-red-400 mt-0.5 truncate max-w-md">{job.error_message}</p>
+                      <p className="text-[10px] text-red-400 dark:text-red-300 mt-0.5 truncate max-w-md">{job.error_message}</p>
                     )}
                   </div>
                   <button
@@ -394,9 +394,9 @@ export default function ProjectDetailPage() {
       {profiles.length > 0 && (
         <div>
           <div className="flex items-center justify-between mb-3">
-            <h2 className="text-sm font-semibold text-slate-600">Company Profiles</h2>
+            <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-300">Company Profiles</h2>
             <div className="flex items-center gap-1.5">
-              <span className="text-[10px] text-slate-400 mr-1">Sort by</span>
+              <span className="text-[10px] text-slate-400 dark:text-slate-500 mr-1">Sort by</span>
               {SORT_OPTIONS.map((opt) => (
                 <button
                   key={opt.key}
@@ -404,7 +404,7 @@ export default function ProjectDetailPage() {
                   className={`text-[11px] px-2.5 py-1 rounded-full border transition-colors ${
                     sortBy === opt.key
                       ? "bg-[#3289FF] text-white border-[#3289FF]"
-                      : "bg-white text-slate-500 border-slate-200 hover:border-slate-300"
+                      : "bg-white dark:bg-slate-900 text-slate-500 dark:text-slate-400 border-slate-200 dark:border-slate-700 hover:border-slate-300"
                   }`}
                 >
                   {opt.label}
@@ -415,7 +415,7 @@ export default function ProjectDetailPage() {
           <div className="card overflow-hidden">
             <table className="w-full text-sm">
               <thead>
-                <tr className="border-b border-[#E2E8F0] text-label">
+                <tr className="border-b border-[#E2E8F0] dark:border-slate-700 text-label">
                   <th className="text-left p-3">Company</th>
                   <th className="text-left p-3">Industry</th>
                   <th className="text-center p-3">Score</th>
@@ -428,19 +428,19 @@ export default function ProjectDetailPage() {
               </thead>
               <tbody>
                 {sortProfiles(profiles, sortBy).map((p) => (
-                  <tr key={p.id} className="border-b border-[#E2E8F0] last:border-0 hover:bg-[rgba(50,137,255,0.02)] transition-colors">
+                  <tr key={p.id} className="border-b border-[#E2E8F0] dark:border-slate-700 last:border-0 hover:bg-[rgba(50,137,255,0.02)] transition-colors">
                     <td className="p-3">
                       <Link
                         href={`/projects/${projectId}/company/${p.slug}`}
-                        className="text-sm font-medium text-slate-700 hover:text-[#3289FF] transition-colors"
+                        className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-[#3289FF] transition-colors"
                       >
                         {p.name || p.slug}
                       </Link>
                       {p.hqCity && (
-                        <p className="text-[10px] text-slate-400">{p.hqCity}, {p.state}</p>
+                        <p className="text-[10px] text-slate-400 dark:text-slate-500">{p.hqCity}, {p.state}</p>
                       )}
                     </td>
-                    <td className="p-3 text-xs text-slate-500">{p.industry}</td>
+                    <td className="p-3 text-xs text-slate-500 dark:text-slate-400">{p.industry}</td>
                     <td className="p-3 text-center">
                       <span className="text-sm font-bold text-[#3289FF]">{p.total_score}</span>
                     </td>
@@ -457,25 +457,25 @@ export default function ProjectDetailPage() {
                           "text-amber-600"
                         }`}>
                           {p.salesIntelligence.opportunityValue.score}
-                          <span className="text-[10px] font-normal text-slate-400">/10</span>
+                          <span className="text-[10px] font-normal text-slate-400 dark:text-slate-500">/10</span>
                         </span>
                       ) : (
-                        <span className="text-[10px] text-slate-300">—</span>
+                        <span className="text-[10px] text-slate-300 dark:text-slate-500">—</span>
                       )}
                     </td>
                     <td className="p-3 text-center">
                       {p.salesIntelligence?.salesMotion ? (
                         <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
-                          MOTION_STYLES[p.salesIntelligence.salesMotion.motion] || "bg-slate-50 text-slate-600 border-slate-200"
+                          MOTION_STYLES[p.salesIntelligence.salesMotion.motion] || "bg-slate-50 text-slate-600 border-slate-200 dark:bg-slate-800/60 dark:text-slate-300 dark:border-slate-700"
                         }`}>
                           {p.salesIntelligence.salesMotion.motion}
                         </span>
                       ) : (
-                        <span className="text-[10px] text-slate-300">—</span>
+                        <span className="text-[10px] text-slate-300 dark:text-slate-500">—</span>
                       )}
                     </td>
-                    <td className="p-3 text-center text-xs text-slate-500">{p.urgency}</td>
-                    <td className="p-3 text-xs text-slate-500">{p.primary_solution?.replace(/-/g, " ")}</td>
+                    <td className="p-3 text-center text-xs text-slate-500 dark:text-slate-400">{p.urgency}</td>
+                    <td className="p-3 text-xs text-slate-500 dark:text-slate-400">{p.primary_solution?.replace(/-/g, " ")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -492,8 +492,8 @@ export default function ProjectDetailPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-5.197-5.197m0 0A7.5 7.5 0 105.196 5.196a7.5 7.5 0 0010.607 10.607z" />
             </svg>
           </div>
-          <p className="text-sm text-slate-500 mb-1">No companies added yet</p>
-          <p className="text-xs text-slate-400">Use the input above to add company names for AI-powered research.</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">No companies added yet</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500">Use the input above to add company names for AI-powered research.</p>
         </div>
       )}
     </div>
