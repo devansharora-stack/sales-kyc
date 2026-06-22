@@ -4,7 +4,6 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import type { DeepStakeholderProfile, StakeholderScriptSet, StakeholderStatus } from "@/lib/types";
 import StakeholderProfileView from "@/components/StakeholderProfileView";
-import StakeholderScriptsPanel from "@/components/stakeholder/StakeholderScriptsPanel";
 
 interface StakeholderResponse {
   id: string;
@@ -42,6 +41,7 @@ export default function StakeholderDetailPage() {
   const [urlInput, setUrlInput] = useState("");
   const [confirming, setConfirming] = useState(false);
   const [confirmError, setConfirmError] = useState<string | null>(null);
+  const [skipping, setSkipping] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -80,6 +80,22 @@ export default function StakeholderDetailPage() {
       return;
     }
     setUrlInput("");
+    fetchData();
+  }
+
+  async function handleNoLinkedin() {
+    setConfirmError(null);
+    setSkipping(true);
+    const res = await fetch(`/api/stakeholders/${id}/no-linkedin`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+    });
+    setSkipping(false);
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setConfirmError(data.error || "Failed to update stakeholder.");
+      return;
+    }
     fetchData();
   }
 
@@ -152,10 +168,17 @@ export default function StakeholderDetailPage() {
                     onChange={(e) => setUrlInput(e.target.value)}
                     onKeyDown={(e) => { if (e.key === "Enter") handleConfirm(); }}
                   />
-                  <button onClick={handleConfirm} disabled={confirming || !urlInput.trim()} className="btn-primary disabled:opacity-50">
-                    {confirming ? "Submitting…" : "Confirm & Analyze"}
+                  <button onClick={handleConfirm} disabled={confirming || skipping || !urlInput.trim()} className="btn-primary disabled:opacity-50">
+                    {confirming ? "Analyzing…" : "Analyze"}
                   </button>
                 </div>
+                <button
+                  onClick={handleNoLinkedin}
+                  disabled={confirming || skipping}
+                  className="btn-ghost text-xs mt-3 disabled:opacity-50"
+                >
+                  {skipping ? "Saving…" : "They don't have a LinkedIn profile"}
+                </button>
                 {confirmError && <p className="text-xs text-red-500 mt-2">{confirmError}</p>}
               </div>
             )}
@@ -178,7 +201,6 @@ export default function StakeholderDetailPage() {
       )}
 
       {profile && <StakeholderProfileView p={profile} />}
-      {profile && <StakeholderScriptsPanel stakeholderId={id} initialScripts={s.data?.scripts} />}
     </div>
   );
 }
