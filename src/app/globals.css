@@ -1,6 +1,9 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
 @import "tailwindcss";
 
+/* Class-based dark mode (toggled by adding `.dark` to <html>). */
+@custom-variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --color-brand: #3289FF;
   --color-brand-light: #1C57FF;
@@ -20,11 +23,29 @@
   --surface-overlay: #F0F4FA;
   --surface-border: #E2E8F0;
   --surface-hover: #EDF2FA;
+  --text-primary: #1e293b;
+  --text-secondary: #334155;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+  --code-bg: rgba(0, 0, 0, 0.06);
+}
+
+.dark {
+  --surface-bg: #0b1120;
+  --surface-raised: #131c2e;
+  --surface-overlay: #1a2436;
+  --surface-border: #243049;
+  --surface-hover: #1c2740;
+  --text-primary: #e2e8f0;
+  --text-secondary: #cbd5e1;
+  --text-muted: #94a3b8;
+  --text-faint: #64748b;
+  --code-bg: rgba(255, 255, 255, 0.08);
 }
 
 body {
   background: var(--surface-bg);
-  color: #1e293b;
+  color: var(--text-primary);
   font-family: 'Inter', system-ui, -apple-system, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -32,7 +53,7 @@ body {
 
 .heading-display {
   font-family: 'Inter', system-ui, sans-serif;
-  color: #1e293b;
+  color: var(--text-primary);
   letter-spacing: -0.025em;
   font-weight: 700;
 }
@@ -49,7 +70,7 @@ body {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #64748b;
+  color: var(--text-muted);
 }
 
 .stat-value {
@@ -65,14 +86,14 @@ body {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  color: #64748b;
+  color: var(--text-muted);
   margin-top: 0.25rem;
 }
 
 .card {
-  background: #F8FAFF;
+  background: var(--surface-raised);
   border-radius: 0.5rem;
-  border: 1px solid #E2E8F0;
+  border: 1px solid var(--surface-border);
   transition: all 0.3s ease;
 }
 
@@ -94,12 +115,12 @@ body {
 }
 
 .input-field {
-  background: #FFFFFF;
-  border: 1px solid #E2E8F0;
+  background: var(--surface-bg);
+  border: 1px solid var(--surface-border);
   border-radius: 0.5rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
-  color: #1e293b;
+  color: var(--text-primary);
   transition: all 0.2s ease;
   outline: none;
   width: 100%;
@@ -111,7 +132,7 @@ body {
 }
 
 .input-field::placeholder {
-  color: #94a3b8;
+  color: var(--text-faint);
 }
 
 .btn-primary {
@@ -140,11 +161,11 @@ body {
   justify-content: center;
   padding: 0.5rem 1rem;
   background: transparent;
-  color: #64748b;
+  color: var(--text-muted);
   font-weight: 500;
   font-size: 0.875rem;
   border-radius: 0.5rem;
-  border: 1px solid #E2E8F0;
+  border: 1px solid var(--surface-border);
   cursor: pointer;
   transition: all 0.2s ease;
 }
@@ -240,19 +261,19 @@ body {
 .chat-markdown ol li { list-style-type: decimal; }
 .chat-markdown code {
   font-family: 'JetBrains Mono', ui-monospace, monospace;
-  font-size: 0.8em; background: rgba(0,0,0,0.06); padding: 0.1em 0.3em;
+  font-size: 0.8em; background: var(--code-bg); padding: 0.1em 0.3em;
   border-radius: 3px;
 }
 .chat-markdown pre {
   margin: 0.5em 0; padding: 0.5em; border-radius: 0.375rem;
-  background: rgba(0,0,0,0.06); overflow-x: auto;
+  background: var(--code-bg); overflow-x: auto;
 }
 .chat-markdown pre code { background: none; padding: 0; font-size: 0.8em; }
 .chat-markdown a { color: #3289FF; text-decoration: underline; }
 .chat-markdown a:hover { color: #1C57FF; }
 .chat-markdown blockquote {
-  border-left: 2px solid #E2E8F0; padding-left: 0.5em;
-  margin: 0.25em 0; color: #64748b;
+  border-left: 2px solid var(--surface-border); padding-left: 0.5em;
+  margin: 0.25em 0; color: var(--text-muted);
 }
 .chat-markdown table {
   width: 100%; border-collapse: collapse; margin: 0.5em 0;
@@ -262,13 +283,13 @@ body {
   background: rgba(50, 137, 255, 0.06);
 }
 .chat-markdown th {
-  text-align: left; font-weight: 600; color: #334155;
-  padding: 0.4em 0.6em; border-bottom: 2px solid #E2E8F0;
+  text-align: left; font-weight: 600; color: var(--text-secondary);
+  padding: 0.4em 0.6em; border-bottom: 2px solid var(--surface-border);
   white-space: nowrap;
 }
 .chat-markdown td {
-  padding: 0.35em 0.6em; border-bottom: 1px solid #E2E8F0;
-  color: #475569; vertical-align: top;
+  padding: 0.35em 0.6em; border-bottom: 1px solid var(--surface-border);
+  color: var(--text-secondary); vertical-align: top;
 }
 .chat-markdown tbody tr:last-child td { border-bottom: none; }
 .chat-markdown tbody tr:hover { background: rgba(50, 137, 255, 0.03); }
