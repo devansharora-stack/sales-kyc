@@ -17,6 +17,7 @@ import PartnerLandscapePanel from "@/components/company/PartnerLandscapePanel";
 import StakeholderMatrixPanel from "@/components/company/StakeholderMatrixPanel";
 import NumberedList from "@/components/company/NumberedList";
 import CollapsibleItem from "@/components/company/CollapsibleItem";
+import StakeholderDrawer from "@/components/stakeholder/StakeholderDrawer";
 
 const solName = (id: SolutionId | string) =>
   ALL_SOLUTIONS.find(s => s.id === id)?.name ?? id;
@@ -108,6 +109,14 @@ export default function CompanyPage() {
   const [analyzing, setAnalyzing] = useState(false);
   const [pendingReuse, setPendingReuse] = useState<{ name: string; company: string | null; title: string | null; updated_at: string | null }[]>([]);
   const [resolvingReuse, setResolvingReuse] = useState<string | null>(null);
+  // Slide-over drawer: holds the deep-stakeholder id to view (null = closed).
+  const [drawerId, setDrawerId] = useState<string | null>(null);
+  const [drawerFallback, setDrawerFallback] = useState<{ name?: string; title?: string | null; company?: string | null }>({});
+  // Inline custom-stakeholder add form.
+  const [addName, setAddName] = useState("");
+  const [addTitle, setAddTitle] = useState("");
+  const [addLinkedin, setAddLinkedin] = useState("");
+  const [addingCustom, setAddingCustom] = useState(false);
 
   const projectId = params.projectId as string;
   const slug = params.slug as string;
@@ -181,7 +190,7 @@ export default function CompanyPage() {
   }
 
   async function postPeople(
-    people: { name: string; company: string | null; title: string | null }[],
+    people: { name: string; company: string | null; title: string | null; linkedinUrl?: string | null }[],
     opts?: { reuse?: boolean; forceRefresh?: boolean },
   ) {
     const res = await fetch(`/api/projects/${projectId}/stakeholders`, {
@@ -228,6 +237,30 @@ export default function CompanyPage() {
     setPendingReuse(prev => prev.filter(p => p.name !== person.name));
     setResolvingReuse(null);
     fetchDeep(projectId);
+  }
+
+  // Single, low-friction custom add: name (required) + optional title + LinkedIn.
+  async function handleAddCustom() {
+    const name = addName.trim();
+    if (!name) return;
+    setAddingCustom(true);
+    await postPeople([{
+      name,
+      company: company?.name ?? null,
+      title: addTitle.trim() || null,
+      linkedinUrl: addLinkedin.trim() || null,
+    }], { reuse: true });
+    setAddingCustom(false);
+    setAddName("");
+    setAddTitle("");
+    setAddLinkedin("");
+    fetchDeep(projectId);
+  }
+
+  // Open the slide-over for a deep-stakeholder id (keeps company context).
+  function openDrawer(id: string, fallback?: { name?: string; title?: string | null; company?: string | null }) {
+    setDrawerFallback(fallback ?? {});
+    setDrawerId(id);
   }
 
   if (error) return (
@@ -710,6 +743,40 @@ export default function CompanyPage() {
       {/* TAB: Stakeholders */}
       {activeTab === "stakeholders" && (
         <div className="space-y-6">
+          {/* Inline custom-stakeholder add — one row, one Analyze action. */}
+          <div className="card p-4">
+            <p className="text-label mb-2">Add a custom stakeholder</p>
+            <form
+              onSubmit={(e) => { e.preventDefault(); handleAddCustom(); }}
+              className="flex flex-wrap items-center gap-2"
+            >
+              <input
+                value={addName}
+                onChange={(e) => setAddName(e.target.value)}
+                placeholder="Full name"
+                className="flex-1 min-w-[160px] text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-[#3289FF]/50"
+              />
+              <input
+                value={addTitle}
+                onChange={(e) => setAddTitle(e.target.value)}
+                placeholder="Title (optional)"
+                className="flex-1 min-w-[140px] text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-[#3289FF]/50"
+              />
+              <input
+                value={addLinkedin}
+                onChange={(e) => setAddLinkedin(e.target.value)}
+                placeholder="LinkedIn URL (optional)"
+                className="flex-1 min-w-[180px] text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-[#3289FF]/50"
+              />
+              <button
+                type="submit"
+                disabled={addingCustom || !addName.trim()}
+                className="btn-primary text-xs disabled:opacity-50"
+              >
+                {addingCustom ? "Queuing…" : "Analyze"}
+              </button>
+            </form>
+          </div>
           {pendingReuse.length > 0 && (
             <div className="space-y-2">
               {pendingReuse.map(p => (
@@ -803,12 +870,12 @@ export default function CompanyPage() {
                                 <div className="flex items-center gap-1.5 flex-wrap">
                                   <p className="text-sm font-semibold text-slate-800">{s.name}</p>
                                   {deep && (
-                                    <Link
-                                      href={`/projects/${projectId}/stakeholder/${deep.id}`}
-                                      className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[rgba(50,137,255,0.08)] text-[#3289FF] border border-[#3289FF]/20 hover:underline"
+                                    <button
+                                      onClick={() => openDrawer(deep.id, { name: s.name, title: s.title, company: company.name })}
+                                      className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[rgba(50,137,255,0.08)] text-[#3289FF] border border-[#3289FF]/20 hover:underline cursor-pointer"
                                     >
-                                      {deep.status === "completed" ? "Deep profile ✓" : "Analyzing…"}
-                                    </Link>
+                                      {deep.status === "completed" ? "View profile" : "Analyzing…"}
+                                    </button>
                                   )}
                                 </div>
                                 <p className="text-xs text-slate-500 mt-0.5">{s.title}</p>
@@ -855,6 +922,7 @@ export default function CompanyPage() {
                 projectId={projectId}
                 deepByName={deepByName}
                 onDeepResearch={handleMatrixDeepResearch}
+                onOpenDeep={(id, name, title) => openDrawer(id, { name, title, company: company.name })}
               />
             ) : (
               <p className="text-sm text-slate-400 py-6 text-center">
@@ -881,6 +949,13 @@ export default function CompanyPage() {
           </div>
         </Card>
       )}
+
+      <StakeholderDrawer
+        stakeholderId={drawerId}
+        projectId={projectId}
+        fallback={drawerFallback}
+        onClose={() => setDrawerId(null)}
+      />
     </div>
   );
 }

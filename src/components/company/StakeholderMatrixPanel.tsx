@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import Link from "next/link";
 import type { StakeholderOfferingMatrix, CellStrength } from "@/lib/types";
 import { normalizeStakeholderName } from "@/lib/names";
 
@@ -32,6 +31,8 @@ interface MatrixPanelProps {
   projectId: string;
   deepByName: Map<string, DeepRow>;
   onDeepResearch: (name: string, title: string) => Promise<void> | void;
+  /** Open the existing deep profile in a slide-over (keeps company context). */
+  onOpenDeep: (id: string, name: string, title: string) => void;
 }
 
 function deepLabel(status: string): string {
@@ -43,7 +44,7 @@ function deepLabel(status: string): string {
   return "View";
 }
 
-export default function StakeholderMatrixPanel({ matrix, projectId, deepByName, onDeepResearch }: MatrixPanelProps) {
+export default function StakeholderMatrixPanel({ matrix, deepByName, onDeepResearch, onOpenDeep }: MatrixPanelProps) {
   const [busy, setBusy] = useState<Set<string>>(new Set());
 
   async function handleResearch(name: string, title: string) {
@@ -114,12 +115,12 @@ export default function StakeholderMatrixPanel({ matrix, projectId, deepByName, 
                       const deep = deepByName.get(normalizeStakeholderName(row.stakeholderName));
                       if (deep) {
                         return (
-                          <Link
-                            href={`/projects/${projectId}/stakeholder/${deep.id}`}
-                            className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[rgba(50,137,255,0.08)] text-[#3289FF] border border-[#3289FF]/20 hover:underline"
+                          <button
+                            onClick={() => onOpenDeep(deep.id, row.stakeholderName, row.title)}
+                            className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[rgba(50,137,255,0.08)] text-[#3289FF] border border-[#3289FF]/20 hover:underline cursor-pointer"
                           >
                             {deepLabel(deep.status)}
-                          </Link>
+                          </button>
                         );
                       }
                       return (
