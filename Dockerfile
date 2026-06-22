@@ -41,6 +41,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV NEXT_TELEMETRY_DISABLED=1
+# Runtime NEXTAUTH_URL must be the PUBLIC URL (the builder-stage value is build-time
+# only). Without this, OAuth redirects users to localhost after sign-in.
+ENV NEXTAUTH_URL=https://sales-kyc-693246358019.us-central1.run.app
 
 RUN groupadd --gid 1001 nodejs \
     && useradd --uid 1001 --gid 1001 --shell /bin/bash --create-home nextjs
