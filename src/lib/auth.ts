@@ -1,6 +1,21 @@
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
 
+// In production, never let NEXTAUTH_URL be a localhost/internal address — that
+// makes Google OAuth redirect users back to localhost after sign-in. Force the
+// public deployed URL (overridable via NEXTAUTH_PUBLIC_URL). Remove once the
+// Cloud Run service sets NEXTAUTH_URL correctly.
+const PUBLIC_URL =
+  process.env.NEXTAUTH_PUBLIC_URL || "https://sales-kyc-693246358019.us-central1.run.app";
+if (
+  process.env.NODE_ENV === "production" &&
+  (!process.env.NEXTAUTH_URL ||
+    process.env.NEXTAUTH_URL.includes("localhost") ||
+    process.env.NEXTAUTH_URL.includes("0.0.0.0"))
+) {
+  process.env.NEXTAUTH_URL = PUBLIC_URL;
+}
+
 const ALLOWED_DOMAINS = (process.env.ALLOWED_DOMAINS || "").split(",").filter(Boolean);
 const ALLOWED_EMAILS = (process.env.ALLOWED_EMAILS || "").split(",").filter(Boolean);
 
