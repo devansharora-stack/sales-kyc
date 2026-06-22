@@ -18,6 +18,7 @@ import StakeholderMatrixPanel from "@/components/company/StakeholderMatrixPanel"
 import NumberedList from "@/components/company/NumberedList";
 import CollapsibleItem from "@/components/company/CollapsibleItem";
 import StakeholderDrawer from "@/components/stakeholder/StakeholderDrawer";
+import InfoHint from "@/components/InfoHint";
 
 const solName = (id: SolutionId | string) =>
   ALL_SOLUTIONS.find(s => s.id === id)?.name ?? id;
@@ -436,7 +437,19 @@ export default function CompanyPage() {
           {/* Opportunity Value */}
           <div className="card p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Opportunity Value</h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Opportunity Value</h3>
+                <InfoHint
+                  title="How big the prize is"
+                  lines={[
+                    "Deal economics — independent of how easy it is to win.",
+                    "Revenue / budget band: bigger company = more budget.",
+                    "Solution breadth: how many Techolution solutions fit.",
+                    "Expansion path: room to grow the account over time.",
+                    "High = a large, well-funded target.",
+                  ]}
+                />
+              </div>
               <div className="flex items-center gap-1.5">
                 <span className={`text-lg font-bold ${
                   company.salesIntelligence.opportunityValue.score >= 7 ? "text-emerald-600" :
@@ -462,7 +475,19 @@ export default function CompanyPage() {
           {/* Sales Motion */}
           <div className="card p-5">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Sales Motion</h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Sales Motion</h3>
+                <InfoHint
+                  title="How easy & fast to win"
+                  lines={[
+                    "Execution difficulty — independent of deal size.",
+                    "Org agility: smaller / nimbler = easier and faster.",
+                    "Build-vs-buy: no in-house AI team = more likely to buy than build.",
+                    "Decision simplicity: one clear budget owner = easier.",
+                    "High = a quick close (says nothing about deal size).",
+                  ]}
+                />
+              </div>
               <div className="flex items-center gap-1.5">
                 <span className={`text-lg font-bold ${
                   company.salesIntelligence.salesMotion.score >= 7 ? "text-emerald-600" :
