@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useSession, signOut } from "next-auth/react";
+import ActivityIndicator from "./ActivityIndicator";
 
 export default function Navigation() {
   const pathname = usePathname();
@@ -46,6 +47,10 @@ export default function Navigation() {
                 </Link>
               );
             })}
+
+            <div className="ml-1.5">
+              <ActivityIndicator />
+            </div>
 
             {session?.user && (
               <div className="flex items-center gap-2 ml-3 pl-3 border-l border-slate-200">
