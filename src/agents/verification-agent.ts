@@ -190,9 +190,10 @@ export async function runVerification(profile: CompanyDetail): Promise<{
 
   // Pre-filter: strip any Vertex AI redirect/grounding URLs that weren't resolved
   // These are Google-internal URLs useless to end users
-  const isVertexUrl = (url: string) =>
-    url.includes("vertexaisearch.cloud.google.com/grounding-api-redirect") ||
-    url.includes("vertexaisearch.google.com/grounding");
+  const isVertexUrl = (url: string | undefined): boolean =>
+    !!url &&
+    (url.includes("vertexaisearch.cloud.google.com/grounding-api-redirect") ||
+      url.includes("vertexaisearch.google.com/grounding"));
 
   const stripVertex = (sources: Source[] | undefined): Source[] =>
     (sources || []).filter((s) => !isVertexUrl(s.url));
