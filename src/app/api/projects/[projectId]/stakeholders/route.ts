@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { users, projects, stakeholderProfiles } from "@/db/schema";
-import { and, eq, desc } from "drizzle-orm";
+import { and, eq, desc, gte, isNull } from "drizzle-orm";
 import { serializeStakeholder } from "@/lib/serializers";
 import { inngest } from "@/lib/inngest";
 
@@ -61,6 +61,13 @@ export async function POST(
   const companyProfileId: string | null = typeof body.companyProfileId === "string" ? body.companyProfileId : null;
   const rawPeople: InputStakeholder[] = Array.isArray(body.stakeholders) ? body.stakeholders : [];
 
+  // A deep analysis re-runs the (paid) Apify scrape, so before queueing we
+  // check for an existing COMPLETED profile of the same person (any project,
+  // any user — shared) within the freshness window and ask before re-running.
+  const CACHE_MAX_AGE_DAYS = 7;
+  const forceRefresh = body.forceRefresh === true;
+  const reuse = body.reuse === true;
+
   const people = rawPeople
     .map((p) => ({
       name: (p.name || "").trim(),
@@ -74,8 +81,75 @@ export async function POST(
     return NextResponse.json({ error: "No valid stakeholders provided" }, { status: 400 });
   }
 
+  const cutoffDate = new Date();
+  cutoffDate.setDate(cutoffDate.getDate() - CACHE_MAX_AGE_DAYS);
+
   const created = [];
+  const existing: { name: string; company: string | null; updated_at: Date | null }[] = [];
   for (const p of people) {
+    // Look for a fresh, completed analysis of this person to reuse.
+    if (!forceRefresh) {
+      const companyCond = p.company
+        ? eq(stakeholderProfiles.company, p.company)
+        : isNull(stakeholderProfiles.company);
+      const [cached] = await db
+        .select()
+        .from(stakeholderProfiles)
+        .where(
+          and(
+            eq(stakeholderProfiles.name, p.name),
+            companyCond,
+            eq(stakeholderProfiles.status, "completed"),
+            gte(stakeholderProfiles.updatedAt, cutoffDate),
+          ),
+        )
+        .orderBy(desc(stakeholderProfiles.updatedAt))
+        .limit(1);
+
+      if (cached) {
+        if (!reuse) {
+          existing.push({ name: p.name, company: p.company, updated_at: cached.updatedAt });
+          continue;
+        }
+        // User chose "Use existing" — copy the completed profile into this
+        // project without re-running the scrape pipeline.
+        const [row] = await db
+          .insert(stakeholderProfiles)
+          .values({
+            projectId,
+            companyProfileId,
+            userId: user.id,
+            name: p.name,
+            company: p.company,
+            title: p.title ?? cached.title,
+            linkedinUrl: p.linkedinUrl ?? cached.linkedinUrl,
+            urlConfidence: cached.urlConfidence,
+            inputType,
+            status: "completed",
+            progress: 100,
+            data: cached.data,
+          })
+          .onConflictDoUpdate({
+            target: [stakeholderProfiles.projectId, stakeholderProfiles.name, stakeholderProfiles.company],
+            set: {
+              companyProfileId,
+              title: p.title ?? cached.title,
+              linkedinUrl: p.linkedinUrl ?? cached.linkedinUrl,
+              urlConfidence: cached.urlConfidence,
+              inputType,
+              status: "completed",
+              progress: 100,
+              data: cached.data,
+              errorMessage: null,
+              updatedAt: new Date(),
+            },
+          })
+          .returning();
+        if (row) created.push(serializeStakeholder(row, false));
+        continue;
+      }
+    }
+
     const [row] = await db
       .insert(stakeholderProfiles)
       .values({
@@ -113,5 +187,5 @@ export async function POST(
     }
   }
 
-  return NextResponse.json({ stakeholders: created, count: created.length });
+  return NextResponse.json({ stakeholders: created, count: created.length, existing });
 }

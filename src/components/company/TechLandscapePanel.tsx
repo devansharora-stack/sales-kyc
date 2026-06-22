@@ -7,21 +7,21 @@ function VendorRow({ item }: { item: string }) {
   const [name, ...rest] = item.split(/\s*[—–-]\s*/);
   const desc = rest.join(" — ");
   return (
-    <div className="flex items-start justify-between gap-3 py-2.5 border-b border-slate-100 last:border-0">
+    <div className="flex items-start justify-between gap-3 py-2.5 border-b border-slate-100 dark:border-slate-700 last:border-0">
       <div className="min-w-0">
-        <p className="text-sm font-medium text-slate-800">{name}</p>
-        {desc && <p className="text-xs text-slate-500 mt-0.5">{desc}</p>}
+        <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{name}</p>
+        {desc && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{desc}</p>}
       </div>
-      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 shrink-0 uppercase tracking-wide">Active</span>
+      <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300 shrink-0 uppercase tracking-wide">Active</span>
     </div>
   );
 }
 
 function InfoRow({ label, value }: { label: string; value: string }) {
   return (
-    <div className="py-2 border-b border-slate-100 last:border-0">
+    <div className="py-2 border-b border-slate-100 dark:border-slate-700 last:border-0">
       <p className="text-label">{label}</p>
-      <p className="text-sm text-slate-700 mt-0.5">{value}</p>
+      <p className="text-sm text-slate-700 dark:text-slate-300 mt-0.5">{value}</p>
     </div>
   );
 }
@@ -55,35 +55,35 @@ export default function TechLandscapePanel({ tech }: { tech: TechLandscape }) {
 
   return (
     <div className="grid md:grid-cols-2 gap-4">
-      <div className="border border-slate-200 rounded-lg overflow-hidden">
-        <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200">
-          <p className="text-sm font-semibold text-slate-700">Current Vendors & Systems</p>
+      <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div className="bg-slate-50 dark:bg-slate-800 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Current Vendors & Systems</p>
         </div>
         <div className="px-4 max-h-[360px] overflow-y-auto">
           {allVendorItems.length > 0
             ? allVendorItems.map((item, i) => <VendorRow key={i} item={item} />)
-            : <p className="text-sm text-slate-400 py-3">No vendor data available</p>
+            : <p className="text-sm text-slate-400 dark:text-slate-500 py-3">No vendor data available</p>
           }
         </div>
       </div>
 
-      <div className="border border-slate-200 rounded-lg overflow-hidden">
-        <div className="bg-slate-50 px-4 py-2.5 border-b border-slate-200">
-          <p className="text-sm font-semibold text-slate-700">Cloud & Technology</p>
+      <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+        <div className="bg-slate-50 dark:bg-slate-800 px-4 py-2.5 border-b border-slate-200 dark:border-slate-700">
+          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Cloud & Technology</p>
         </div>
         <div className="px-4">
           <InfoRow label="Cloud Provider" value={cloud} />
           <InfoRow label="Workspace" value={workspace} />
           {ai.length > 0 && (
-            <div className="py-2 border-b border-slate-100 last:border-0">
+            <div className="py-2 border-b border-slate-100 dark:border-slate-700 last:border-0">
               <p className="text-label">AI Deployments</p>
               <div className="mt-1.5 space-y-1">
                 {ai.map((a, i) => {
                   const [name, ...rest] = a.split(/\s*[—–-]\s*/);
                   return (
-                    <div key={i} className="text-sm text-slate-700">
+                    <div key={i} className="text-sm text-slate-700 dark:text-slate-300">
                       <span className="font-medium">{name}</span>
-                      {rest.length > 0 && <span className="text-slate-500"> — {rest.join(" — ")}</span>}
+                      {rest.length > 0 && <span className="text-slate-500 dark:text-slate-400"> — {rest.join(" — ")}</span>}
                     </div>
                   );
                 })}

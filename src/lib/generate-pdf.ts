@@ -105,13 +105,40 @@ export function generateCompanyPDF(company: CompanyDetail) {
     }
   }
 
+  // Wrap to a width, hard-breaking any single token (e.g. a long URL) that is
+  // wider than the line. jsPDF's splitTextToSize only breaks on whitespace, so
+  // long URLs would otherwise overrun the page edge. Call after setting font size.
+  function wrapHard(text: string, maxWidth: number): string[] {
+    const lines: string[] = [];
+    let cur = "";
+    for (const token of text.split(/(\s+)/)) {
+      if (token === "") continue;
+      if (doc.getTextWidth(cur + token) <= maxWidth) {
+        cur += token;
+      } else if (doc.getTextWidth(token) > maxWidth) {
+        if (cur.trim()) { lines.push(cur.trimEnd()); cur = ""; }
+        let chunk = "";
+        for (const ch of token) {
+          if (doc.getTextWidth(chunk + ch) <= maxWidth) chunk += ch;
+          else { lines.push(chunk); chunk = ch; }
+        }
+        cur = chunk;
+      } else {
+        if (cur.trim()) lines.push(cur.trimEnd());
+        cur = token.trimStart();
+      }
+    }
+    if (cur.trim()) lines.push(cur.trimEnd());
+    return lines.length ? lines : [text];
+  }
+
   function sourceLine(src: { label: string; url: string; date: string; type?: string }) {
     checkPage(4);
     doc.setFontSize(7);
     doc.setFont("helvetica", "normal");
     setColor(BLUE);
     const text = `↳ ${src.label} (${src.date}) — ${src.url}`;
-    const lines = doc.splitTextToSize(text, CW - 4);
+    const lines = wrapHard(text, CW - 4);
     for (const line of lines) {
       checkPage(3.5);
       doc.text(line, M + 4, y);
@@ -582,8 +609,12 @@ export function generateCompanyPDF(company: CompanyDetail) {
       if (s.sourceUrl) {
         doc.setFontSize(7);
         setColor(BLUE);
-        doc.text(s.sourceUrl, M, y);
-        y += 4;
+        for (const l of wrapHard(s.sourceUrl, CW)) {
+          checkPage(3.5);
+          doc.text(l, M, y);
+          y += 3.5;
+        }
+        y += 0.5;
       }
 
       y += 3;
@@ -706,7 +737,7 @@ export function generateCompanyPDF(company: CompanyDetail) {
     setColor(SLATE500);
     const num = String(i + 1).padStart(2, "0");
     const line = `${num}.  [${s.type}] ${s.label} (${s.date})  ${s.url}`;
-    const lines = doc.splitTextToSize(line, CW);
+    const lines = wrapHard(line, CW);
     for (const l of lines) {
       checkPage(3.5);
       doc.text(l, M, y);
@@ -743,4 +774,271 @@ export function generateCompanyPDF(company: CompanyDetail) {
   }
 
   doc.save(`${company.slug || company.name.toLowerCase().replace(/\s+/g, "-")}-intelligence-report.pdf`);
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// One-pager: the whole account on a single dense A4 page — built for a rep to
+// scan in 30 seconds before a call. Caps + clamps everything to guarantee fit.
+// ───────────────────────────────────────────────────────────────────────────
+export function generateCompanyOnePager(company: CompanyDetail) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const M = 12;
+  const CW = W - M * 2;
+
+  const setColor = (c: readonly number[]) => doc.setTextColor(c[0], c[1], c[2]);
+  const fill = (c: readonly number[]) => doc.setFillColor(c[0], c[1], c[2]);
+  const clamp = (t: string | undefined, n: number) =>
+    !t ? "" : t.length > n ? t.slice(0, n - 1).trimEnd() + "…" : t;
+
+  const tl = company.techLandscape;
+  const si = company.salesIntelligence;
+  let y = 0;
+
+  // Pill badge sized to its text; returns the x just past it.
+  function pill(x: number, yy: number, text: string, bg: readonly number[], fg: readonly number[] = WHITE) {
+    doc.setFontSize(6.5);
+    doc.setFont("helvetica", "bold");
+    const w = doc.getTextWidth(text) + 4;
+    fill(bg);
+    doc.roundedRect(x, yy - 3.2, w, 4.6, 1.2, 1.2, "F");
+    setColor(fg);
+    doc.text(text, x + 2, yy);
+    return x + w + 2;
+  }
+
+  function miniHeading(x: number, yy: number, text: string) {
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    setColor(BLUE);
+    doc.text(text.toUpperCase(), x, yy);
+    return yy + 6;
+  }
+
+  const BOTTOM = H - 14; // keep content above the footer line
+
+  // ── Confidential band ──
+  fill(DARK);
+  doc.rect(0, 0, W, 6, "F");
+  doc.setFontSize(7);
+  doc.setFont("helvetica", "bold");
+  setColor(WHITE);
+  doc.text("CONFIDENTIAL — INTERNAL USE ONLY", W / 2, 4, { align: "center" });
+  y = 17;
+
+  // ── Header: name + score ──
+  doc.setFontSize(22);
+  doc.setFont("helvetica", "bold");
+  setColor(DARK);
+  doc.text(clamp(company.name, 40), M, y);
+  doc.setFontSize(20);
+  setColor(BLUE);
+  doc.text(`${company.totalScore}`, W - M - 9, y, { align: "right" });
+  doc.setFontSize(10);
+  setColor(SLATE400);
+  doc.text("/100", W - M, y, { align: "right" });
+  y += 7;
+  doc.setFontSize(10);
+  doc.setFont("helvetica", "normal");
+  setColor(SLATE500);
+  doc.text(clamp(`${company.industry} · ${company.subSector} · ${company.hqCity}, ${company.state}`, 90), M, y);
+  y += 7;
+
+  // ── Badge row ──
+  let bx = M;
+  bx = pill(bx, y, `${company.rating} ${RATING_LABELS[company.rating] || ""}`.trim(), RATING_COLORS[company.rating] || SLATE500);
+  if (company.gtm?.urgency) bx = pill(bx, y, `URGENCY: ${company.gtm.urgency.toUpperCase()}`, SEVERITY_COLORS[company.gtm.urgency] || BLUE);
+  if (si?.salesMotion?.motion) bx = pill(bx, y, si.salesMotion.motion.toUpperCase(), SLATE700);
+  if (company.geminiStatus) bx = pill(bx, y, `GEMINI: ${company.geminiStatus.toUpperCase()}`, BLUE);
+  y += 9;
+
+  // ── Stat strip ──
+  const stats: [string, string][] = [
+    ["REVENUE", clamp(company.revenue?.value, 16) || "N/A"],
+    ["EMPLOYEES", clamp(company.employees?.value, 14) || "N/A"],
+    ["TRIGGERS", `${company.triggerEvents?.length || 0}`],
+    ["STAKEHOLDERS", `${company.stakeholders?.length || 0}`],
+    ["OPP / YR 1", clamp(si?.opportunityValue?.estimatedFirstYear, 14) || "—"],
+  ];
+  fill(LIGHT_BG);
+  doc.roundedRect(M, y, CW, 16, 2, 2, "F");
+  const colW = CW / stats.length;
+  stats.forEach(([label, val], i) => {
+    const cx = M + i * colW + 4;
+    doc.setFontSize(7);
+    doc.setFont("helvetica", "bold");
+    setColor(SLATE400);
+    doc.text(label, cx, y + 6);
+    doc.setFontSize(11);
+    setColor(SLATE700);
+    doc.text(val, cx, y + 12);
+  });
+  y += 22;
+
+  // ── Score bars (5 dimensions) ──
+  const dims: [string, number, number][] = [
+    ["Budget Signal", company.scores?.budgetSignal?.points ?? 0, 25],
+    ["Solution Fit", company.scores?.solutionFit?.points ?? 0, 25],
+    ["Trigger Recency", company.scores?.triggerRecency?.points ?? 0, 20],
+    ["AI Maturity", company.scores?.aiMaturity?.points ?? 0, 15],
+    ["Gemini Align", company.scores?.geminiAlignment?.points ?? 0, 15],
+  ];
+  doc.setFontSize(8.5);
+  dims.forEach(([label, pts, max]) => {
+    doc.setFont("helvetica", "normal");
+    setColor(SLATE500);
+    doc.text(label, M, y + 2.6);
+    const barX = M + 34;
+    const barW = CW - 34 - 16;
+    fill([226, 232, 240]);
+    doc.roundedRect(barX, y, barW, 3.4, 1.4, 1.4, "F");
+    const pct = max ? pts / max : 0;
+    const c = pct >= 0.8 ? [16, 185, 129] : pct >= 0.6 ? BLUE : pct >= 0.4 ? [245, 158, 11] : [239, 68, 68];
+    if (pct > 0) { fill(c); doc.roundedRect(barX, y, Math.max(2, barW * pct), 3.4, 1.4, 1.4, "F"); }
+    setColor(SLATE500);
+    doc.text(`${pts}/${max}`, W - M, y + 2.6, { align: "right" });
+    y += 6.5;
+  });
+  y += 3;
+
+  // ── Exec summary ──
+  if (company.execSummary) {
+    doc.setFontSize(9.5);
+    doc.setFont("helvetica", "normal");
+    setColor(SLATE700);
+    const lines = doc.splitTextToSize(company.execSummary, CW).slice(0, 5);
+    doc.text(lines, M, y, { lineHeightFactor: 1.35 });
+    y += lines.length * 4.7 + 3;
+  }
+
+  // ── Divider ──
+  doc.setDrawColor(226, 232, 240);
+  doc.line(M, y, W - M, y);
+  y += 7;
+
+  // ── Two-column body ──
+  const gap = 8;
+  const colWidth = (CW - gap) / 2;
+  const leftX = M;
+  const rightX = M + colWidth + gap;
+  let yL = y;
+  let yR = y;
+
+  // LEFT: Why Now + Pain Points
+  yL = miniHeading(leftX, yL, "Why Now");
+  (company.triggerEvents || []).slice(0, 4).forEach((t) => {
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    setColor(SLATE700);
+    const tl2 = doc.splitTextToSize(`• ${clamp(t.event, 80)}`, colWidth);
+    doc.text(tl2.slice(0, 2), leftX, yL);
+    yL += Math.min(tl2.length, 2) * 4.3;
+    doc.setFontSize(7.5);
+    doc.setFont("helvetica", "normal");
+    setColor(SLATE400);
+    doc.text(clamp(`${t.category} · ${t.date}`, 55), leftX + 3, yL);
+    yL += 5.2;
+  });
+  yL += 3;
+  yL = miniHeading(leftX, yL, "Pain Points");
+  (company.painPoints || []).slice(0, 5).forEach((p) => {
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    setColor(SLATE700);
+    const sev = p.severity ? ` [${p.severity}]` : "";
+    const pl = doc.splitTextToSize(`• ${clamp(p.title, 70)}${sev}`, colWidth);
+    doc.text(pl.slice(0, 2), leftX, yL);
+    yL += Math.min(pl.length, 2) * 4.3 + 2;
+  });
+
+  // RIGHT: Recommended Solutions + Sales Motion
+  const sorted = [...(company.solutionMappings || [])].sort((a, b) => {
+    const pr = { Primary: 0, Secondary: 1, Tertiary: 2 } as Record<string, number>;
+    return (pr[a.priority] ?? 3) - (pr[b.priority] ?? 3);
+  });
+  yR = miniHeading(rightX, yR, "Recommended Solutions");
+  sorted.slice(0, 4).forEach((m, i) => {
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    setColor(DARK);
+    const fit = m.fitScore != null ? `  (${m.fitScore})` : "";
+    doc.text(clamp(`#${i + 1} ${m.solutionName}`, 36), rightX, yR);
+    doc.setFontSize(7);
+    setColor(BLUE);
+    doc.text(`${m.priority.toUpperCase()}${fit}`, rightX + colWidth, yR, { align: "right" });
+    yR += 4.4;
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    setColor(SLATE500);
+    const pl = doc.splitTextToSize(clamp(m.painPoint, 95), colWidth);
+    doc.text(pl.slice(0, 2), rightX, yR);
+    yR += Math.min(pl.length, 2) * 3.9 + 2.5;
+  });
+  yR += 2;
+  if (si) {
+    yR = miniHeading(rightX, yR, "Sales Motion");
+    const rows: [string, string][] = [
+      ["Motion", si.salesMotion?.motion || "—"],
+      ["Cycle", si.salesMotion?.cycleLength || "—"],
+      ["Build-vs-Buy risk", si.salesMotion?.buildVsBuyRisk || "—"],
+      ["Opp / Year 1", si.opportunityValue?.estimatedFirstYear || "—"],
+      ["Expansion", si.opportunityValue?.estimatedExpansion || "—"],
+    ];
+    rows.forEach(([k, v]) => {
+      doc.setFontSize(8.5);
+      doc.setFont("helvetica", "normal");
+      setColor(SLATE400);
+      doc.text(k, rightX, yR);
+      doc.setFont("helvetica", "bold");
+      setColor(SLATE700);
+      doc.text(clamp(v, 28), rightX + colWidth, yR, { align: "right" });
+      yR += 5.2;
+    });
+  }
+
+  y = Math.max(yL, yR) + 4;
+
+  // ── Key stakeholders (full width, with relevance) ──
+  doc.setDrawColor(226, 232, 240);
+  doc.line(M, y, W - M, y);
+  y += 7;
+  y = miniHeading(M, y, "Key Stakeholders");
+  const tierColor: Record<string, readonly number[]> = {
+    "Decision Maker": BLUE,
+    Champion: [16, 185, 129],
+    Influencer: [245, 158, 11],
+  };
+  (company.stakeholders || []).slice(0, 6).forEach((s) => {
+    if (y > BOTTOM - 4) return;
+    doc.setFontSize(9.5);
+    doc.setFont("helvetica", "bold");
+    setColor(SLATE700);
+    doc.text(clamp(s.name, 30), M, y);
+    const nameW = doc.getTextWidth(clamp(s.name, 30));
+    doc.setFontSize(8.5);
+    doc.setFont("helvetica", "normal");
+    setColor(SLATE500);
+    doc.text(clamp(`— ${s.title}`, 64), M + nameW + 3, y);
+    if (s.tier) pill(W - M - (doc.getTextWidth(s.tier) + 4), y, s.tier, tierColor[s.tier] || SLATE500);
+    if (s.relevance) {
+      y += 4.2;
+      doc.setFontSize(7.5);
+      setColor(SLATE400);
+      const rl = doc.splitTextToSize(clamp(s.relevance, 150), CW - 4);
+      doc.text(rl.slice(0, 1), M + 3, y);
+    }
+    y += 6.5;
+  });
+
+  // ── Footer ──
+  setColor(SLATE400);
+  doc.setFontSize(6.5);
+  doc.setFont("helvetica", "normal");
+  doc.setDrawColor(226, 232, 240);
+  doc.line(M, H - 11, W - M, H - 11);
+  doc.text(`KYC Genie  •  ${company.name}  •  One-Pager  •  Generated ${new Date().toLocaleDateString()}`, M, H - 7);
+  doc.text("Confidential — Internal Use Only", W - M, H - 7, { align: "right" });
+
+  doc.save(`${company.slug || company.name.toLowerCase().replace(/\s+/g, "-")}-one-pager.pdf`);
 }

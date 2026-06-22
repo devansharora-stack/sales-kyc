@@ -230,9 +230,41 @@ export interface DeepStakeholderProfile {
   dataRichness: StakeholderDataRichness;
 }
 
+// === Per-stakeholder sales scripts ===
+
+export type ScriptTone = "receptive" | "analytical" | "skeptical";
+
+export interface ScriptLine {
+  speaker: "rep" | "prospect" | "direction"; // direction = [pause] / stage note
+  text: string;
+}
+
+export interface ScriptObjection {
+  objection: string;
+  response: string;
+}
+
+export interface StakeholderScript {
+  tone: ScriptTone;
+  toneLabel: string; // e.g. "The Open Book", "The Neutral Professional"
+  scenario: string; // 1-line setting grounded in this person's role/context
+  lines: ScriptLine[];
+  objections: ScriptObjection[];
+  leaveBehind: string;
+}
+
+export interface StakeholderScriptSet {
+  offeringId: string; // SolutionId or KB offering id actually pitched
+  offeringName: string;
+  predictedTone: ScriptTone;
+  predictedToneReason: string;
+  generatedAt: string; // ISO
+  variants: StakeholderScript[]; // exactly 3, one per tone
+}
+
 export type StakeholderStatus =
   | "queued" | "resolving" | "needs_confirmation" | "scraping"
-  | "synthesizing" | "completed" | "failed" | "cancelled";
+  | "synthesizing" | "completed" | "failed" | "cancelled" | "departed";
 
 export interface StakeholderRecord {
   id: string;
@@ -247,7 +279,7 @@ export interface StakeholderRecord {
   input_type: "manual" | "csv" | "company" | null;
   status: StakeholderStatus;
   progress: number;
-  data: { raw?: Record<string, unknown>; profile?: DeepStakeholderProfile } | null;
+  data: { raw?: Record<string, unknown>; profile?: DeepStakeholderProfile; scripts?: StakeholderScriptSet } | null;
   error_message: string | null;
   created_at: string;
   updated_at: string;
@@ -335,6 +367,43 @@ export interface GTMStrategy {
 
 export type GeminiStatus = "land" | "expand" | "explore" | "none";
 
+// === Partner Landscape ===
+
+export interface PartnerEntry {
+  partner: string;
+  domain: string; // e.g. "ERP & Integration", "OT / Manufacturing"
+  whatTheyDeliver: string;
+  techolutionOpportunity: string; // "what they DON'T do" — the Techolution gap/opening
+  sources: Source[];
+}
+
+// === Stakeholder × Offering Matrix ===
+
+export type CellStrength = "strong" | "conditional" | "none";
+
+export interface MatrixCell {
+  solution: SolutionId;
+  solutionName: string;
+  // Power/role label for this stakeholder × offering, e.g. PRIMARY, APPROVE,
+  // CHAMPION, SUPPORT, ENTRY, FINANCE GATE, STRATEGIC. Empty when no relationship.
+  role: string;
+  strength: CellStrength;
+  rationale: string; // short, 1-2 lines on why and how to approach
+}
+
+export interface MatrixRow {
+  stakeholderName: string;
+  title: string;
+  powerLabel: string; // e.g. "PRIMARY DECISION MAKER", "BUDGET APPROVER", "EXEC SPONSOR"
+  cells: MatrixCell[]; // one per solution column, in solutionColumns order
+  enriched?: boolean; // true when built using this person's deep-research intel brief
+}
+
+export interface StakeholderOfferingMatrix {
+  solutionColumns: { id: SolutionId; name: string; shortName: string }[];
+  rows: MatrixRow[];
+}
+
 export interface CompanyDetail {
   slug: string;
   name: string;
@@ -357,6 +426,8 @@ export interface CompanyDetail {
   rating: Rating;
   geminiStatus: GeminiStatus;
   stakeholders: Stakeholder[];
+  partnerLandscape: PartnerEntry[];
+  stakeholderOfferingMatrix?: StakeholderOfferingMatrix;
   salesIntelligence?: SalesIntelligence;
   relatedCompanies: { slug: string; name: string; relationship: string }[];
   sources: Source[];

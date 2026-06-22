@@ -110,13 +110,13 @@ export default function StakeholderImport({ onSubmit }: Props) {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-          <div className="bg-white rounded-xl shadow-xl w-full max-w-2xl mx-4 max-h-[85vh] flex flex-col">
-            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-2xl mx-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
               <div>
-                <h2 className="text-lg font-semibold text-slate-800">Import Stakeholders</h2>
-                <p className="text-xs text-slate-400 mt-0.5">Deep-analyze individuals by name + company, or paste a LinkedIn URL</p>
+                <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Import Stakeholders</h2>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">Deep-analyze individuals by name + company, or paste a LinkedIn URL</p>
               </div>
-              <button onClick={handleClose} className="text-slate-400 hover:text-slate-600 text-xl leading-none">&times;</button>
+              <button onClick={handleClose} className="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 text-xl leading-none">&times;</button>
             </div>
 
             {/* Mode tabs */}
@@ -159,7 +159,7 @@ export default function StakeholderImport({ onSubmit }: Props) {
                       />
                       <button
                         onClick={() => removeRow(i)}
-                        className="w-7 h-7 flex items-center justify-center rounded text-slate-300 hover:text-red-400 hover:bg-red-50 text-sm"
+                        className="w-7 h-7 flex items-center justify-center rounded text-slate-300 dark:text-slate-500 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 text-sm"
                         title="Remove row"
                       >
                         &times;
@@ -167,7 +167,7 @@ export default function StakeholderImport({ onSubmit }: Props) {
                     </div>
                   ))}
                   <button onClick={addRow} className="text-xs text-[#3289FF] hover:underline mt-1">+ Add another</button>
-                  <p className="text-[11px] text-slate-400 pt-2">
+                  <p className="text-[11px] text-slate-400 dark:text-slate-500 pt-2">
                     Tip: leave Company blank and paste a full <span className="font-mono">linkedin.com/in/…</span> URL in the Title field if you already have it.
                   </p>
                 </div>
@@ -179,32 +179,32 @@ export default function StakeholderImport({ onSubmit }: Props) {
                     onDrop={(e) => { e.preventDefault(); setDragOver(false); const f = e.dataTransfer.files[0]; if (f) parseFile(f); }}
                     onClick={() => fileRef.current?.click()}
                     className={`border-2 border-dashed rounded-lg p-10 text-center transition-colors cursor-pointer ${
-                      dragOver ? "border-[#3289FF] bg-[rgba(50,137,255,0.04)]" : "border-slate-200 hover:border-slate-300"
+                      dragOver ? "border-[#3289FF] bg-[rgba(50,137,255,0.04)]" : "border-slate-200 dark:border-slate-700 hover:border-slate-300"
                     }`}
                   >
-                    <p className="text-sm text-slate-500 mb-1">Drop a CSV file here or click to browse</p>
-                    <p className="text-xs text-slate-400">Columns: Name, Company, Title (optional)</p>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Drop a CSV file here or click to browse</p>
+                    <p className="text-xs text-slate-400 dark:text-slate-500">Columns: Name, Company, Title (optional)</p>
                   </div>
                   <input ref={fileRef} type="file" accept=".csv" onChange={(e) => { const f = e.target.files?.[0]; if (f) parseFile(f); }} className="hidden" />
                 </>
               ) : (
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                   <table className="w-full text-sm">
                     <thead>
-                      <tr className="bg-slate-50 text-left">
-                        <th className="p-2 text-xs font-medium text-slate-500">#</th>
-                        <th className="p-2 text-xs font-medium text-slate-500">Name</th>
-                        <th className="p-2 text-xs font-medium text-slate-500">Company</th>
-                        <th className="p-2 text-xs font-medium text-slate-500">Title</th>
+                      <tr className="bg-slate-50 dark:bg-slate-800 text-left">
+                        <th className="p-2 text-xs font-medium text-slate-500 dark:text-slate-400">#</th>
+                        <th className="p-2 text-xs font-medium text-slate-500 dark:text-slate-400">Name</th>
+                        <th className="p-2 text-xs font-medium text-slate-500 dark:text-slate-400">Company</th>
+                        <th className="p-2 text-xs font-medium text-slate-500 dark:text-slate-400">Title</th>
                       </tr>
                     </thead>
                     <tbody>
                       {csvRows.map((r, i) => (
-                        <tr key={i} className="border-t border-slate-100">
-                          <td className="p-2 text-xs text-slate-400">{i + 1}</td>
-                          <td className="p-2 text-slate-700">{r.name}</td>
-                          <td className="p-2 text-slate-500">{r.company || "—"}</td>
-                          <td className="p-2 text-slate-500">{r.title || "—"}</td>
+                        <tr key={i} className="border-t border-slate-100 dark:border-slate-700">
+                          <td className="p-2 text-xs text-slate-400 dark:text-slate-500">{i + 1}</td>
+                          <td className="p-2 text-slate-700 dark:text-slate-300">{r.name}</td>
+                          <td className="p-2 text-slate-500 dark:text-slate-400">{r.company || "—"}</td>
+                          <td className="p-2 text-slate-500 dark:text-slate-400">{r.title || "—"}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -215,7 +215,7 @@ export default function StakeholderImport({ onSubmit }: Props) {
               {error && <p className="text-xs text-red-500 mt-3">{error}</p>}
             </div>
 
-            <div className="flex items-center justify-between p-5 border-t border-slate-100">
+            <div className="flex items-center justify-between p-5 border-t border-slate-100 dark:border-slate-700">
               {mode === "csv" && csvRows.length > 0 ? (
                 <button onClick={() => { setCsvRows([]); if (fileRef.current) fileRef.current.value = ""; }} className="btn-ghost text-sm">
                   Upload different file

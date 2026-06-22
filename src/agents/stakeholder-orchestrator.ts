@@ -21,6 +21,7 @@ import { resolveLinkedInUrl } from "./linkedin-url-resolver";
 import { scrapeHarvestProfile, scrapeApifyPosts } from "@/lib/apify";
 import { scrapeBrightDataProfile } from "@/lib/brightdata";
 import { synthesizeStakeholder } from "./stakeholder-synthesizer";
+import { rebuildStakeholderOfferingMatrix } from "@/lib/rebuild-matrix";
 import type {
   DeepStakeholderProfile,
   StakeholderStatus,
@@ -65,10 +66,26 @@ export const analyzeStakeholder = inngest.createFunction(
       let confidence = (row.urlConfidence as "high" | "low" | "confirmed" | null) || null;
 
       if (!url || confidence === "low") {
-        await updateStakeholderStatus(stakeholderId, { status: "resolving", progress: 10 });
+        await step.run("status-resolving", () =>
+          updateStakeholderStatus(stakeholderId, { status: "resolving", progress: 10 }),
+        );
         const resolved = await step.run("resolve-url", () =>
           resolveLinkedInUrl(row.name, row.company || undefined, row.title || undefined),
         );
+        // Departed exec → exclude outright. Confirming a URL is pointless when
+        // the person no longer holds the role at this company.
+        if (resolved.departed) {
+          await updateStakeholderStatus(stakeholderId, {
+            status: "departed",
+            progress: 100,
+            linkedinUrl: resolved.url || row.linkedinUrl,
+            urlConfidence: "low",
+            errorMessage:
+              resolved.reason ||
+              `${row.name} appears to have left ${row.company || "this company"} and no longer holds this role — excluded from current stakeholders.`,
+          });
+          return { status: "departed", stakeholderId };
+        }
         if (!resolved.url || resolved.confidence === "low") {
           await updateStakeholderStatus(stakeholderId, {
             status: "needs_confirmation",
@@ -82,13 +99,17 @@ export const analyzeStakeholder = inngest.createFunction(
         }
         url = resolved.url;
         confidence = "high";
-        await updateStakeholderStatus(stakeholderId, { linkedinUrl: url, urlConfidence: "high" });
+        await step.run("status-url-resolved", () =>
+          updateStakeholderStatus(stakeholderId, { linkedinUrl: url, urlConfidence: "high" }),
+        );
       }
 
       const linkedinUrl = url!;
 
       // ── 2. Scrape all three providers (best-effort) ──
-      await updateStakeholderStatus(stakeholderId, { status: "scraping", progress: 35 });
+      await step.run("status-scraping", () =>
+        updateStakeholderStatus(stakeholderId, { status: "scraping", progress: 35 }),
+      );
       const { bright, profile, posts } = await step.run("scrape", async () => {
         const [b, p, po] = await Promise.allSettled([
           scrapeBrightDataProfile(linkedinUrl),
@@ -110,7 +131,9 @@ export const analyzeStakeholder = inngest.createFunction(
       const raw = mergeProfile({ bright, profile, posts, linkedinUrl, fallbackName: row.name, fallbackCompany: row.company });
 
       // ── 4. Synthesize the intel brief ──
-      await updateStakeholderStatus(stakeholderId, { status: "synthesizing", progress: 70 });
+      await step.run("status-synthesizing", () =>
+        updateStakeholderStatus(stakeholderId, { status: "synthesizing", progress: 70 }),
+      );
       const intelBrief = await step.run("synthesize", () => synthesizeStakeholder(raw));
 
       const full: DeepStakeholderProfile = { ...raw, intelBrief, dataRichness: computeRichness(raw) };
@@ -125,6 +148,19 @@ export const analyzeStakeholder = inngest.createFunction(
           data: { raw: { bright, profile, posts } as Record<string, unknown>, profile: full },
         });
       });
+
+      // ── 6. Refresh the company's Stakeholder × Offering matrix with this
+      // person's verified intel. Best-effort — never fail the run over it.
+      if (row.companyProfileId) {
+        await step.run("rebuild-matrix", async () => {
+          try {
+            await rebuildStakeholderOfferingMatrix(row.companyProfileId!);
+          } catch (e) {
+            console.log(`[stakeholder] matrix rebuild failed: ${e instanceof Error ? e.message : e}`);
+          }
+          return null;
+        });
+      }
 
       return { status: "completed", stakeholderId };
     } catch (error) {
@@ -160,7 +196,7 @@ const num = (...vals: unknown[]): number | undefined => {
 };
 const arr = (v: unknown): any[] => (Array.isArray(v) ? v : []);
 
-function mergeProfile(input: {
+export function mergeProfile(input: {
   bright: Record<string, any> | null;
   profile: Record<string, any> | null;
   posts: Record<string, any>[];
@@ -299,7 +335,7 @@ function isSubstantivePost(p: StakeholderPost): boolean {
   return engagement > 0 || len > 200;
 }
 
-function computeRichness(p: Omit<DeepStakeholderProfile, "intelBrief" | "dataRichness">): StakeholderDataRichness {
+export function computeRichness(p: Omit<DeepStakeholderProfile, "intelBrief" | "dataRichness">): StakeholderDataRichness {
   const flags = {
     about: !!(p.about && p.about.length > 20),
     experience: p.experience.length > 0,
