@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { users, researchJobs, stakeholderProfiles } from "@/db/schema";
-import { and, eq, gte, inArray, or } from "drizzle-orm";
+import { and, eq, gte, inArray, lt, or } from "drizzle-orm";
 
 // In-progress status sets.
 const COMPANY_ACTIVE = ["queued", "running"] as const;
@@ -11,6 +11,11 @@ const STAKEHOLDER_ACTIVE = ["queued", "resolving", "scraping", "synthesizing"] a
 
 // Recently-done window: items finished within the last ~2 minutes.
 const RECENT_WINDOW_MS = 2 * 60 * 1000;
+// Staleness guards: a real run finishes in minutes. Anything still "active"
+// beyond these windows (or a job left at progress 100 because its final
+// status update was interrupted) is a zombie and must not show as in-progress.
+const COMPANY_STALE_MS = 2 * 60 * 60 * 1000; // 2h
+const STAKEHOLDER_STALE_MS = 60 * 60 * 1000; // 1h
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -28,8 +33,11 @@ export async function GET() {
   }
 
   const since = new Date(Date.now() - RECENT_WINDOW_MS);
+  const companyStaleCutoff = new Date(Date.now() - COMPANY_STALE_MS);
+  const stakeholderStaleCutoff = new Date(Date.now() - STAKEHOLDER_STALE_MS);
 
-  // research_jobs: active OR recently completed.
+  // research_jobs: genuinely active (queued/running, progress < 100, started
+  // recently) OR recently completed.
   const jobRows = await db
     .select({
       id: researchJobs.id,
@@ -43,7 +51,11 @@ export async function GET() {
       and(
         eq(researchJobs.userId, user.id),
         or(
-          inArray(researchJobs.status, [...COMPANY_ACTIVE]),
+          and(
+            inArray(researchJobs.status, [...COMPANY_ACTIVE]),
+            lt(researchJobs.progress, 100),
+            gte(researchJobs.createdAt, companyStaleCutoff),
+          ),
           gte(researchJobs.completedAt, since),
         ),
       ),
@@ -63,7 +75,10 @@ export async function GET() {
       and(
         eq(stakeholderProfiles.userId, user.id),
         or(
-          inArray(stakeholderProfiles.status, [...STAKEHOLDER_ACTIVE]),
+          and(
+            inArray(stakeholderProfiles.status, [...STAKEHOLDER_ACTIVE]),
+            gte(stakeholderProfiles.updatedAt, stakeholderStaleCutoff),
+          ),
           gte(stakeholderProfiles.updatedAt, since),
         ),
       ),
