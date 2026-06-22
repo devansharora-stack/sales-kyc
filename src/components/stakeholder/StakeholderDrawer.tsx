@@ -49,6 +49,10 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
   const [shown, setShown] = useState(false);
+  const [urlInput, setUrlInput] = useState("");
+  const [confirming, setConfirming] = useState(false);
+  const [skipping, setSkipping] = useState(false);
+  const [confirmError, setConfirmError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!stakeholderId) return;
@@ -95,6 +99,47 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
     const t = requestAnimationFrame(() => setShown(true));
     return () => cancelAnimationFrame(t);
   }, [stakeholderId]);
+
+  async function handleConfirm() {
+    if (!stakeholderId || !urlInput.trim()) return;
+    setConfirming(true);
+    setConfirmError(null);
+    try {
+      const res = await fetch(`/api/stakeholders/${stakeholderId}/confirm`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ linkedinUrl: urlInput.trim() }),
+      });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setConfirmError(d.error || "Could not start — check the URL.");
+      } else {
+        setUrlInput("");
+        await fetchData();
+      }
+    } catch {
+      setConfirmError("Something went wrong.");
+    }
+    setConfirming(false);
+  }
+
+  async function handleNoLinkedin() {
+    if (!stakeholderId) return;
+    setSkipping(true);
+    setConfirmError(null);
+    try {
+      const res = await fetch(`/api/stakeholders/${stakeholderId}/no-linkedin`, { method: "POST" });
+      if (!res.ok) {
+        const d = await res.json().catch(() => ({}));
+        setConfirmError(d.error || "Could not save.");
+      } else {
+        await fetchData();
+      }
+    } catch {
+      setConfirmError("Something went wrong.");
+    }
+    setSkipping(false);
+  }
 
   if (!stakeholderId) return null;
 
@@ -181,9 +226,35 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
               )}
 
               {s.status === "needs_confirmation" && (
-                <p className="text-sm text-slate-500 dark:text-slate-400">
-                  We could not confirm a LinkedIn URL automatically. Open the full page to provide one.
-                </p>
+                <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-slate-700 rounded-lg px-4 py-3 space-y-2.5">
+                  <p className="text-sm text-slate-600 dark:text-slate-300">
+                    Couldn&apos;t confirm a LinkedIn URL automatically. Paste it to analyze, or mark that they don&apos;t have one.
+                  </p>
+                  <div className="flex gap-2">
+                    <input
+                      value={urlInput}
+                      onChange={(e) => setUrlInput(e.target.value)}
+                      onKeyDown={(e) => { if (e.key === "Enter") handleConfirm(); }}
+                      placeholder="https://www.linkedin.com/in/…"
+                      className="flex-1 min-w-0 text-sm px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-lg bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 focus:outline-none focus:border-[#3289FF]/50"
+                    />
+                    <button
+                      onClick={handleConfirm}
+                      disabled={confirming || skipping || !urlInput.trim()}
+                      className="btn-primary text-xs disabled:opacity-50 shrink-0"
+                    >
+                      {confirming ? "Analyzing…" : "Analyze"}
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleNoLinkedin}
+                    disabled={confirming || skipping}
+                    className="text-xs text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 disabled:opacity-50 cursor-pointer"
+                  >
+                    {skipping ? "Saving…" : "They don't have a LinkedIn profile"}
+                  </button>
+                  {confirmError && <p className="text-xs text-red-500">{confirmError}</p>}
+                </div>
               )}
 
               {brief && (
