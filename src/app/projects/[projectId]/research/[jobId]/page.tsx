@@ -15,8 +15,8 @@ interface PhaseInfo {
 
 const PHASES: PhaseInfo[] = [
   { id: 1, label: "Foundation", agents: ["company_profile", "tech_stack", "financial_signal"] },
-  { id: 2, label: "Intelligence", agents: ["trigger_scanner", "pain_point_analyzer", "stakeholder_researcher"] },
-  { id: 3, label: "Synthesis", agents: ["solution_mapper", "gtm_generator", "scoring_agent"] },
+  { id: 2, label: "Intelligence", agents: ["trigger_scanner", "stakeholder_researcher", "partner_landscape", "pain_point_analyzer"] },
+  { id: 3, label: "Synthesis", agents: ["solution_mapper", "gtm_generator", "scoring_agent", "sales_intelligence", "stakeholder_offering_mapper"] },
   { id: 4, label: "Verification", agents: ["verification"] },
 ];
 
@@ -25,11 +25,14 @@ const AGENT_LABELS: Record<string, string> = {
   tech_stack: "Tech Stack",
   financial_signal: "Financial Signal",
   trigger_scanner: "Trigger Scanner",
-  pain_point_analyzer: "Pain Points",
   stakeholder_researcher: "Stakeholders",
+  partner_landscape: "Partner Landscape",
+  pain_point_analyzer: "Pain Points",
   solution_mapper: "Solution Mapping",
   gtm_generator: "GTM Strategy",
   scoring_agent: "Scoring",
+  sales_intelligence: "Sales Intelligence",
+  stakeholder_offering_mapper: "Stakeholder Matrix",
   verification: "Verification",
 };
 

@@ -2,8 +2,8 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { users, projects } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { users, projects, stakeholderProfiles } from "@/db/schema";
+import { and, count, eq, desc } from "drizzle-orm";
 import { serializeProject } from "@/lib/serializers";
 
 export async function GET() {
@@ -25,7 +25,15 @@ export async function GET() {
     .where(eq(projects.userId, user.id))
     .orderBy(desc(projects.createdAt));
 
-  return NextResponse.json({ projects: rows.map(serializeProject) });
+  const [stakeholderStat] = await db
+    .select({ value: count() })
+    .from(stakeholderProfiles)
+    .where(and(eq(stakeholderProfiles.userId, user.id), eq(stakeholderProfiles.status, "completed")));
+
+  return NextResponse.json({
+    projects: rows.map(serializeProject),
+    stakeholdersAnalyzed: stakeholderStat?.value ?? 0,
+  });
 }
 
 export async function POST(request: Request) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
 import type { CompanyDetail, Source, SolutionId, SolutionMapping, EstimatedImpact, SalesMotionType } from "@/lib/types";
@@ -67,6 +67,8 @@ export default function CompanyPage() {
   const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [companyProfileId, setCompanyProfileId] = useState<string | null>(null);
+  const [condensed, setCondensed] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
   const [deepRows, setDeepRows] = useState<DeepStakeholderRow[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [analyzing, setAnalyzing] = useState(false);
@@ -83,7 +85,7 @@ export default function CompanyPage() {
       .catch(() => {});
   };
 
-  useEffect(() => {
+  const fetchCompany = useCallback(() => {
     if (!projectId || !slug) return;
     fetch(`/api/projects/${projectId}/companies?slug=${slug}`)
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
@@ -96,8 +98,13 @@ export default function CompanyPage() {
         setCompany(profile.data || profile);
       })
       .catch(() => setError(true));
-    fetchDeep(projectId);
   }, [projectId, slug]);
+
+  useEffect(() => {
+    if (!projectId || !slug) return;
+    fetchCompany();
+    fetchDeep(projectId);
+  }, [projectId, slug, fetchCompany]);
 
   const deepByName = new Map(deepRows.map(d => [normalizeStakeholderName(d.name), d]));
 
@@ -107,6 +114,29 @@ export default function CompanyPage() {
     const interval = setInterval(() => fetchDeep(projectId), 3000);
     return () => clearInterval(interval);
   }, [hasActiveDeep, projectId]);
+
+  // When a deep research run newly completes, the backend rebuilds this
+  // company's matrix — re-fetch the profile so the enriched matrix shows.
+  const completedDeepRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    const done = deepRows.filter(d => d.status === "completed").map(d => d.id);
+    const isNew = done.some(id => !completedDeepRef.current.has(id));
+    completedDeepRef.current = new Set(done);
+    if (isNew) fetchCompany();
+  }, [deepRows, fetchCompany]);
+
+  // Collapse the hero into a slim bar once it scrolls up to the top. The sentinel
+  // sits just above the sticky panel; -56px rootMargin accounts for the fixed nav.
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver(
+      ([entry]) => setCondensed(!entry.isIntersecting),
+      { rootMargin: "-56px 0px 0px 0px", threshold: 0 },
+    );
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [company]);
 
   function toggleSelect(name: string) {
     setSelected(prev => {
@@ -247,9 +277,37 @@ export default function CompanyPage() {
     <div className="animate-fade-in">
       <Link href={`/projects/${projectId}`} className="text-sm text-slate-500 hover:text-[#3289FF] mb-4 inline-flex items-center gap-1 transition-colors">&larr; Back to Project</Link>
 
-      {/* Sticky top panel: hero card + tab nav stay pinned while sections scroll */}
-      <div className="sticky top-14 z-30 bg-[#F8FAFC] -mx-4 lg:-mx-8 px-4 lg:px-8 pt-2">
-      {/* Company Hero Card */}
+      {/* Sentinel: when this scrolls above the nav line, collapse the hero. */}
+      <div ref={sentinelRef} className="h-px" />
+
+      {/* Sticky top panel: hero card + tab nav stay pinned while sections scroll.
+          top-0 because the scroll container (ChatSidebar's overflow-y-auto) already
+          starts below the fixed 56px nav — using top-14 here would pin it 56px too
+          low and let content scroll through the gap above it. */}
+      <div className="sticky top-0 z-30 bg-[#F8FAFC] -mx-4 lg:-mx-8 px-4 lg:px-8 pt-2">
+      {/* Condensed bar — shown only once scrolled, keeps name + score + tabs visible */}
+      {condensed && (
+        <div className="card px-4 py-2.5 mb-2 flex items-center gap-3 overflow-hidden">
+          <h2 className="font-semibold text-slate-800 truncate">{company.name}</h2>
+          <span className="flex items-baseline gap-0.5 shrink-0">
+            <span className="stat-value text-lg">{company.totalScore}</span>
+            <span className="text-slate-400 text-xs">/100</span>
+          </span>
+          <RatingBadge rating={company.rating} size="md" />
+          <button
+            onClick={() => generateCompanyPDF(company)}
+            className="ml-auto shrink-0 inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-slate-600 hover:text-[#3289FF] bg-white border border-slate-200 hover:border-[#3289FF]/30 rounded-lg transition-colors cursor-pointer"
+            title="Download PDF"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            PDF
+          </button>
+        </div>
+      )}
+      {/* Company Hero Card — full detail, hidden once condensed */}
+      {!condensed && (
       <div className="card p-0 mb-3 overflow-hidden">
         <div className="bg-gradient-to-r from-[#F8FAFF] to-white px-6 py-5 border-b border-slate-100">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -303,6 +361,7 @@ export default function CompanyPage() {
           <ScoreBar scores={company.scores} total={company.totalScore} />
         </div>
       </div>
+      )}
 
       {/* Tab Navigation */}
       <div className="bg-white/90 backdrop-blur-sm">

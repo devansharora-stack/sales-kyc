@@ -33,6 +33,7 @@ function ProjectCard({ project }: { project: Project }) {
 
 export default function DashboardPage() {
   const [projects, setProjects] = useState<Project[]>([]);
+  const [stakeholdersAnalyzed, setStakeholdersAnalyzed] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
 
@@ -44,6 +45,7 @@ export default function DashboardPage() {
       })
       .then((data) => {
         setProjects(data.projects || []);
+        setStakeholdersAnalyzed(data.stakeholdersAnalyzed || 0);
         setLoading(false);
       })
       .catch(() => {
@@ -85,8 +87,8 @@ export default function DashboardPage() {
             <p className="text-label mt-1">Companies Researched</p>
           </div>
           <div className="card p-5">
-            <p className="text-2xl font-bold text-[#3289FF]">{projects.length}</p>
-            <p className="text-label mt-1">Total Projects</p>
+            <p className="text-2xl font-bold text-[#3289FF]">{stakeholdersAnalyzed}</p>
+            <p className="text-label mt-1">Stakeholders Analyzed</p>
           </div>
         </div>
       )}

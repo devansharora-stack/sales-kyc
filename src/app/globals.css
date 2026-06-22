@@ -155,9 +155,12 @@ body {
   background: rgba(50, 137, 255, 0.04);
 }
 
+/* No transform here on purpose: a persisted transform (animation-fill: forwards)
+   on a page-root element becomes a containing block and breaks position: sticky
+   for descendants (the company hero panel). Keep this a pure opacity fade. */
 @keyframes fadeIn {
-  from { opacity: 0; transform: translateY(8px); }
-  to { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes slideUp {

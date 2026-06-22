@@ -9,7 +9,7 @@ export default function Navigation() {
   const { data: session } = useSession();
 
   return (
-    <nav className="bg-white/90 backdrop-blur-md border-b border-[#E2E8F0] sticky top-0 z-40">
+    <nav className="bg-white border-b border-[#E2E8F0] sticky top-0 z-40">
       <div className="max-w-[1400px] mx-auto px-6 lg:px-10">
         <div className="flex items-center justify-between h-14">
           <Link href="/" className="flex items-center gap-3">
