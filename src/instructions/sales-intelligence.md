@@ -50,7 +50,7 @@ Compute by ADDING three sub-factors. Each is scored independently from evidence,
 You MUST also provide:
 - `estimatedFirstYear`: Dollar range for first-year engagement (e.g., "$200K–$400K"), consistent with the revenue band.
 - `estimatedExpansion`: Dollar range for annual engagement after expansion.
-- `reasoning`: 2-3 sentences. State the A/B/C breakdown explicitly (e.g., "Revenue band 3 + solution breadth 2 + expansion 2 = 7").
+- `reasoning`: 2-3 sentences of clean, customer-ready justification a salesperson could say out loud. Explain the business drivers (revenue/budget capacity, solution coverage, expansion path) in plain language. Do NOT expose the point arithmetic, sub-scores, "= N" sums, or any "corrected"/"re-summing" self-talk — the numeric scoring stays internal.
 
 ---
 
@@ -97,9 +97,13 @@ You MUST also provide:
 - `motion`: as derived above
 - `cycleLength`: estimated sales cycle (e.g., "4-8 weeks", "3-6 months", "9-12+ months")
 - `buildVsBuyRisk`: "Low", "Medium", or "High" — take from sub-factor B
-- `reasoning`: 2-3 sentences. State the A/B/C breakdown explicitly.
+- `reasoning`: 2-3 sentences of clean, customer-ready justification. Sales Motion measures how EASY and FAST the deal is to win (not how good it is) — say so in plain terms (org agility, build-vs-buy posture, decision simplicity), and honestly acknowledge the build-vs-buy risk where it exists. Do NOT expose the point arithmetic, sub-scores, "= N" sums, or any "corrected"/"re-summing" self-talk.
 
 ---
+
+> The arithmetic in the examples below is how YOU compute the score internally.
+> NEVER reproduce point sums, "= N", or self-corrections in the `reasoning` field —
+> that text is shown to customers and must read as plain business justification.
 
 ## Worked examples (note how the two scores diverge)
 
@@ -123,14 +127,14 @@ You MUST also provide:
     "score": 7,
     "estimatedFirstYear": "$250K–$400K",
     "estimatedExpansion": "$600K–$1M/yr",
-    "reasoning": "Revenue band 3 + solution breadth 2 + expansion 2 = 7. ..."
+    "reasoning": "A mid-sized buyer with budget room for a multi-solution program and a clear path to expand from the entry workshop into adjacent teams, so the prize is solidly above average."
   },
   "salesMotion": {
     "score": 6,
     "motion": "Strategic Sale",
     "cycleLength": "4-6 months",
     "buildVsBuyRisk": "Medium",
-    "reasoning": "Agility 2 + build-vs-buy 2 + decision simplicity 2 = 6. ..."
+    "reasoning": "Procurement is layered and a few stakeholders must align, and the team has some in-house capability, so this is a considered, multi-month sale rather than a fast close."
   }
 }
 ```

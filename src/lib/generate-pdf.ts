@@ -809,39 +809,41 @@ export function generateCompanyOnePager(company: CompanyDetail) {
   }
 
   function miniHeading(x: number, yy: number, text: string) {
-    doc.setFontSize(8.5);
+    doc.setFontSize(10);
     doc.setFont("helvetica", "bold");
     setColor(BLUE);
     doc.text(text.toUpperCase(), x, yy);
-    return yy + 4.5;
+    return yy + 6;
   }
+
+  const BOTTOM = H - 14; // keep content above the footer line
 
   // ── Confidential band ──
   fill(DARK);
   doc.rect(0, 0, W, 6, "F");
-  doc.setFontSize(6.5);
+  doc.setFontSize(7);
   doc.setFont("helvetica", "bold");
   setColor(WHITE);
   doc.text("CONFIDENTIAL — INTERNAL USE ONLY", W / 2, 4, { align: "center" });
-  y = 13;
+  y = 17;
 
   // ── Header: name + score ──
-  doc.setFontSize(18);
+  doc.setFontSize(22);
   doc.setFont("helvetica", "bold");
   setColor(DARK);
   doc.text(clamp(company.name, 40), M, y);
-  doc.setFontSize(17);
+  doc.setFontSize(20);
   setColor(BLUE);
-  doc.text(`${company.totalScore}`, W - M, y, { align: "right" });
-  doc.setFontSize(8);
+  doc.text(`${company.totalScore}`, W - M - 9, y, { align: "right" });
+  doc.setFontSize(10);
   setColor(SLATE400);
-  doc.text("/100", W - M - doc.getTextWidth(`${company.totalScore}`) * 0 - 0.5, y, { align: "right", baseline: "bottom" });
-  y += 5;
-  doc.setFontSize(8);
+  doc.text("/100", W - M, y, { align: "right" });
+  y += 7;
+  doc.setFontSize(10);
   doc.setFont("helvetica", "normal");
   setColor(SLATE500);
-  doc.text(clamp(`${company.industry} · ${company.subSector} · ${company.hqCity}, ${company.state}`, 95), M, y);
-  y += 5;
+  doc.text(clamp(`${company.industry} · ${company.subSector} · ${company.hqCity}, ${company.state}`, 90), M, y);
+  y += 7;
 
   // ── Badge row ──
   let bx = M;
@@ -849,7 +851,7 @@ export function generateCompanyOnePager(company: CompanyDetail) {
   if (company.gtm?.urgency) bx = pill(bx, y, `URGENCY: ${company.gtm.urgency.toUpperCase()}`, SEVERITY_COLORS[company.gtm.urgency] || BLUE);
   if (si?.salesMotion?.motion) bx = pill(bx, y, si.salesMotion.motion.toUpperCase(), SLATE700);
   if (company.geminiStatus) bx = pill(bx, y, `GEMINI: ${company.geminiStatus.toUpperCase()}`, BLUE);
-  y += 6;
+  y += 9;
 
   // ── Stat strip ──
   const stats: [string, string][] = [
@@ -860,63 +862,63 @@ export function generateCompanyOnePager(company: CompanyDetail) {
     ["OPP / YR 1", clamp(si?.opportunityValue?.estimatedFirstYear, 14) || "—"],
   ];
   fill(LIGHT_BG);
-  doc.roundedRect(M, y, CW, 11, 1.5, 1.5, "F");
+  doc.roundedRect(M, y, CW, 16, 2, 2, "F");
   const colW = CW / stats.length;
   stats.forEach(([label, val], i) => {
-    const cx = M + i * colW + 3;
-    doc.setFontSize(6);
+    const cx = M + i * colW + 4;
+    doc.setFontSize(7);
     doc.setFont("helvetica", "bold");
     setColor(SLATE400);
-    doc.text(label, cx, y + 4);
-    doc.setFontSize(8.5);
+    doc.text(label, cx, y + 6);
+    doc.setFontSize(11);
     setColor(SLATE700);
-    doc.text(val, cx, y + 8.5);
+    doc.text(val, cx, y + 12);
   });
-  y += 15;
+  y += 22;
 
   // ── Score bars (5 dimensions) ──
   const dims: [string, number, number][] = [
-    ["Budget", company.scores?.budgetSignal?.points ?? 0, 25],
-    ["Fit", company.scores?.solutionFit?.points ?? 0, 25],
-    ["Trigger", company.scores?.triggerRecency?.points ?? 0, 20],
-    ["AI Mat.", company.scores?.aiMaturity?.points ?? 0, 15],
-    ["Gemini", company.scores?.geminiAlignment?.points ?? 0, 15],
+    ["Budget Signal", company.scores?.budgetSignal?.points ?? 0, 25],
+    ["Solution Fit", company.scores?.solutionFit?.points ?? 0, 25],
+    ["Trigger Recency", company.scores?.triggerRecency?.points ?? 0, 20],
+    ["AI Maturity", company.scores?.aiMaturity?.points ?? 0, 15],
+    ["Gemini Align", company.scores?.geminiAlignment?.points ?? 0, 15],
   ];
-  doc.setFontSize(7);
+  doc.setFontSize(8.5);
   dims.forEach(([label, pts, max]) => {
     doc.setFont("helvetica", "normal");
     setColor(SLATE500);
-    doc.text(label, M, y + 2.2);
-    const barX = M + 20;
-    const barW = 58;
+    doc.text(label, M, y + 2.6);
+    const barX = M + 34;
+    const barW = CW - 34 - 16;
     fill([226, 232, 240]);
-    doc.roundedRect(barX, y, barW, 2.4, 1, 1, "F");
+    doc.roundedRect(barX, y, barW, 3.4, 1.4, 1.4, "F");
     const pct = max ? pts / max : 0;
     const c = pct >= 0.8 ? [16, 185, 129] : pct >= 0.6 ? BLUE : pct >= 0.4 ? [245, 158, 11] : [239, 68, 68];
-    if (pct > 0) { fill(c); doc.roundedRect(barX, y, Math.max(2, barW * pct), 2.4, 1, 1, "F"); }
+    if (pct > 0) { fill(c); doc.roundedRect(barX, y, Math.max(2, barW * pct), 3.4, 1.4, 1.4, "F"); }
     setColor(SLATE500);
-    doc.text(`${pts}/${max}`, barX + barW + 3, y + 2.2);
-    y += 4;
+    doc.text(`${pts}/${max}`, W - M, y + 2.6, { align: "right" });
+    y += 6.5;
   });
-  y += 2;
+  y += 3;
 
-  // ── Exec summary (clamped) ──
+  // ── Exec summary ──
   if (company.execSummary) {
-    doc.setFontSize(7.5);
+    doc.setFontSize(9.5);
     doc.setFont("helvetica", "normal");
     setColor(SLATE700);
-    const lines = doc.splitTextToSize(company.execSummary, CW).slice(0, 3);
-    doc.text(lines, M, y);
-    y += lines.length * 3.6 + 2;
+    const lines = doc.splitTextToSize(company.execSummary, CW).slice(0, 5);
+    doc.text(lines, M, y, { lineHeightFactor: 1.35 });
+    y += lines.length * 4.7 + 3;
   }
 
   // ── Divider ──
   doc.setDrawColor(226, 232, 240);
   doc.line(M, y, W - M, y);
-  y += 5;
+  y += 7;
 
   // ── Two-column body ──
-  const gap = 6;
+  const gap = 8;
   const colWidth = (CW - gap) / 2;
   const leftX = M;
   const rightX = M + colWidth + gap;
@@ -925,29 +927,29 @@ export function generateCompanyOnePager(company: CompanyDetail) {
 
   // LEFT: Why Now + Pain Points
   yL = miniHeading(leftX, yL, "Why Now");
-  (company.triggerEvents || []).slice(0, 3).forEach((t) => {
-    doc.setFontSize(7.5);
+  (company.triggerEvents || []).slice(0, 4).forEach((t) => {
+    doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     setColor(SLATE700);
-    const tl2 = doc.splitTextToSize(`• ${clamp(t.event, 70)}`, colWidth);
+    const tl2 = doc.splitTextToSize(`• ${clamp(t.event, 80)}`, colWidth);
     doc.text(tl2.slice(0, 2), leftX, yL);
-    yL += Math.min(tl2.length, 2) * 3.4;
-    doc.setFontSize(6.5);
+    yL += Math.min(tl2.length, 2) * 4.3;
+    doc.setFontSize(7.5);
     doc.setFont("helvetica", "normal");
     setColor(SLATE400);
-    doc.text(clamp(`${t.category} · ${t.date}`, 50), leftX + 2.5, yL);
-    yL += 4.2;
+    doc.text(clamp(`${t.category} · ${t.date}`, 55), leftX + 3, yL);
+    yL += 5.2;
   });
-  yL += 2;
+  yL += 3;
   yL = miniHeading(leftX, yL, "Pain Points");
-  (company.painPoints || []).slice(0, 4).forEach((p) => {
-    doc.setFontSize(7.5);
+  (company.painPoints || []).slice(0, 5).forEach((p) => {
+    doc.setFontSize(9);
     doc.setFont("helvetica", "normal");
     setColor(SLATE700);
     const sev = p.severity ? ` [${p.severity}]` : "";
-    const pl = doc.splitTextToSize(`• ${clamp(p.title, 60)}${sev}`, colWidth);
+    const pl = doc.splitTextToSize(`• ${clamp(p.title, 70)}${sev}`, colWidth);
     doc.text(pl.slice(0, 2), leftX, yL);
-    yL += Math.min(pl.length, 2) * 3.4 + 1.5;
+    yL += Math.min(pl.length, 2) * 4.3 + 2;
   });
 
   // RIGHT: Recommended Solutions + Sales Motion
@@ -956,24 +958,24 @@ export function generateCompanyOnePager(company: CompanyDetail) {
     return (pr[a.priority] ?? 3) - (pr[b.priority] ?? 3);
   });
   yR = miniHeading(rightX, yR, "Recommended Solutions");
-  sorted.slice(0, 3).forEach((m, i) => {
-    doc.setFontSize(7.5);
+  sorted.slice(0, 4).forEach((m, i) => {
+    doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
     setColor(DARK);
     const fit = m.fitScore != null ? `  (${m.fitScore})` : "";
-    doc.text(clamp(`#${i + 1} ${m.solutionName}`, 38), rightX, yR);
-    doc.setFontSize(6);
+    doc.text(clamp(`#${i + 1} ${m.solutionName}`, 36), rightX, yR);
+    doc.setFontSize(7);
     setColor(BLUE);
     doc.text(`${m.priority.toUpperCase()}${fit}`, rightX + colWidth, yR, { align: "right" });
-    yR += 3.6;
-    doc.setFontSize(6.8);
+    yR += 4.4;
+    doc.setFontSize(8);
     doc.setFont("helvetica", "normal");
     setColor(SLATE500);
-    const pl = doc.splitTextToSize(clamp(m.painPoint, 90), colWidth);
+    const pl = doc.splitTextToSize(clamp(m.painPoint, 95), colWidth);
     doc.text(pl.slice(0, 2), rightX, yR);
-    yR += Math.min(pl.length, 2) * 3.2 + 2;
+    yR += Math.min(pl.length, 2) * 3.9 + 2.5;
   });
-  yR += 1;
+  yR += 2;
   if (si) {
     yR = miniHeading(rightX, yR, "Sales Motion");
     const rows: [string, string][] = [
@@ -984,23 +986,23 @@ export function generateCompanyOnePager(company: CompanyDetail) {
       ["Expansion", si.opportunityValue?.estimatedExpansion || "—"],
     ];
     rows.forEach(([k, v]) => {
-      doc.setFontSize(7);
+      doc.setFontSize(8.5);
       doc.setFont("helvetica", "normal");
       setColor(SLATE400);
       doc.text(k, rightX, yR);
       doc.setFont("helvetica", "bold");
       setColor(SLATE700);
-      doc.text(clamp(v, 30), rightX + colWidth, yR, { align: "right" });
-      yR += 4;
+      doc.text(clamp(v, 28), rightX + colWidth, yR, { align: "right" });
+      yR += 5.2;
     });
   }
 
-  y = Math.max(yL, yR) + 3;
+  y = Math.max(yL, yR) + 4;
 
-  // ── Key stakeholders (full width) ──
+  // ── Key stakeholders (full width, with relevance) ──
   doc.setDrawColor(226, 232, 240);
   doc.line(M, y, W - M, y);
-  y += 5;
+  y += 7;
   y = miniHeading(M, y, "Key Stakeholders");
   const tierColor: Record<string, readonly number[]> = {
     "Decision Maker": BLUE,
@@ -1008,18 +1010,25 @@ export function generateCompanyOnePager(company: CompanyDetail) {
     Influencer: [245, 158, 11],
   };
   (company.stakeholders || []).slice(0, 6).forEach((s) => {
-    if (y > H - 16) return;
-    let x = M;
-    doc.setFontSize(7.5);
+    if (y > BOTTOM - 4) return;
+    doc.setFontSize(9.5);
     doc.setFont("helvetica", "bold");
     setColor(SLATE700);
-    doc.text(clamp(s.name, 28), x, y);
-    x += doc.getTextWidth(clamp(s.name, 28)) + 3;
+    doc.text(clamp(s.name, 30), M, y);
+    const nameW = doc.getTextWidth(clamp(s.name, 30));
+    doc.setFontSize(8.5);
     doc.setFont("helvetica", "normal");
     setColor(SLATE500);
-    doc.text(clamp(`— ${s.title}`, 60), x, y);
+    doc.text(clamp(`— ${s.title}`, 64), M + nameW + 3, y);
     if (s.tier) pill(W - M - (doc.getTextWidth(s.tier) + 4), y, s.tier, tierColor[s.tier] || SLATE500);
-    y += 5;
+    if (s.relevance) {
+      y += 4.2;
+      doc.setFontSize(7.5);
+      setColor(SLATE400);
+      const rl = doc.splitTextToSize(clamp(s.relevance, 150), CW - 4);
+      doc.text(rl.slice(0, 1), M + 3, y);
+    }
+    y += 6.5;
   });
 
   // ── Footer ──

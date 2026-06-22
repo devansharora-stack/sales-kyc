@@ -72,7 +72,7 @@ export default function StakeholderProfileView({ p }: { p: DeepStakeholderProfil
               {p.location && <Badge className="bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800/60 dark:text-slate-400 dark:border-slate-700">{p.location}</Badge>}
               {p.linkedinUrl && (
                 <a href={p.linkedinUrl} target="_blank" rel="noopener noreferrer"
-                  className="text-xs text-[#3289FF] hover:text-[#1C57FF] ml-2">LinkedIn &nearr;</a>
+                  className="text-xs text-[#3289FF] hover:text-[#1C57FF] ml-2">LinkedIn ↗</a>
               )}
             </div>
           </div>
@@ -279,7 +279,7 @@ export default function StakeholderProfileView({ p }: { p: DeepStakeholderProfil
                         {pi.engagement && <div className="text-xs text-slate-400 dark:text-slate-500">{pi.engagement}</div>}
                         {pi.sourceUrl && (
                           <a href={pi.sourceUrl} target="_blank" rel="noopener noreferrer"
-                            className="text-xs text-[#3289FF] hover:text-[#1C57FF]">View post &nearr;</a>
+                            className="text-xs text-[#3289FF] hover:text-[#1C57FF]">View post ↗</a>
                         )}
                       </div>
                     </div>
@@ -305,7 +305,7 @@ export default function StakeholderProfileView({ p }: { p: DeepStakeholderProfil
                         </div>
                         {post.url && (
                           <a href={post.url} target="_blank" rel="noopener noreferrer"
-                            className="text-xs text-[#3289FF] hover:text-[#1C57FF]">View &nearr;</a>
+                            className="text-xs text-[#3289FF] hover:text-[#1C57FF]">View ↗</a>
                         )}
                       </div>
                     </div>
