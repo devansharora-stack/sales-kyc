@@ -113,10 +113,6 @@ export default function CompanyPage() {
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const [drawerFallback, setDrawerFallback] = useState<{ name?: string; title?: string | null; company?: string | null }>({});
   // Inline custom-stakeholder add form.
-  const [addName, setAddName] = useState("");
-  const [addTitle, setAddTitle] = useState("");
-  const [addLinkedin, setAddLinkedin] = useState("");
-  const [addingCustom, setAddingCustom] = useState(false);
 
   const projectId = params.projectId as string;
   const slug = params.slug as string;
@@ -240,23 +236,6 @@ export default function CompanyPage() {
   }
 
   // Single, low-friction custom add: name (required) + optional title + LinkedIn.
-  async function handleAddCustom() {
-    const name = addName.trim();
-    if (!name) return;
-    setAddingCustom(true);
-    await postPeople([{
-      name,
-      company: company?.name ?? null,
-      title: addTitle.trim() || null,
-      linkedinUrl: addLinkedin.trim() || null,
-    }], { reuse: true });
-    setAddingCustom(false);
-    setAddName("");
-    setAddTitle("");
-    setAddLinkedin("");
-    fetchDeep(projectId);
-  }
-
   // Open the slide-over for a deep-stakeholder id (keeps company context).
   function openDrawer(id: string, fallback?: { name?: string; title?: string | null; company?: string | null }) {
     setDrawerFallback(fallback ?? {});
@@ -743,40 +722,6 @@ export default function CompanyPage() {
       {/* TAB: Stakeholders */}
       {activeTab === "stakeholders" && (
         <div className="space-y-6">
-          {/* Inline custom-stakeholder add — one row, one Analyze action. */}
-          <div className="card p-4">
-            <p className="text-label mb-2">Add a custom stakeholder</p>
-            <form
-              onSubmit={(e) => { e.preventDefault(); handleAddCustom(); }}
-              className="flex flex-wrap items-center gap-2"
-            >
-              <input
-                value={addName}
-                onChange={(e) => setAddName(e.target.value)}
-                placeholder="Full name"
-                className="flex-1 min-w-[160px] text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-[#3289FF]/50"
-              />
-              <input
-                value={addTitle}
-                onChange={(e) => setAddTitle(e.target.value)}
-                placeholder="Title (optional)"
-                className="flex-1 min-w-[140px] text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-[#3289FF]/50"
-              />
-              <input
-                value={addLinkedin}
-                onChange={(e) => setAddLinkedin(e.target.value)}
-                placeholder="LinkedIn URL (optional)"
-                className="flex-1 min-w-[180px] text-sm px-3 py-2 border border-slate-200 rounded-lg focus:outline-none focus:border-[#3289FF]/50"
-              />
-              <button
-                type="submit"
-                disabled={addingCustom || !addName.trim()}
-                className="btn-primary text-xs disabled:opacity-50"
-              >
-                {addingCustom ? "Queuing…" : "Analyze"}
-              </button>
-            </form>
-          </div>
           {pendingReuse.length > 0 && (
             <div className="space-y-2">
               {pendingReuse.map(p => (
