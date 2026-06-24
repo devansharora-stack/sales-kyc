@@ -61,6 +61,10 @@ interface DeepStakeholderRow {
   id: string;
   name: string;
   status: string;
+  title?: string | null;
+  company?: string | null;
+  company_profile_id?: string | null;
+  linkedin_url?: string | null;
 }
 
 function PdfMenu({ company }: { company: CompanyDetail }) {
@@ -103,8 +107,6 @@ export default function CompanyPage() {
   const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
   const [companyProfileId, setCompanyProfileId] = useState<string | null>(null);
-  const [condensed, setCondensed] = useState(false);
-  const sentinelRef = useRef<HTMLDivElement>(null);
   const [deepRows, setDeepRows] = useState<DeepStakeholderRow[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [analyzing, setAnalyzing] = useState(false);
@@ -113,7 +115,13 @@ export default function CompanyPage() {
   // Slide-over drawer: holds the deep-stakeholder id to view (null = closed).
   const [drawerId, setDrawerId] = useState<string | null>(null);
   const [drawerFallback, setDrawerFallback] = useState<{ name?: string; title?: string | null; company?: string | null }>({});
-  // Inline custom-stakeholder add form.
+  // Inline "add stakeholder the research missed" form (scoped to this company).
+  const [addOpen, setAddOpen] = useState(false);
+  const [addName, setAddName] = useState("");
+  const [addTitle, setAddTitle] = useState("");
+  const [addCompany, setAddCompany] = useState("");
+  const [addUrl, setAddUrl] = useState("");
+  const [addBusy, setAddBusy] = useState(false);
 
   const projectId = params.projectId as string;
   const slug = params.slug as string;
@@ -165,18 +173,6 @@ export default function CompanyPage() {
     if (isNew) fetchCompany();
   }, [deepRows, fetchCompany]);
 
-  // Collapse the hero into a slim bar once it scrolls up to the top. The sentinel
-  // sits just above the sticky panel; -56px rootMargin accounts for the fixed nav.
-  useEffect(() => {
-    const el = sentinelRef.current;
-    if (!el) return;
-    const obs = new IntersectionObserver(
-      ([entry]) => setCondensed(!entry.isIntersecting),
-      { rootMargin: "-56px 0px 0px 0px", threshold: 0 },
-    );
-    obs.observe(el);
-    return () => obs.disconnect();
-  }, [company]);
 
   function toggleSelect(name: string) {
     setSelected(prev => {
@@ -233,6 +229,27 @@ export default function CompanyPage() {
   async function handleMatrixDeepResearch(name: string, title: string) {
     if (!company) return;
     await postPeople([{ name, company: company.name, title: title || null }], { reuse: true });
+    fetchDeep(projectId);
+  }
+
+  // Add a stakeholder the research missed, scoped to THIS company, and run a
+  // deep analysis on them immediately (reuse a fresh saved profile if one exists).
+  async function handleManualAdd() {
+    const name = addName.trim();
+    if (!name || !company) return;
+    setAddBusy(true);
+    await postPeople(
+      [{
+        name,
+        company: addCompany.trim() || company.name,
+        title: addTitle.trim() || null,
+        linkedinUrl: addUrl.trim() || null,
+      }],
+      { reuse: true },
+    );
+    setAddBusy(false);
+    setAddName(""); setAddTitle(""); setAddCompany(""); setAddUrl("");
+    setAddOpen(false);
     fetchDeep(projectId);
   }
 
@@ -328,42 +345,19 @@ export default function CompanyPage() {
     add(tl.knownSystems?.sources);
   }
 
+  // Deep-analyzed people for THIS company who aren't in the AI-found list —
+  // i.e. the ones added manually. Shown as their own cards in the list.
+  const researchNames = new Set((company.stakeholders || []).map(s => normalizeStakeholderName(s.name)));
+  const manualRows = deepRows.filter(
+    d => d.company_profile_id === companyProfileId && !researchNames.has(normalizeStakeholderName(d.name)),
+  );
+
   return (
     <div className="animate-fade-in">
       <Link href={`/projects/${projectId}`} className="text-sm text-slate-500 dark:text-slate-400 hover:text-[#3289FF] mb-4 inline-flex items-center gap-1 transition-colors">&larr; Back to Project</Link>
 
-      {/* Sentinel: when this scrolls above the nav line, collapse the hero. */}
-      <div ref={sentinelRef} className="h-px" />
-
-      {/* Sticky top panel: hero card + tab nav stay pinned while sections scroll.
-          top-0 because the scroll container (ChatSidebar's overflow-y-auto) already
-          starts below the fixed 56px nav — using top-14 here would pin it 56px too
-          low and let content scroll through the gap above it. */}
-      <div className="sticky top-0 z-30 bg-[#F8FAFC] dark:bg-slate-900 -mx-4 lg:-mx-8 px-4 lg:px-8 pt-2">
-      {/* Condensed bar — shown only once scrolled, keeps name + score + tabs visible */}
-      {condensed && (
-        <div className="card px-4 py-2.5 mb-2 flex items-center gap-3 overflow-hidden">
-          <h2 className="font-semibold text-slate-800 dark:text-slate-100 truncate">{company.name}</h2>
-          <span className="flex items-baseline gap-0.5 shrink-0">
-            <span className="stat-value text-lg">{company.totalScore}</span>
-            <span className="text-slate-400 dark:text-slate-500 text-xs">/100</span>
-          </span>
-          <RatingBadge rating={company.rating} size="md" />
-          {company.salesIntelligence && (
-            <span className="hidden sm:inline-flex items-center gap-1 text-xs text-slate-400 dark:text-slate-500 truncate min-w-0">
-              <span className="text-slate-500 dark:text-slate-400 font-medium">Opp:</span>
-              <span className="text-slate-600 dark:text-slate-300">{company.salesIntelligence.opportunityValue.estimatedFirstYear}</span>
-              <span className="text-slate-300 dark:text-slate-500">&middot;</span>
-              <span className="text-slate-600 dark:text-slate-300">{company.salesIntelligence.salesMotion.motion}</span>
-            </span>
-          )}
-          <div className="ml-auto">
-            <PdfMenu company={company} />
-          </div>
-        </div>
-      )}
-      {/* Company Hero Card — full detail, hidden once condensed */}
-      {!condensed && (
+      {/* Company Hero Card — scrolls away normally. Nothing here changes height on
+          scroll, so the page never jumps (this was the source of the scroll jank). */}
       <div className="card p-0 mb-3 overflow-hidden">
         <div className="bg-gradient-to-r from-[#F8FAFF] to-white dark:from-slate-800/60 dark:to-slate-900 px-6 py-5 border-b border-slate-100 dark:border-slate-700">
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
@@ -381,7 +375,6 @@ export default function CompanyPage() {
                 <RatingBadge rating={company.rating} showLabel size="md" />
                 <GeminiStatusBadge status={company.geminiStatus} />
                 <UrgencyBadge urgency={company.gtm?.urgency || "Medium"} />
-                <PdfMenu company={company} />
               </div>
             </div>
           </div>
@@ -408,27 +401,40 @@ export default function CompanyPage() {
           <ScoreBar scores={company.scores} total={company.totalScore} />
         </div>
       </div>
-      )}
 
-      {/* Tab Navigation */}
-      <div className="bg-white/90 dark:bg-slate-900 backdrop-blur-sm">
-        <div className="flex border-b border-[#E2E8F0] dark:border-slate-700 overflow-x-auto no-scrollbar">
-          {TABS.map(tab => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
-                activeTab === tab.id
-                  ? "border-[#3289FF] text-[#3289FF]"
-                  : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
-              }`}
-            >
-              {tab.label}
-            </button>
-          ))}
+      {/* Sticky bar: compact identity + tabs at a CONSTANT height. Because it never
+          swaps elements or changes size, scrolling never shifts layout — no jank.
+          top-0 because the scroll container already starts below the fixed 56px nav. */}
+      <div className="sticky top-0 z-30 bg-[#F8FAFC] dark:bg-slate-900 -mx-4 lg:-mx-8 px-4 lg:px-8 pt-2">
+        <div className="bg-white/95 dark:bg-slate-900 backdrop-blur-sm border-b border-[#E2E8F0] dark:border-slate-700">
+          <div className="flex items-center gap-3 px-1 pt-1 pb-2">
+            <h2 className="font-semibold text-slate-800 dark:text-slate-100 truncate">{company.name}</h2>
+            <span className="flex items-baseline gap-0.5 shrink-0">
+              <span className="stat-value text-lg">{company.totalScore}</span>
+              <span className="text-slate-400 dark:text-slate-500 text-xs">/100</span>
+            </span>
+            <RatingBadge rating={company.rating} size="md" />
+            <div className="ml-auto">
+              <PdfMenu company={company} />
+            </div>
+          </div>
+          <div className="flex overflow-x-auto no-scrollbar">
+            {TABS.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-4 py-3 text-sm font-medium border-b-2 transition-all whitespace-nowrap ${
+                  activeTab === tab.id
+                    ? "border-[#3289FF] text-[#3289FF]"
+                    : "border-transparent text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300"
+                }`}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
-      </div>{/* end sticky top panel */}
       <div className="mb-6" />
 
       {/* Sales Intelligence Panel — shown on Overview tab only (redundant elsewhere) */}
@@ -925,6 +931,75 @@ export default function CompanyPage() {
               })}
             </Card>
           )}
+
+          {/* Manually added stakeholders (not in the AI-found list) */}
+          {manualRows.length > 0 && (
+            <Card title="Manually added" subtitle={`${manualRows.length} added by you`}>
+              <div className="grid md:grid-cols-2 gap-2">
+                {manualRows.map((d) => {
+                  const done = d.status === "completed";
+                  return (
+                    <div key={d.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 bg-white dark:bg-slate-900">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{d.name}</p>
+                            {done ? (
+                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-slate-700">Analyzed &#10003;</span>
+                            ) : (
+                              <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[rgba(50,137,255,0.08)] text-[#3289FF] border border-[#3289FF]/20">Analyzing&hellip;</span>
+                            )}
+                          </div>
+                          {d.title && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{d.title}</p>}
+                          {d.company && <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{d.company}</p>}
+                        </div>
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Manual</span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-2">
+                        {done && (
+                          <button
+                            onClick={() => openDrawer(d.id, { name: d.name, title: d.title ?? undefined, company: d.company ?? company.name })}
+                            className="btn-primary text-xs"
+                          >
+                            View profile
+                          </button>
+                        )}
+                        {d.linkedin_url && (
+                          <a href={d.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#3289FF] hover:underline">LinkedIn</a>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          )}
+
+          {/* Add a stakeholder the research missed — scoped to this company */}
+          <div>
+            {!addOpen ? (
+              <button onClick={() => { setAddCompany(company.name); setAddOpen(true); }} className="btn-ghost text-sm">
+                + Add stakeholder
+              </button>
+            ) : (
+              <Card title="Add stakeholder" subtitle="Adds to this company and runs a deep analysis">
+                <div className="grid sm:grid-cols-2 gap-2">
+                  <input value={addName} onChange={(e) => setAddName(e.target.value)} placeholder="Full name *" className="input-field text-sm" />
+                  <input value={addTitle} onChange={(e) => setAddTitle(e.target.value)} placeholder="Title (optional)" className="input-field text-sm" />
+                  <input value={addCompany} onChange={(e) => setAddCompany(e.target.value)} placeholder="Company" className="input-field text-sm" />
+                  <input value={addUrl} onChange={(e) => setAddUrl(e.target.value)} placeholder="LinkedIn URL (optional)" className="input-field text-sm" />
+                </div>
+                <div className="flex items-center gap-2 mt-3">
+                  <button onClick={handleManualAdd} disabled={addBusy || !addName.trim()} className="btn-primary text-xs disabled:opacity-50">
+                    {addBusy ? "Adding…" : "Add & analyze"}
+                  </button>
+                  <button onClick={() => { setAddOpen(false); setAddName(""); setAddTitle(""); setAddUrl(""); }} className="btn-ghost text-xs">
+                    Cancel
+                  </button>
+                </div>
+              </Card>
+            )}
+          </div>
         </div>
       )}
 

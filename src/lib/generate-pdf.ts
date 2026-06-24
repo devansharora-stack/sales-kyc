@@ -13,6 +13,38 @@ const solName = (id: SolutionId | string) =>
 const joinVal = (v: unknown, sep = ", "): string =>
   Array.isArray(v) ? v.filter(Boolean).join(sep) : typeof v === "string" ? v : "";
 
+// jsPDF's standard fonts only support Latin-1. Any character outside that range
+// (smart quotes, em-dashes, the ↳/✦/• glyphs, ellipsis, etc.) silently flips the
+// whole string into a 2-byte encoding that renders space-padded gibberish
+// ("R a c k s p a c e"). Map the common typographic chars to ASCII and drop the
+// rest so every string stays single-byte and renders cleanly.
+function clean(s: string): string {
+  return s
+    .replace(/[‘’‚‛]/g, "'")
+    .replace(/[“”„‟]/g, '"')
+    .replace(/[‐-―]/g, "-")
+    .replace(/…/g, "...")
+    .replace(/[•●▪]/g, "-")
+    .replace(/[→↳➡➜➔]/g, ">")
+    .replace(/[✓✔]/g, "")
+    .replace(/[✦✧★✶✷]/g, "*")
+    .replace(/ /g, " ")
+    .replace(/[^\x00-\xFF]/g, "");
+}
+
+// Route every text-drawing call through clean() — covers helpers, direct
+// doc.text calls, AND jsPDF-autotable cell text (it calls doc.text internally).
+function patchUnicode(doc: jsPDF): void {
+  const origText = doc.text.bind(doc) as (...a: unknown[]) => jsPDF;
+  doc.text = ((text: string | string[], ...rest: unknown[]) =>
+    origText(
+      typeof text === "string" ? clean(text) : Array.isArray(text) ? text.map((t) => (typeof t === "string" ? clean(t) : t)) : text,
+      ...rest,
+    )) as typeof doc.text;
+  const origLink = doc.textWithLink.bind(doc) as (...a: unknown[]) => number;
+  doc.textWithLink = ((text: string, ...rest: unknown[]) => origLink(clean(text), ...rest)) as typeof doc.textWithLink;
+}
+
 // Colors
 const BLUE = [50, 137, 255] as const;
 const DARK = [15, 23, 42] as const;
@@ -33,6 +65,7 @@ const SEVERITY_COLORS: Record<string, readonly [number, number, number]> = {
 
 export function generateCompanyPDF(company: CompanyDetail) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  patchUnicode(doc);
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const M = 15;
@@ -143,10 +176,12 @@ export function generateCompanyPDF(company: CompanyDetail) {
     doc.setFont("helvetica", "normal");
     setColor(BLUE);
     const text = `↳ ${src.label} (${src.date}) — ${src.url}`;
+    const isLink = /^https?:\/\//i.test(src.url || "");
     const lines = wrapHard(text, CW - 4);
     for (const line of lines) {
       checkPage(3.5);
-      doc.text(line, M + 4, y);
+      if (isLink) doc.textWithLink(line, M + 4, y, { url: src.url });
+      else doc.text(line, M + 4, y);
       y += 3.5;
     }
   }
@@ -618,9 +653,11 @@ export function generateCompanyPDF(company: CompanyDetail) {
       if (s.sourceUrl) {
         doc.setFontSize(7);
         setColor(BLUE);
+        const shIsLink = /^https?:\/\//i.test(s.sourceUrl);
         for (const l of wrapHard(s.sourceUrl, CW)) {
           checkPage(3.5);
-          doc.text(l, M, y);
+          if (shIsLink) doc.textWithLink(l, M, y, { url: s.sourceUrl });
+          else doc.text(l, M, y);
           y += 3.5;
         }
         y += 0.5;
@@ -746,10 +783,12 @@ export function generateCompanyPDF(company: CompanyDetail) {
     setColor(SLATE500);
     const num = String(i + 1).padStart(2, "0");
     const line = `${num}.  [${s.type}] ${s.label} (${s.date})  ${s.url}`;
+    const isLink = /^https?:\/\//i.test(s.url || "");
     const lines = wrapHard(line, CW);
     for (const l of lines) {
       checkPage(3.5);
-      doc.text(l, M, y);
+      if (isLink) doc.textWithLink(l, M, y, { url: s.url });
+      else doc.text(l, M, y);
       y += 3.5;
     }
     y += 0.5;
@@ -791,6 +830,7 @@ export function generateCompanyPDF(company: CompanyDetail) {
 // ───────────────────────────────────────────────────────────────────────────
 export function generateCompanyOnePager(company: CompanyDetail) {
   const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  patchUnicode(doc);
   const W = doc.internal.pageSize.getWidth();
   const H = doc.internal.pageSize.getHeight();
   const M = 12;

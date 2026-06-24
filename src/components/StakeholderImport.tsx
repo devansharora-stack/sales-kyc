@@ -110,7 +110,7 @@ export default function StakeholderImport({ onSubmit }: Props) {
 
       {open && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm">
-          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-2xl mx-4 max-h-[85vh] flex flex-col">
+          <div className="bg-white dark:bg-slate-900 rounded-xl shadow-xl w-full max-w-4xl mx-4 max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between p-5 border-b border-slate-100 dark:border-slate-700">
               <div>
                 <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Import Stakeholders</h2>
@@ -138,7 +138,7 @@ export default function StakeholderImport({ onSubmit }: Props) {
               {mode === "manual" ? (
                 <div className="space-y-2">
                   {rows.map((row, i) => (
-                    <div key={i} className="grid grid-cols-[1fr_1fr_1fr_auto] gap-2 items-center">
+                    <div key={i} className="grid grid-cols-[1fr_1fr_1fr_1.2fr_auto] gap-2 items-center">
                       <input
                         value={row.name}
                         onChange={(e) => updateRow(i, "name", e.target.value)}
@@ -157,6 +157,12 @@ export default function StakeholderImport({ onSubmit }: Props) {
                         placeholder="Title (optional)"
                         className="input-field text-sm"
                       />
+                      <input
+                        value={row.linkedinUrl}
+                        onChange={(e) => updateRow(i, "linkedinUrl", e.target.value)}
+                        placeholder="LinkedIn URL (optional)"
+                        className="input-field text-sm"
+                      />
                       <button
                         onClick={() => removeRow(i)}
                         className="w-7 h-7 flex items-center justify-center rounded text-slate-300 dark:text-slate-500 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/30 text-sm"
@@ -167,9 +173,6 @@ export default function StakeholderImport({ onSubmit }: Props) {
                     </div>
                   ))}
                   <button onClick={addRow} className="text-xs text-[#3289FF] hover:underline mt-1">+ Add another</button>
-                  <p className="text-[11px] text-slate-400 dark:text-slate-500 pt-2">
-                    Tip: leave Company blank and paste a full <span className="font-mono">linkedin.com/in/…</span> URL in the Title field if you already have it.
-                  </p>
                 </div>
               ) : csvRows.length === 0 ? (
                 <>
