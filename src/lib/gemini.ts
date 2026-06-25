@@ -18,8 +18,11 @@ function getClient(): GoogleGenAI {
 
   // Option 1: Service account via Vertex AI (preferred for production)
   if (process.env.GCP_SERVICE_ACCOUNT_KEY || process.env.GOOGLE_APPLICATION_CREDENTIALS) {
-    // On Vercel: write base64 key to tmp file
-    if (process.env.GCP_SERVICE_ACCOUNT_KEY && !process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    // Whenever a base64 key is provided, write it to a tmp file and point creds
+    // at it — even if GOOGLE_APPLICATION_CREDENTIALS is also set. The deploy
+    // pipeline leaves GOOGLE_APPLICATION_CREDENTIALS=./gcp-service-account.json
+    // (a file that doesn't exist in the container), so the key var must win.
+    if (process.env.GCP_SERVICE_ACCOUNT_KEY) {
       const fs = require("fs");
       const os = require("os");
       const path = require("path");
