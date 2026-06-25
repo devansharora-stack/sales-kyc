@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import type { DeepStakeholderProfile, StakeholderStatus, IntelQuality } from "@/lib/types";
+import { generateStakeholderPDF } from "@/lib/generate-pdf";
 
 interface StakeholderResponse {
   id: string;
@@ -170,15 +171,29 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
             {displayTitle && <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{displayTitle}</p>}
             {displayCompany && <p className="text-xs text-slate-400 dark:text-slate-500 truncate mt-0.5">{displayCompany}</p>}
           </div>
-          <button
-            onClick={onClose}
-            aria-label="Close"
-            className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+          <div className="shrink-0 flex items-center gap-1.5">
+            {profile && (
+              <button
+                onClick={() => generateStakeholderPDF(profile)}
+                title="Download PDF"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-[#3289FF] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-[#3289FF]/30 rounded-lg transition-colors cursor-pointer"
+              >
+                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                </svg>
+                PDF
+              </button>
+            )}
+            <button
+              onClick={onClose}
+              aria-label="Close"
+              className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-400 dark:text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
 
         {/* Body */}
