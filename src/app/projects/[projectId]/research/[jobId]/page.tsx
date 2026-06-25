@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import type { ResearchStep } from "@/lib/types";
@@ -399,6 +399,9 @@ export default function ResearchProgressPage() {
   const [profileSlug, setProfileSlug] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedPhase, setSelectedPhase] = useState<number>(1);
+  // Once the user manually picks a phase, stop auto-following the active phase
+  // on each poll (otherwise the 3s poll snaps them back).
+  const userPickedPhase = useRef(false);
 
   const fetchJob = useCallback(async () => {
     try {
@@ -409,8 +412,9 @@ export default function ResearchProgressPage() {
       setProfileSlug(data.profileSlug);
       setLoading(false);
 
-      // Auto-select the most recent active phase
-      if (data.job?.research_steps) {
+      // Auto-follow the most recent active phase — but only until the user
+      // manually selects one (otherwise this poll would override their click).
+      if (data.job?.research_steps && !userPickedPhase.current) {
         const steps = data.job.research_steps as ResearchStep[];
         for (let i = PHASES.length - 1; i >= 0; i--) {
           const phaseSteps = steps.filter((s) => PHASES[i].agents.includes(s.agent_name));
@@ -549,7 +553,7 @@ export default function ResearchProgressPage() {
           return (
             <button
               key={phase.id}
-              onClick={() => setSelectedPhase(phase.id)}
+              onClick={() => { userPickedPhase.current = true; setSelectedPhase(phase.id); }}
               className={`px-3 py-2 text-xs font-medium border-b-2 transition-colors cursor-pointer ${
                 isSelected
                   ? "border-[#3289FF] text-[#3289FF]"

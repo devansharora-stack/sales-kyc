@@ -2,7 +2,7 @@
 
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import type { CompanyDetail, Source, SolutionId, SolutionMapping, EstimatedImpact } from "@/lib/types";
+import type { CompanyDetail, Source, SolutionId, SolutionMapping, EstimatedImpact, DeepStakeholderProfile } from "@/lib/types";
 import { ALL_SOLUTIONS, RATING_LABELS } from "@/lib/types";
 
 const solName = (id: SolutionId | string) =>
@@ -1090,4 +1090,191 @@ export function generateCompanyOnePager(company: CompanyDetail) {
   doc.text("Confidential — Internal Use Only", W - M, H - 7, { align: "right" });
 
   doc.save(`${company.slug || company.name.toLowerCase().replace(/\s+/g, "-")}-one-pager.pdf`);
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+// Per-stakeholder intelligence report — mirrors the company report style.
+// ───────────────────────────────────────────────────────────────────────────
+export function generateStakeholderPDF(p: DeepStakeholderProfile) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  patchUnicode(doc);
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const M = 15;
+  const CW = W - M * 2;
+  let y = M;
+
+  const setColor = (c: readonly [number, number, number]) => doc.setTextColor(c[0], c[1], c[2]);
+  function checkPage(needed: number) { if (y + needed > H - 15) { doc.addPage(); y = M; } }
+  function drawRoundRect(x: number, yy: number, w: number, h: number, r: number, c: readonly [number, number, number]) {
+    doc.setFillColor(c[0], c[1], c[2]); doc.roundedRect(x, yy, w, h, r, r, "F");
+  }
+  function wrapHard(text: string, maxWidth: number): string[] {
+    const lines: string[] = []; let cur = "";
+    for (const token of text.split(/(\s+)/)) {
+      if (token === "") continue;
+      if (doc.getTextWidth(cur + token) <= maxWidth) cur += token;
+      else if (doc.getTextWidth(token) > maxWidth) {
+        if (cur.trim()) { lines.push(cur.trimEnd()); cur = ""; }
+        let chunk = "";
+        for (const ch of token) { if (doc.getTextWidth(chunk + ch) <= maxWidth) chunk += ch; else { lines.push(chunk); chunk = ch; } }
+        cur = chunk;
+      } else { if (cur.trim()) lines.push(cur.trimEnd()); cur = token.trimStart(); }
+    }
+    if (cur.trim()) lines.push(cur.trimEnd());
+    return lines.length ? lines : [text];
+  }
+  function heading(text: string, size = 13) {
+    y += 2; checkPage(12); doc.setFontSize(size); doc.setFont("helvetica", "bold"); setColor(DARK);
+    doc.text(text, M, y); y += size * 0.4 + 3.5;
+  }
+  function subheading(text: string) {
+    y += 2.5; checkPage(8); doc.setFontSize(9.5); doc.setFont("helvetica", "bold"); setColor(SLATE500);
+    doc.text(text.toUpperCase(), M, y); y += 5.5;
+  }
+  function body(text: string, indent = 0) {
+    if (!text) return;
+    doc.setFontSize(9); doc.setFont("helvetica", "normal"); setColor(SLATE700);
+    for (const line of doc.splitTextToSize(text, CW - indent)) { checkPage(4.5); doc.text(line, M + indent, y); y += 4.5; }
+    y += 1;
+  }
+  function bullet(text: string, indent = 4) {
+    if (!text) return;
+    doc.setFontSize(9); doc.setFont("helvetica", "normal"); setColor(SLATE700);
+    const lines = doc.splitTextToSize(text, CW - indent - 3);
+    lines.forEach((line: string, i: number) => { checkPage(4.5); if (i === 0) { setColor(BLUE); doc.text("-", M + indent, y); setColor(SLATE700); } doc.text(line, M + indent + 3, y); y += 4.5; });
+  }
+  function sourceLine(url?: string) {
+    if (!url || !/^https?:\/\//i.test(url)) return;
+    checkPage(4); doc.setFontSize(7); doc.setFont("helvetica", "normal"); setColor(BLUE);
+    for (const line of wrapHard(`source: ${url}`, CW - 4)) { checkPage(3.5); doc.textWithLink(line, M + 4, y, { url }); y += 3.5; }
+  }
+  function divider() { y += 2; doc.setDrawColor(226, 232, 240); doc.line(M, y, W - M, y); y += 4; }
+
+  // ── Header band ──
+  doc.setFillColor(DARK[0], DARK[1], DARK[2]); doc.rect(0, 0, W, 8, "F");
+  doc.setFontSize(7); doc.setFont("helvetica", "bold"); setColor(WHITE);
+  doc.text("CONFIDENTIAL — INTERNAL USE ONLY", W / 2, 5.5, { align: "center" });
+  y = 14;
+
+  // ── Name + intel score ──
+  doc.setFontSize(22); doc.setFont("helvetica", "bold"); setColor(DARK);
+  doc.text(p.fullName || "Stakeholder", M, y);
+  if (p.dataRichness) {
+    doc.setFontSize(18); setColor(BLUE);
+    doc.text(`${p.dataRichness.score}`, W - M - 10, y, { align: "right" });
+    doc.setFontSize(9); setColor(SLATE400); doc.text("/100", W - M, y, { align: "right" });
+  }
+  y += 8;
+  if (p.headline) {
+    doc.setFontSize(9.5); doc.setFont("helvetica", "normal"); setColor(SLATE500);
+    for (const line of doc.splitTextToSize(p.headline, CW)) { checkPage(4.5); doc.text(line, M, y); y += 4.6; }
+    y += 1.5;
+  }
+  doc.setFontSize(9); doc.setFont("helvetica", "normal"); setColor(SLATE500);
+  const meta = [p.location, p.companyIntel?.companyName].filter(Boolean).join("  •  ");
+  if (meta) { doc.text(meta, M, y); y += 5.5; }
+  if (p.intelBrief?.intelQuality) {
+    drawRoundRect(M, y - 4, 36, 6, 2, BLUE); doc.setFontSize(7.5); doc.setFont("helvetica", "bold"); setColor(WHITE);
+    doc.text(`${p.intelBrief.intelQuality} INTEL`, M + 3, y);
+    if (p.linkedinUrl) { setColor(BLUE); doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.textWithLink("LinkedIn profile", M + 40, y, { url: p.linkedinUrl }); }
+    y += 6;
+  } else if (p.linkedinUrl) {
+    setColor(BLUE); doc.setFontSize(8); doc.textWithLink("LinkedIn profile", M, y, { url: p.linkedinUrl }); y += 5;
+  }
+  y += 2;
+  doc.setFont("helvetica", "normal"); doc.setFontSize(8); setColor(SLATE400);
+  doc.text("Prepared for Techolution Sales Team  •  " + new Date().toLocaleDateString("en-US", { year: "numeric", month: "long", day: "numeric" }), M, y);
+  y += 3; divider();
+
+  const brief = p.intelBrief;
+
+  // ── Intelligence Brief ──
+  if (brief?.executiveSummary || (brief?.verifiedPriorities?.length ?? 0) > 0 || (brief?.painPoints?.length ?? 0) > 0) {
+    heading("Intelligence Brief");
+    if (brief.executiveSummary) body(brief.executiveSummary);
+    if (brief.keyInsight) { subheading("Key Insight"); body(brief.keyInsight, 4); }
+
+    if (brief.verifiedPriorities?.length) {
+      subheading("Verified Priorities");
+      for (const vp of brief.verifiedPriorities) {
+        checkPage(14);
+        doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(SLATE700);
+        doc.text(`${vp.priority}  [${vp.confidence}]`, M + 4, y); y += 4.5;
+        body(vp.evidence, 4); sourceLine(vp.sourceUrl); y += 2;
+      }
+    }
+    if (brief.painPoints?.length) {
+      subheading("Pain Points");
+      for (const pp of brief.painPoints) {
+        checkPage(14);
+        doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(SLATE700);
+        doc.text(`${pp.pain}  [${pp.confidence}]`, M + 4, y); y += 4.5;
+        body(pp.evidence, 4); sourceLine(pp.sourceUrl); y += 2;
+      }
+    }
+    if (brief.engagementApproach && (brief.engagementApproach.openingAngle || brief.engagementApproach.talkingPoints?.length)) {
+      subheading("Engagement Approach");
+      if (brief.engagementApproach.openingAngle) { doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(SLATE500); doc.text("Opening angle", M + 4, y); y += 4.5; body(brief.engagementApproach.openingAngle, 4); }
+      if (brief.engagementApproach.talkingPoints?.length) { doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(SLATE500); doc.text("Talking points", M + 4, y); y += 4.5; brief.engagementApproach.talkingPoints.forEach((t) => bullet(t)); }
+      if (brief.engagementApproach.avoidTopics?.length) { doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(SLATE500); doc.text("Avoid", M + 4, y); y += 4.5; brief.engagementApproach.avoidTopics.forEach((t) => bullet(t)); }
+    }
+    divider();
+  }
+
+  // ── Professional DNA ──
+  if (p.experience?.length) {
+    heading("Professional DNA");
+    p.experience.forEach((exp, i) => {
+      checkPage(16);
+      doc.setFontSize(10); doc.setFont("helvetica", "bold"); setColor(DARK);
+      doc.text(exp.position || "", M, y); y += 4.8;
+      doc.setFontSize(9); doc.setFont("helvetica", "normal"); setColor(SLATE500);
+      const sub = [exp.company, (exp.startDate || exp.endDate) ? `${exp.startDate || ""} — ${exp.endDate || ""}` : "", exp.duration].filter(Boolean).join("  •  ");
+      if (sub) { doc.text(sub, M, y); y += 4.5; }
+      const takeaway = brief?.careerNarrative?.[i]?.takeaway;
+      if (takeaway) body(takeaway, 4);
+      else if (exp.description) body(exp.description.split(/(?:\n|(?:\. ))/).filter((s) => s.trim().length > 15).slice(0, 3).join(". "), 4);
+      else y += 1;
+      y += 2.5;
+    });
+    divider();
+  }
+
+  // ── Skills / Education / Certifications ──
+  if (p.skills?.length) { heading("Skills", 11); body(p.skills.join(", ")); y += 1; }
+  if (p.education?.length) {
+    heading("Education", 11);
+    p.education.forEach((e) => { checkPage(8); doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(SLATE700); doc.text(e.school || "", M, y); y += 4.2; if (e.degree || e.fieldOfStudy) { doc.setFont("helvetica", "normal"); setColor(SLATE500); doc.text([e.degree, e.fieldOfStudy].filter(Boolean).join(" — "), M, y); y += 4.5; } });
+    y += 1;
+  }
+  if (p.certifications?.length) {
+    heading("Certifications", 11);
+    p.certifications.slice(0, 15).forEach((c) => { checkPage(6); doc.setFontSize(9); doc.setFont("helvetica", "normal"); setColor(SLATE700); doc.text(`- ${c.title}${c.issuer ? ` (${c.issuer})` : ""}`, M, y); y += 4.5; });
+    y += 1;
+  }
+
+  // ── Organization Intel ──
+  const ci = p.companyIntel;
+  if (ci && (ci.companyName || ci.industry)) {
+    heading("Organization Intel", 11);
+    const rows: [string, string | undefined][] = [
+      ["Company", ci.companyName], ["Industry", ci.industry], ["Employees", ci.employeeCount != null ? String(ci.employeeCount) : undefined],
+      ["Revenue", ci.revenue], ["Founded", ci.yearFounded != null ? String(ci.yearFounded) : undefined],
+    ];
+    rows.forEach(([k, v]) => { if (!v) return; checkPage(5); doc.setFontSize(9); doc.setFont("helvetica", "bold"); setColor(SLATE500); doc.text(`${k}:`, M + 4, y); doc.setFont("helvetica", "normal"); setColor(SLATE700); doc.text(v, M + 35, y); y += 4.5; });
+  }
+
+  // ── Footer on all pages ──
+  const pageCount = doc.getNumberOfPages();
+  for (let i = 1; i <= pageCount; i++) {
+    doc.setPage(i);
+    doc.setFontSize(7); doc.setFont("helvetica", "normal"); setColor(SLATE400);
+    doc.setDrawColor(226, 232, 240); doc.line(M, H - 12, W - M, H - 12);
+    doc.text(`KYC Genie  •  ${p.fullName}  •  Page ${i}/${pageCount}`, M, H - 8);
+    doc.text("Confidential — Internal Use Only", W - M, H - 8, { align: "right" });
+  }
+
+  const slug = (p.fullName || "stakeholder").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  doc.save(`${slug}-stakeholder-intel.pdf`);
 }
