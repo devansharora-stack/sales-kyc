@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import * as XLSX from "xlsx";
 
@@ -65,6 +65,8 @@ export default function NewProjectPage() {
 
   async function handleCreate() {
     if (!name.trim()) return;
+    if (creating || createdProjectId) return;
+    setError("");
     setCreating(true);
 
     try {
@@ -74,7 +76,13 @@ export default function NewProjectPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ name: name.trim(), description: description.trim() || null }),
       });
-      const { project } = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data?.error || "Failed to create project. Please try again.");
+        setCreating(false);
+        return;
+      }
+      const { project } = data;
 
       // Add companies if any
       let found: typeof pendingReuse = [];
@@ -115,12 +123,31 @@ export default function NewProjectPage() {
         ...(decision === "reuse" ? { reuse: true } : { forceRefresh: true }),
       }),
     });
-    setPendingReuse((prev) => prev.filter((p) => p.company_name !== name));
     setResolvingReuse(null);
+    setPendingReuse((prev) => prev.filter((p) => p.company_name !== name));
   }
+
+  // Once every reuse decision is resolved, go straight to the project instead
+  // of falling back to the (still-populated) creation form.
+  useEffect(() => {
+    if (createdProjectId && pendingReuse.length === 0) {
+      router.push(`/projects/${createdProjectId}`);
+    }
+  }, [createdProjectId, pendingReuse.length, router]);
 
   function finishToProject() {
     if (createdProjectId) router.push(`/projects/${createdProjectId}`);
+  }
+
+  // Once the project exists, never fall back to the creation form — that path
+  // let users re-submit and spawn duplicate projects/jobs. Show the reuse
+  // decision step if needed, otherwise a redirecting state.
+  if (createdProjectId && pendingReuse.length === 0) {
+    return (
+      <div className="max-w-2xl mx-auto animate-fade-in">
+        <p className="text-sm text-slate-400 dark:text-slate-500">Setting up your project…</p>
+      </div>
+    );
   }
 
   // Existing-research decision step — shown after the project is created when
