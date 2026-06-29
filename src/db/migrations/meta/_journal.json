@@ -15,6 +15,13 @@
       "when": 1781186047351,
       "tag": "0001_remarkable_magdalene",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1782459809719,
+      "tag": "0002_smiling_thunderball",
+      "breakpoints": true
     }
   ]
 }
