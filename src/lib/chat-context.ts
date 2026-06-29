@@ -72,7 +72,8 @@ export async function fetchCompanySalesBundle(
 ): Promise<string | null> {
   if (!slugs.length) return null;
 
-  const safeSlugs = slugs.slice(0, 3);
+  // Ceiling only guards against a pathological request bloating context.
+  const safeSlugs = slugs.slice(0, 25);
 
   const rows = await db
     .select({ slug: companyProfiles.slug, data: companyProfiles.data })
@@ -191,7 +192,8 @@ export async function fetchStakeholderBundle(
 ): Promise<string | null> {
   if (!ids.length) return null;
 
-  const safeIds = ids.slice(0, 3);
+  // Ceiling only guards against a pathological request bloating context.
+  const safeIds = ids.slice(0, 25);
 
   const rows = await db
     .select({

@@ -44,7 +44,8 @@ const LOOKUP_STAKEHOLDER_TOOL = {
 async function streamClaude(
   systemPrompt: string,
   messages: Array<{ role: string; content: string | unknown[] }>,
-  tools?: object[]
+  tools?: object[],
+  signal?: AbortSignal
 ): Promise<Response> {
   const endpoint = process.env.AZURE_AI_FOUNDRY_ENDPOINT;
   if (!endpoint) throw new Error("AZURE_AI_FOUNDRY_ENDPOINT is not set");
@@ -56,7 +57,7 @@ async function streamClaude(
 
   const body: Record<string, unknown> = {
     model,
-    max_tokens: 4096,
+    max_tokens: 8192,
     stream: true,
     system: systemPrompt,
     messages,
@@ -74,6 +75,7 @@ async function streamClaude(
       "anthropic-version": "2023-06-01",
     },
     body: JSON.stringify(body),
+    signal,
   });
 
   if (!response.ok) {
@@ -272,7 +274,7 @@ export async function POST(request: Request) {
 
   let firstResponse: Response;
   try {
-    firstResponse = await streamClaude(systemPrompt, apiMessages, tools);
+    firstResponse = await streamClaude(systemPrompt, apiMessages, tools, request.signal);
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Streaming failed";
     return NextResponse.json({ error: msg }, { status: 502 });
@@ -290,11 +292,15 @@ export async function POST(request: Request) {
 
       let fullResponse = "";
       let currentResponse = firstResponse;
-      let rounds = 3;
+      let rounds = 5;
+      let lastStopReason = "end_turn";
 
+      try {
       while (rounds-- > 0) {
+        if (request.signal.aborted) break;
         const result = await processClaudeStream(currentResponse, controller, encoder);
         fullResponse += result.text;
+        lastStopReason = result.stopReason;
 
         if (result.stopReason !== "tool_use" || result.toolCalls.length === 0) {
           break;
@@ -376,27 +382,55 @@ export async function POST(request: Request) {
         }
         apiMessages.push({ role: "user", content: toolResults });
 
+        if (request.signal.aborted) break;
+        // Final permitted round: skip the next fetch here — the post-loop call
+        // below makes it without tools so the model must produce a real answer.
+        if (rounds <= 0) break;
         try {
-          currentResponse = await streamClaude(systemPrompt, apiMessages, tools);
+          currentResponse = await streamClaude(systemPrompt, apiMessages, tools, request.signal);
         } catch {
+          lastStopReason = "end_turn";
           break;
         }
       }
 
-      if (fullResponse) {
-        messages.push({
-          role: "assistant",
-          content: fullResponse,
-          timestamp: new Date().toISOString(),
-        });
+      // Rounds exhausted while the model still wanted a tool → force one final
+      // answer with tools disabled so it synthesizes text instead of ending blank.
+      if (lastStopReason === "tool_use" && !request.signal.aborted) {
+        try {
+          const finalResp = await streamClaude(systemPrompt, apiMessages, undefined, request.signal);
+          const finalResult = await processClaudeStream(finalResp, controller, encoder);
+          fullResponse += finalResult.text;
+        } catch {
+          // keep whatever we have
+        }
       }
-
-      await db
-        .update(chatSessions)
-        .set({ messages, updatedAt: new Date() })
-        .where(eq(chatSessions.id, currentSessionId));
-
-      controller.close();
+      } catch {
+        // client disconnect / stream error — persist what we have in finally
+      } finally {
+        if (fullResponse) {
+          messages.push({
+            role: "assistant",
+            content: fullResponse,
+            timestamp: new Date().toISOString(),
+          });
+        }
+        // Persist on both normal completion and abort, so reload + "continue"
+        // resume from exactly what the user saw.
+        try {
+          await db
+            .update(chatSessions)
+            .set({ messages, updatedAt: new Date() })
+            .where(eq(chatSessions.id, currentSessionId));
+        } catch {
+          // best-effort
+        }
+        try {
+          controller.close();
+        } catch {
+          // already closed (client disconnected)
+        }
+      }
     },
   });
 
