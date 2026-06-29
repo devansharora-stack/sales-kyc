@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX "projects_user_name_lower_key" ON "sales_kyc"."projects" USING btree ("user_id",lower("name"));

@@ -1,4 +1,4 @@
-import { pgSchema, uuid, text, integer, jsonb, timestamp, unique, index, check } from "drizzle-orm/pg-core";
+import { pgSchema, uuid, text, integer, jsonb, timestamp, unique, uniqueIndex, index, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // Everything lives in the isolated `sales_kyc` schema (shared AlloyDB cluster).
@@ -24,7 +24,10 @@ export const projects = kyc.table(
     createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
     updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
   },
-  (t) => [index("idx_projects_user").on(t.userId)],
+  (t) => [
+    uniqueIndex("projects_user_name_lower_key").on(t.userId, sql`lower(${t.name})`),
+    index("idx_projects_user").on(t.userId),
+  ],
 );
 
 export const researchJobs = kyc.table(
