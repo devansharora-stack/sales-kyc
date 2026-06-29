@@ -26,6 +26,14 @@ interface ChatContext {
   companySlug?: string;
 }
 
+// Trim a partial (user-stopped) response back to its last complete sentence so
+// it doesn't end mid-word. Falls back to the full text if no terminator found.
+function trimToLastSentence(text: string): string {
+  const match = text.match(/[\s\S]*[.!?]["')\]]?/);
+  const trimmed = match ? match[0].trimEnd() : "";
+  return trimmed.length > 0 ? trimmed : text.trimEnd();
+}
+
 function slugToName(slug: string): string {
   return slug
     .split("-")
@@ -40,7 +48,8 @@ function detectContext(pathname: string | null): ChatContext {
     return { type: "company", projectId: companyMatch[1], companySlug: companyMatch[2] };
   }
   const projectMatch = pathname.match(/\/projects\/([^/]+)/);
-  if (projectMatch) {
+  // "new" is the create page, not a real project id — chat there is global.
+  if (projectMatch && projectMatch[1] !== "new") {
     return { type: "project", projectId: projectMatch[1] };
   }
   return { type: "global" };
@@ -57,9 +66,12 @@ export default function ChatPanel() {
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [isAtBottom, setIsAtBottom] = useState(true);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const messagesContainerRef = useRef<HTMLDivElement>(null);
   const abortRef = useRef<AbortController | null>(null);
+  const stoppedByUserRef = useRef<boolean>(false);
   const contextKeyRef = useRef<string>("");
 
   const contextKey = context.projectId
@@ -99,9 +111,24 @@ export default function ChatPanel() {
     fetchSessions();
   }, [fetchSessions]);
 
+  // Only follow the stream when the user is already pinned to the bottom — the
+  // moment they scroll up to read, auto-follow disengages until they return.
   useEffect(() => {
+    if (isAtBottom) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    }
+  }, [messages, streamingText, isAtBottom]);
+
+  function handleScroll() {
+    const el = messagesContainerRef.current;
+    if (!el) return;
+    setIsAtBottom(el.scrollHeight - el.scrollTop - el.clientHeight < 80);
+  }
+
+  function jumpToLatest() {
+    setIsAtBottom(true);
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, streamingText]);
+  }
 
   async function loadSession(sessionId: string) {
     try {
@@ -152,6 +179,9 @@ export default function ChatPanel() {
 
     const controller = new AbortController();
     abortRef.current = controller;
+    stoppedByUserRef.current = false;
+
+    let fullResponse = "";
 
     try {
       const res = await fetch("/api/chat", {
@@ -172,7 +202,6 @@ export default function ChatPanel() {
 
       const reader = res.body!.getReader();
       const decoder = new TextDecoder();
-      let fullResponse = "";
       let lineBuffer = "";
 
       while (true) {
@@ -215,11 +244,29 @@ export default function ChatPanel() {
       setStreamingText("");
       fetchSessions();
     } catch (err) {
-      if ((err as Error).name === "AbortError") return;
+      if ((err as Error).name === "AbortError") {
+        // User-initiated stop: keep what streamed, trimmed to a clean sentence.
+        if (stoppedByUserRef.current && fullResponse) {
+          const trimmed = trimToLastSentence(fullResponse);
+          setMessages((prev) => [
+            ...prev,
+            { role: "assistant", content: trimmed, timestamp: new Date().toISOString() },
+          ]);
+          setStreamingText("");
+          fetchSessions();
+        }
+        stoppedByUserRef.current = false;
+        return;
+      }
       setError(err instanceof Error ? err.message : "Failed to send message");
     } finally {
       setIsStreaming(false);
     }
+  }
+
+  function handleStop() {
+    stoppedByUserRef.current = true;
+    abortRef.current?.abort();
   }
 
   const placeholder = context.companySlug
@@ -300,7 +347,12 @@ export default function ChatPanel() {
       )}
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto p-4 min-h-0">
+      <div className="relative flex-1 min-h-0 flex flex-col">
+      <div
+        ref={messagesContainerRef}
+        onScroll={handleScroll}
+        className="flex-1 overflow-y-auto p-4 min-h-0"
+      >
         {messages.length === 0 && !streamingText ? (
           <div className="flex flex-col items-center justify-center h-full text-center">
             <div className="w-12 h-12 rounded-full bg-[rgba(50,137,255,0.08)] flex items-center justify-center mb-4">
@@ -353,12 +405,23 @@ export default function ChatPanel() {
           </div>
         )}
       </div>
+        {!isAtBottom && (messages.length > 0 || streamingText) && (
+          <button
+            onClick={jumpToLatest}
+            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#3289FF] text-white text-xs font-medium shadow-md hover:bg-[#1a6fe0] transition-colors cursor-pointer"
+            title="Jump to latest"
+          >
+            <span className="leading-none">&darr;</span> Jump to latest
+          </button>
+        )}
+      </div>
 
       {/* Input — pinned to bottom */}
       <div className="shrink-0">
         <ChatInput
           onSend={sendMessage}
-          disabled={isStreaming}
+          onStop={handleStop}
+          isStreaming={isStreaming}
           placeholder={placeholder}
         />
       </div>
