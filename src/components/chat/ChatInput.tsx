@@ -4,11 +4,12 @@ import { useState, useRef, useCallback } from "react";
 
 interface ChatInputProps {
   onSend: (message: string) => void;
-  disabled: boolean;
+  onStop: () => void;
+  isStreaming: boolean;
   placeholder: string;
 }
 
-export default function ChatInput({ onSend, disabled, placeholder }: ChatInputProps) {
+export default function ChatInput({ onSend, onStop, isStreaming, placeholder }: ChatInputProps) {
   const [text, setText] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -28,7 +29,7 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
 
   function handleSend() {
     const trimmed = text.trim();
-    if (!trimmed || disabled) return;
+    if (!trimmed || isStreaming) return;
     onSend(trimmed);
     setText("");
     if (textareaRef.current) {
@@ -51,16 +52,25 @@ export default function ChatInput({ onSend, disabled, placeholder }: ChatInputPr
             autoResize();
           }}
           onKeyDown={handleKeyDown}
-          disabled={disabled}
         />
-        <button
-          onClick={handleSend}
-          disabled={disabled || !text.trim()}
-          className="w-9 h-9 flex items-center justify-center shrink-0 rounded-lg bg-[#3289FF] hover:bg-[#1a6fe0] disabled:opacity-40 cursor-pointer transition-all mb-0.5"
-          title="Send message"
-        >
-          <span className="text-white text-lg font-bold leading-none">&uarr;</span>
-        </button>
+        {isStreaming ? (
+          <button
+            onClick={onStop}
+            className="w-9 h-9 flex items-center justify-center shrink-0 rounded-lg bg-[#3289FF] hover:bg-[#1a6fe0] cursor-pointer transition-all mb-0.5"
+            title="Stop response"
+          >
+            <span className="block w-3 h-3 bg-white rounded-[2px]" />
+          </button>
+        ) : (
+          <button
+            onClick={handleSend}
+            disabled={!text.trim()}
+            className="w-9 h-9 flex items-center justify-center shrink-0 rounded-lg bg-[#3289FF] hover:bg-[#1a6fe0] disabled:opacity-40 cursor-pointer transition-all mb-0.5"
+            title="Send message"
+          >
+            <span className="text-white text-lg font-bold leading-none">&uarr;</span>
+          </button>
+        )}
       </div>
       <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-1.5 text-center">
         Shift + Enter for new line

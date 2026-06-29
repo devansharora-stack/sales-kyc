@@ -203,14 +203,22 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  // Resolve the project, but never error if it's missing/malformed — the chat
+  // should still respond, just without project-specific context. (e.g. the
+  // /projects/new page sends projectId "new", which isn't a valid UUID.)
+  const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  let effectiveContext: typeof context = context;
   if (context.projectId) {
-    const [project] = await db
-      .select({ id: projects.id })
-      .from(projects)
-      .where(and(eq(projects.id, context.projectId), eq(projects.userId, user.id)))
-      .limit(1);
+    let project: { id: string } | undefined;
+    if (UUID_RE.test(context.projectId)) {
+      [project] = await db
+        .select({ id: projects.id })
+        .from(projects)
+        .where(and(eq(projects.id, context.projectId), eq(projects.userId, user.id)))
+        .limit(1);
+    }
     if (!project) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+      effectiveContext = { type: "global" };
     }
   }
 
@@ -230,10 +238,10 @@ export async function POST(request: Request) {
     const [newSession] = await db
       .insert(chatSessions)
       .values({
-        projectId: context.projectId || null,
+        projectId: effectiveContext.projectId || null,
         userId: user.id,
-        companySlug: context.companySlug || null,
-        contextType: context.type,
+        companySlug: effectiveContext.companySlug || null,
+        contextType: effectiveContext.type,
         title: message.slice(0, 100),
       })
       .returning({ id: chatSessions.id });
@@ -250,7 +258,7 @@ export async function POST(request: Request) {
   });
 
   const { prompt: systemPrompt, hasCompanyIndex, hasStakeholderIndex } = await buildChatSystemPrompt({
-    ...context,
+    ...effectiveContext,
     userId: user.id,
   });
 
