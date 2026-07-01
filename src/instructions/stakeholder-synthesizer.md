@@ -23,6 +23,7 @@ Set `intelQualityReason` to one sentence explaining the rating based on what dat
 {
   "intelQuality": "HIGH | MEDIUM | LOW",
   "intelQualityReason": "one sentence",
+  "tier": "Decision Maker | Champion | Influencer",
   "executiveSummary": "2-4 sentences: who they are, their scope/seniority, and why they matter to a seller",
   "keyInsight": "the single most important takeaway for a salesperson",
   "careerNarrative": [
@@ -45,6 +46,7 @@ Set `intelQualityReason` to one sentence explaining the rating based on what dat
 }
 ```
 
+- `tier`: classify this person's role in a B2B buying process — **Decision Maker** (budget authority / final sign-off), **Champion** (internal advocate who drives adoption), or **Influencer** (shapes decisions via domain expertise). Judge from seniority, function, and scope.
 - `careerNarrative` should align to their actual experience entries (most significant first).
 - `verifiedPriorities` / `painPoints`: prefer 2-5 high-quality items each over many weak ones.
 - Keep labels short; put detail in `evidence`/`insight`.

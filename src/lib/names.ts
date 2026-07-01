@@ -9,3 +9,14 @@ export function normalizeStakeholderName(name: string): string {
     .replace(/\s+/g, " ")
     .trim();
 }
+
+// Capitalize the first letter of each word for display, so a manually-typed
+// "ramprasad sridharan" shows as "Ramprasad Sridharan" like AI-found names.
+// Only the leading letter is changed, preserving intentional caps (e.g. "McKinsey").
+export function formatStakeholderName(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .map((w) => (w ? w.charAt(0).toUpperCase() + w.slice(1) : w))
+    .join(" ");
+}
