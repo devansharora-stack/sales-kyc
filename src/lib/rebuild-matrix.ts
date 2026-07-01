@@ -43,14 +43,15 @@ export async function rebuildStakeholderOfferingMatrix(companyProfileId: string)
     })
     .filter((x): x is { name: string; intelBrief: StakeholderIntelBrief } => x !== null);
 
-  // Manually-added, analyzed people for THIS company who aren't in the AI list —
-  // promote them into the mapper input so they get their own matrix rows (with
-  // cells grounded in their deep intel, which is already passed via deepProfiles).
+  // Analyzed people for THIS company who aren't already in the AI-found list —
+  // i.e. the ones added manually. Promote them into the mapper input so they get
+  // their own matrix rows (cells grounded in their deep intel via deepProfiles).
+  // Keyed on company + not-in-AI-list (NOT input_type, which can flip to
+  // "company" on re-analysis) to match the Stakeholders tab's manual section.
   const existingNames = new Set(stakeholders.map((s) => normalizeStakeholderName(s.name)));
   const manualStakeholders: Stakeholder[] = rows
     .filter(
       (r) =>
-        r.inputType === "manual" &&
         r.companyProfileId === companyProfileId &&
         !existingNames.has(normalizeStakeholderName(r.name)),
     )
