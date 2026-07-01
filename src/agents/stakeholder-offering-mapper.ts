@@ -162,5 +162,27 @@ Respond ONLY with a JSON object: { "rows": [...] } matching the output schema.`,
     };
   });
 
+  // Guarantee a row for EVERY input stakeholder — the LLM occasionally drops one
+  // (typically a manually-added name it deems less relevant). Append any missing
+  // stakeholder with empty cells so they always appear in the matrix.
+  const presentNames = new Set(normalizedRows.map((r) => normalizeStakeholderName(r.stakeholderName)));
+  for (const s of stakeholders) {
+    const key = normalizeStakeholderName(s.name);
+    if (presentNames.has(key)) continue;
+    normalizedRows.push({
+      stakeholderName: s.name,
+      title: s.title || "",
+      powerLabel: (s.tier || "").toUpperCase(),
+      cells: solutionColumns.map((col) => ({
+        solution: col.id,
+        solutionName: col.name,
+        role: "",
+        strength: "none" as const,
+        rationale: "",
+      })),
+      enriched: deepByName.has(key),
+    });
+  }
+
   return { solutionColumns, rows: normalizedRows };
 }
