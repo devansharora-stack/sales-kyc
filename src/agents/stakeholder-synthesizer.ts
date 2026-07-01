@@ -70,9 +70,11 @@ export async function synthesizeStakeholder(raw: RawProfile): Promise<Stakeholde
 
 // Defensive: ensure all arrays/objects exist so the UI never crashes.
 function normalizeBrief(b: Partial<StakeholderIntelBrief>): StakeholderIntelBrief {
+  const tier = b.tier === "Decision Maker" || b.tier === "Champion" || b.tier === "Influencer" ? b.tier : undefined;
   return {
     intelQuality: b.intelQuality || "LOW",
     intelQualityReason: b.intelQualityReason || "",
+    ...(tier ? { tier } : {}),
     executiveSummary: b.executiveSummary || "",
     keyInsight: b.keyInsight || "",
     careerNarrative: Array.isArray(b.careerNarrative) ? b.careerNarrative : [],

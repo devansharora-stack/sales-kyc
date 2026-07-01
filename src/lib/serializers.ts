@@ -58,6 +58,11 @@ export function serializeJob(j: JobRow, steps?: StepRow[]) {
 // `includeData` controls whether the heavy `data` jsonb (full profile) is sent.
 // List views omit it; the detail view includes it.
 export function serializeStakeholder(s: StakeholderRow, includeData = true) {
+  // Lightweight fields lifted out of the (heavy) profile so list views can
+  // render a rich card without fetching the full `data` blob.
+  const brief = (s.data as { profile?: { intelBrief?: { tier?: string; keyInsight?: string; executiveSummary?: string } } } | null)?.profile?.intelBrief;
+  const tier = brief?.tier ?? null;
+  const summary = brief?.keyInsight || brief?.executiveSummary || null;
   return {
     id: s.id,
     project_id: s.projectId,
@@ -71,6 +76,8 @@ export function serializeStakeholder(s: StakeholderRow, includeData = true) {
     input_type: s.inputType,
     status: s.status,
     progress: s.progress,
+    tier,
+    summary,
     error_message: s.errorMessage,
     created_at: iso(s.createdAt),
     updated_at: iso(s.updatedAt),

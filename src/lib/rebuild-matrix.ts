@@ -2,7 +2,8 @@ import { db } from "@/lib/db";
 import { companyProfiles, stakeholderProfiles } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { runStakeholderOfferingMapper } from "@/agents/stakeholder-offering-mapper";
-import type { CompanyDetail, DeepStakeholderProfile, StakeholderIntelBrief } from "@/lib/types";
+import { normalizeStakeholderName, formatStakeholderName } from "@/lib/names";
+import type { CompanyDetail, DeepStakeholderProfile, StakeholderIntelBrief, Stakeholder } from "@/lib/types";
 
 /**
  * Rebuild a company's Stakeholder × Offering matrix using any completed deep
@@ -20,7 +21,9 @@ export async function rebuildStakeholderOfferingMatrix(companyProfileId: string)
   const data = (cp.data || {}) as Partial<CompanyDetail>;
   const stakeholders = data.stakeholders || [];
   const solutionMappings = data.solutionMappings || [];
-  if (stakeholders.length === 0 || solutionMappings.length === 0) return false;
+  // Need solution columns to build a matrix; stakeholders can come from either
+  // the AI list or manually-added analyzed people (handled below).
+  if (solutionMappings.length === 0) return false;
 
   // Completed deep profiles for this project, reduced to name → intel brief.
   const rows = await db
@@ -40,7 +43,34 @@ export async function rebuildStakeholderOfferingMatrix(companyProfileId: string)
     })
     .filter((x): x is { name: string; intelBrief: StakeholderIntelBrief } => x !== null);
 
-  if (deepProfiles.length === 0) return false;
+  // Manually-added, analyzed people for THIS company who aren't in the AI list —
+  // promote them into the mapper input so they get their own matrix rows (with
+  // cells grounded in their deep intel, which is already passed via deepProfiles).
+  const existingNames = new Set(stakeholders.map((s) => normalizeStakeholderName(s.name)));
+  const manualStakeholders: Stakeholder[] = rows
+    .filter(
+      (r) =>
+        r.inputType === "manual" &&
+        r.companyProfileId === companyProfileId &&
+        !existingNames.has(normalizeStakeholderName(r.name)),
+    )
+    .map((r) => {
+      const profile = (r.data as { profile?: DeepStakeholderProfile } | null)?.profile;
+      const brief = profile?.intelBrief;
+      return {
+        name: formatStakeholderName(r.name),
+        title: r.title || profile?.headline || "",
+        tier: brief?.tier || "Influencer",
+        relevance: brief?.keyInsight || brief?.executiveSummary || "",
+        source: "Manually added",
+        sourceUrl: r.linkedinUrl || "",
+        confidence: "verified",
+      } as Stakeholder;
+    });
+
+  const allStakeholders = [...stakeholders, ...manualStakeholders];
+  // Nothing new to (re)build on: no deep intel and no manual additions.
+  if (allStakeholders.length === 0 || (deepProfiles.length === 0 && manualStakeholders.length === 0)) return false;
 
   const matrix = await runStakeholderOfferingMapper({
     companyName: data.name || data.fullName || "",
@@ -49,7 +79,7 @@ export async function rebuildStakeholderOfferingMatrix(companyProfileId: string)
       subSector: data.subSector || "",
       businessDescription: data.businessDescription || "",
     },
-    stakeholders,
+    stakeholders: allStakeholders,
     solutionMappings,
     painPoints: data.painPoints || [],
     gtm: (data.gtm || {}) as CompanyDetail["gtm"],

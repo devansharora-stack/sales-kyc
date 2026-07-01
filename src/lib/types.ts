@@ -182,6 +182,9 @@ export interface StakeholderCompanyIntel {
 export interface StakeholderIntelBrief {
   intelQuality: IntelQuality;
   intelQualityReason: string;
+  // Buying-process classification, assigned by the deep-analysis synthesizer.
+  // Absent on older profiles synthesized before this field existed.
+  tier?: "Decision Maker" | "Champion" | "Influencer";
   executiveSummary: string;
   keyInsight: string;
   careerNarrative: { role: string; tenure?: string; takeaway: string }[];

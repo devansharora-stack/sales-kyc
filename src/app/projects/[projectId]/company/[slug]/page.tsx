@@ -6,7 +6,7 @@ import Link from "next/link";
 import type { CompanyDetail, Source, SolutionId, SolutionMapping, EstimatedImpact, SalesMotionType } from "@/lib/types";
 import { ALL_SOLUTIONS } from "@/lib/types";
 import { generateCompanyPDF, generateCompanyOnePager } from "@/lib/generate-pdf";
-import { normalizeStakeholderName } from "@/lib/names";
+import { normalizeStakeholderName, formatStakeholderName } from "@/lib/names";
 import RatingBadge from "@/components/company/RatingBadge";
 import GeminiStatusBadge from "@/components/company/GeminiStatusBadge";
 import UrgencyBadge from "@/components/company/UrgencyBadge";
@@ -65,6 +65,8 @@ interface DeepStakeholderRow {
   company?: string | null;
   company_profile_id?: string | null;
   linkedin_url?: string | null;
+  tier?: "Decision Maker" | "Champion" | "Influencer" | null;
+  summary?: string | null;
 }
 
 function PdfMenu({ company }: { company: CompanyDetail }) {
@@ -938,12 +940,13 @@ export default function CompanyPage() {
               <div className="grid md:grid-cols-2 gap-2">
                 {manualRows.map((d) => {
                   const done = d.status === "completed";
+                  const tc = done && d.tier ? tierColors[d.tier] : null;
                   return (
-                    <div key={d.id} className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 bg-white dark:bg-slate-900">
+                    <div key={d.id} className={`border rounded-lg p-3 ${tc ? `${tc.bg} ${tc.border}` : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"}`}>
                       <div className="flex items-start justify-between gap-2">
                         <div className="min-w-0">
                           <div className="flex items-center gap-1.5 flex-wrap">
-                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{d.name}</p>
+                            <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{formatStakeholderName(d.name)}</p>
                             {done ? (
                               <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-slate-700">Analyzed &#10003;</span>
                             ) : (
@@ -953,8 +956,16 @@ export default function CompanyPage() {
                           {d.title && <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{d.title}</p>}
                           {d.company && <p className="text-[11px] text-slate-400 dark:text-slate-500 mt-0.5">{d.company}</p>}
                         </div>
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded shrink-0 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Manual</span>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          {tc && d.tier && (
+                            <span className={`text-xs font-medium px-1.5 py-0.5 rounded ${tc.badge}`}>{d.tier}</span>
+                          )}
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300">Manual</span>
+                        </div>
                       </div>
+                      {done && d.summary && (
+                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">{d.summary}</p>
+                      )}
                       <div className="flex items-center gap-3 mt-2">
                         {done && (
                           <button
