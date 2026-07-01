@@ -166,13 +166,19 @@ export default function CompanyPage() {
   }, [hasActiveDeep, projectId]);
 
   // When a deep research run newly completes, the backend rebuilds this
-  // company's matrix — re-fetch the profile so the enriched matrix shows.
+  // company's matrix — but that rebuild is an async LLM step that finishes
+  // ~10-30s AFTER the stakeholder is marked completed. Refetch immediately and
+  // then a few more times so the rebuilt matrix is picked up without a manual
+  // reload (otherwise the UI keeps showing the pre-rebuild matrix).
   const completedDeepRef = useRef<Set<string>>(new Set());
   useEffect(() => {
     const done = deepRows.filter(d => d.status === "completed").map(d => d.id);
     const isNew = done.some(id => !completedDeepRef.current.has(id));
     completedDeepRef.current = new Set(done);
-    if (isNew) fetchCompany();
+    if (!isNew) return;
+    fetchCompany();
+    const timers = [8000, 20000, 40000].map(ms => setTimeout(() => fetchCompany(), ms));
+    return () => timers.forEach(clearTimeout);
   }, [deepRows, fetchCompany]);
 
 
