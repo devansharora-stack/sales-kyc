@@ -975,6 +975,14 @@ export default function CompanyPage() {
                             View profile
                           </button>
                         )}
+                        {done && (
+                          <button
+                            onClick={() => handleReanalyze(d.name, d.title ?? "")}
+                            className="text-[11px] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:underline cursor-pointer"
+                          >
+                            Re-analyze
+                          </button>
+                        )}
                         {d.linkedin_url && (
                           <a href={d.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#3289FF] hover:underline">LinkedIn</a>
                         )}
