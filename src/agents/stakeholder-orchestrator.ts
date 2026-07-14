@@ -22,6 +22,7 @@ import { scrapeHarvestProfile, scrapeApifyPosts } from "@/lib/apify";
 import { scrapeBrightDataProfile } from "@/lib/brightdata";
 import { synthesizeStakeholder } from "./stakeholder-synthesizer";
 import { rebuildStakeholderOfferingMatrix } from "@/lib/rebuild-matrix";
+import { runWithUsageContext } from "@/lib/usage-context";
 import type {
   DeepStakeholderProfile,
   StakeholderStatus,
@@ -72,19 +73,13 @@ export const analyzeStakeholder = inngest.createFunction(
         const resolved = await step.run("resolve-url", () =>
           resolveLinkedInUrl(row.name, row.company || undefined, row.title || undefined),
         );
-        // Departed exec → exclude outright. Confirming a URL is pointless when
-        // the person no longer holds the role at this company.
+        // Not actually at this company (left the role, or never worked here —
+        // e.g. a customer reference mistaken for an exec). Remove the row
+        // outright so it never surfaces in the stakeholders tab; re-adding the
+        // person later triggers a fresh analysis.
         if (resolved.departed) {
-          await updateStakeholderStatus(stakeholderId, {
-            status: "departed",
-            progress: 100,
-            linkedinUrl: resolved.url || row.linkedinUrl,
-            urlConfidence: "low",
-            errorMessage:
-              resolved.reason ||
-              `${row.name} appears to have left ${row.company || "this company"} and no longer holds this role — excluded from current stakeholders.`,
-          });
-          return { status: "departed", stakeholderId };
+          await db.delete(stakeholderProfiles).where(eq(stakeholderProfiles.id, stakeholderId));
+          return { status: "departed", stakeholderId, deleted: true };
         }
         if (!resolved.url || resolved.confidence === "low") {
           await updateStakeholderStatus(stakeholderId, {
@@ -134,7 +129,12 @@ export const analyzeStakeholder = inngest.createFunction(
       await step.run("status-synthesizing", () =>
         updateStakeholderStatus(stakeholderId, { status: "synthesizing", progress: 70 }),
       );
-      const intelBrief = await step.run("synthesize", () => synthesizeStakeholder(raw));
+      const intelBrief = await step.run("synthesize", () =>
+        runWithUsageContext(
+          { projectId: row.projectId, userId: row.userId, companyProfileId: row.companyProfileId, agent: "stakeholder_deep", phase: "stakeholder" },
+          () => synthesizeStakeholder(raw),
+        ),
+      );
 
       const full: DeepStakeholderProfile = { ...raw, intelBrief, dataRichness: computeRichness(raw) };
 
@@ -154,7 +154,10 @@ export const analyzeStakeholder = inngest.createFunction(
       if (row.companyProfileId) {
         await step.run("rebuild-matrix", async () => {
           try {
-            await rebuildStakeholderOfferingMatrix(row.companyProfileId!);
+            await runWithUsageContext(
+              { projectId: row.projectId, userId: row.userId, companyProfileId: row.companyProfileId, agent: "stakeholder_matrix_rebuild", phase: "stakeholder" },
+              () => rebuildStakeholderOfferingMatrix(row.companyProfileId!),
+            );
           } catch (e) {
             console.log(`[stakeholder] matrix rebuild failed: ${e instanceof Error ? e.message : e}`);
           }

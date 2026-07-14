@@ -11,6 +11,15 @@ import { inngest } from "@/lib/inngest";
 import { db } from "@/lib/db";
 import { researchJobs, researchSteps, companyProfiles } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
+import { runWithUsageContext } from "@/lib/usage-context";
+
+// Agent → pipeline phase, for tagging LLM usage rows.
+const AGENT_PHASE: Record<string, string> = {
+  company_profile: "1", tech_stack: "1", financial_signal: "1",
+  trigger_scanner: "2", pain_point_analyzer: "2", stakeholder_researcher: "2", partner_landscape: "2",
+  solution_mapper: "3", gtm_generator: "3", scoring_agent: "3", sales_intelligence: "3", stakeholder_offering_mapper: "3",
+  verification: "4",
+};
 import { scoreToRating } from "@/lib/types";
 import type { CompanyDetail, GeminiStatus } from "@/lib/types";
 
@@ -58,8 +67,17 @@ async function runAgentStep<T>(
     startedAt: new Date(),
   });
 
+  // Tag every LLM call this agent makes with attribution for the usage dashboard.
+  const [job] = await db
+    .select({ projectId: researchJobs.projectId, userId: researchJobs.userId })
+    .from(researchJobs)
+    .where(eq(researchJobs.id, jobId));
+
   try {
-    const result = await fn();
+    const result = await runWithUsageContext(
+      { jobId, projectId: job?.projectId, userId: job?.userId, agent: agentName, phase: AGENT_PHASE[agentName] ?? null },
+      fn,
+    );
     await updateStep(jobId, agentName, {
       status: "completed",
       output: result as Record<string, unknown>,

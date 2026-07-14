@@ -1,4 +1,4 @@
-import { pgSchema, uuid, text, integer, jsonb, timestamp, unique, uniqueIndex, index, check } from "drizzle-orm/pg-core";
+import { pgSchema, uuid, text, integer, jsonb, timestamp, boolean, unique, uniqueIndex, index, check } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
 // Everything lives in the isolated `sales_kyc` schema (shared AlloyDB cluster).
@@ -140,5 +140,57 @@ export const chatSessions = kyc.table(
     check("chat_sessions_context_type_check", sql`${t.contextType} IN ('company', 'project', 'global')`),
     index("idx_chat_sessions_user").on(t.userId),
     index("idx_chat_sessions_project").on(t.projectId),
+  ],
+);
+
+// One row per LLM call — powers the admin token/cost usage dashboard.
+// Attribution fields are nullable so a call with no context still records tokens.
+export const llmUsage = kyc.table(
+  "llm_usage",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    provider: text("provider").notNull(), // "claude" | "gemini"
+    model: text("model").notNull(),
+    inputTokens: integer("input_tokens").notNull().default(0),
+    outputTokens: integer("output_tokens").notNull().default(0),
+    projectId: uuid("project_id"),
+    companyProfileId: uuid("company_profile_id"),
+    userId: uuid("user_id"),
+    jobId: uuid("job_id"),
+    agent: text("agent"),
+    phase: text("phase"),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    index("idx_llm_usage_created").on(t.createdAt),
+    index("idx_llm_usage_project").on(t.projectId),
+    index("idx_llm_usage_company").on(t.companyProfileId),
+    index("idx_llm_usage_user").on(t.userId),
+    index("idx_llm_usage_model").on(t.model),
+  ],
+);
+
+// Read-only share grants. One row per shared resource (project / company /
+// stakeholder). A valid, non-disabled token grants read access to exactly that
+// resource; login (Techolution domain) is still enforced by middleware, so a
+// leaked link is useless to outsiders. Mutations always stay owner-only.
+export const shares = kyc.table(
+  "shares",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    resourceType: text("resource_type").notNull(),
+    resourceId: uuid("resource_id").notNull(),
+    token: text("token").notNull().unique(),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    disabled: boolean("disabled").notNull().default(false),
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    check("shares_resource_type_check", sql`${t.resourceType} IN ('project', 'company', 'stakeholder')`),
+    uniqueIndex("idx_shares_token").on(t.token),
+    index("idx_shares_resource").on(t.resourceType, t.resourceId),
+    index("idx_shares_created_by").on(t.createdBy),
   ],
 );

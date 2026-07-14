@@ -10,6 +10,8 @@
  * Same mechanism Claude Code uses in west-coast research.
  */
 
+import { recordLlmUsage } from "@/lib/usage-context";
+
 interface ClaudeOptions {
   systemPrompt: string;
   userPrompt: string;
@@ -48,6 +50,12 @@ export async function callClaude({
 
   const response = await fetchWithRetry(body);
   const data = await response.json();
+  recordLlmUsage({
+    provider: "claude",
+    model: body.model,
+    inputTokens: data.usage?.input_tokens,
+    outputTokens: data.usage?.output_tokens,
+  });
   if (data.stop_reason === "max_tokens") {
     console.warn(`[claude] Response truncated by max_tokens (${body.max_tokens}). Output may be incomplete.`);
   }
@@ -101,6 +109,12 @@ export async function callClaudeWithTools<T>(options: ToolUseOptions): Promise<T
 
   const response = await fetchWithRetry(body);
   const data = await response.json();
+  recordLlmUsage({
+    provider: "claude",
+    model: body.model,
+    inputTokens: data.usage?.input_tokens,
+    outputTokens: data.usage?.output_tokens,
+  });
 
   // Extract text blocks and collect all URLs from web_search_tool_result blocks
   const content: any[] = data.content || [];
