@@ -6,6 +6,7 @@ import { users, projects, stakeholderProfiles } from "@/db/schema";
 import { and, eq, desc, gte, isNull } from "drizzle-orm";
 import { serializeStakeholder } from "@/lib/serializers";
 import { inngest } from "@/lib/inngest";
+import { canReadResource } from "@/lib/access";
 
 async function getUserAndProject(email: string, projectId: string) {
   const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
@@ -25,15 +26,24 @@ interface InputStakeholder {
 }
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ projectId: string }> },
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { projectId } = await params;
-  const { project } = await getUserAndProject(session.user.email, projectId);
-  if (!project) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+  const shareToken = new URL(request.url).searchParams.get("shareToken");
+
+  // Owner or a whole-project share may list stakeholders (a single-stakeholder
+  // share only exposes that one person via /api/stakeholders/[id]).
+  const allowed = await canReadResource({
+    email: session.user.email,
+    resourceType: "project",
+    resourceId: projectId,
+    shareToken,
+  });
+  if (!allowed) return NextResponse.json({ error: "Project not found" }, { status: 404 });
 
   const rows = await db
     .select()
