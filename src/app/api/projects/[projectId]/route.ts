@@ -3,11 +3,12 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { projects } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import { serializeProject } from "@/lib/serializers";
+import { canReadResource, getUserByEmail } from "@/lib/access";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   const session = await getServerSession(authOptions);
@@ -16,9 +17,19 @@ export async function GET(
   }
 
   const { projectId } = await params;
+  const shareToken = new URL(request.url).searchParams.get("shareToken");
+
+  const allowed = await canReadResource({
+    email: session.user.email,
+    resourceType: "project",
+    resourceId: projectId,
+    shareToken,
+  });
+  if (!allowed) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   const [project] = await db.select().from(projects).where(eq(projects.id, projectId));
-
   if (!project) {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
@@ -36,6 +47,9 @@ export async function PATCH(
   }
 
   const { projectId } = await params;
+  const user = await getUserByEmail(session.user.email);
+  if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
   const body = await request.json();
 
   // Only allow updating known columns
@@ -47,7 +61,7 @@ export async function PATCH(
   const [project] = await db
     .update(projects)
     .set(patch)
-    .where(eq(projects.id, projectId))
+    .where(and(eq(projects.id, projectId), eq(projects.userId, user.id)))
     .returning();
 
   if (!project) {
@@ -67,8 +81,10 @@ export async function DELETE(
   }
 
   const { projectId } = await params;
+  const user = await getUserByEmail(session.user.email);
+  if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
-  await db.delete(projects).where(eq(projects.id, projectId));
+  await db.delete(projects).where(and(eq(projects.id, projectId), eq(projects.userId, user.id)));
 
   return NextResponse.json({ success: true });
 }

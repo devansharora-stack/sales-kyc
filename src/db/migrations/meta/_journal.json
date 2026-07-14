@@ -22,6 +22,20 @@
       "when": 1782459809719,
       "tag": "0002_smiling_thunderball",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782999985350,
+      "tag": "0003_wooden_glorian",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1784041178083,
+      "tag": "0004_wet_doomsday",
+      "breakpoints": true
     }
   ]
 }

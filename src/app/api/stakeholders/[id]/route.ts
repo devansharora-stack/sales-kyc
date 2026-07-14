@@ -5,24 +5,29 @@ import { db } from "@/lib/db";
 import { users, stakeholderProfiles } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { serializeStakeholder } from "@/lib/serializers";
+import { canReadResource } from "@/lib/access";
 
-// Single stakeholder incl. full profile data (detail view). Ownership-checked.
+// Single stakeholder incl. full profile data (detail view). Owner, a
+// stakeholder-scoped share, or the owning project's share may read.
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.email) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { id } = await params;
-  const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, session.user.email));
-  if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
+  const shareToken = new URL(request.url).searchParams.get("shareToken");
 
-  const [row] = await db
-    .select()
-    .from(stakeholderProfiles)
-    .where(and(eq(stakeholderProfiles.id, id), eq(stakeholderProfiles.userId, user.id)));
+  const allowed = await canReadResource({
+    email: session.user.email,
+    resourceType: "stakeholder",
+    resourceId: id,
+    shareToken,
+  });
+  if (!allowed) return NextResponse.json({ error: "Stakeholder not found" }, { status: 404 });
 
+  const [row] = await db.select().from(stakeholderProfiles).where(eq(stakeholderProfiles.id, id));
   if (!row) return NextResponse.json({ error: "Stakeholder not found" }, { status: 404 });
 
   return NextResponse.json({ stakeholder: serializeStakeholder(row, true) });

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { users, projects, chatSessions } from "@/db/schema";
 import { and, eq, desc, isNull } from "drizzle-orm";
 import { buildChatSystemPrompt, fetchCompanySalesBundle, fetchStakeholderBundle } from "@/lib/chat-context";
+import { runWithUsageContext, recordLlmUsage } from "@/lib/usage-context";
 
 const LOOKUP_COMPANY_TOOL = {
   name: "lookup_company",
@@ -96,6 +97,8 @@ interface StreamResult {
   text: string;
   toolCalls: ToolCall[];
   stopReason: string;
+  inputTokens: number;
+  outputTokens: number;
 }
 
 async function processClaudeStream(
@@ -107,6 +110,8 @@ async function processClaudeStream(
   let fullText = "";
   let lineBuffer = "";
   let stopReason = "end_turn";
+  let inputTokens = 0;
+  let outputTokens = 0;
 
   const toolCalls: ToolCall[] = [];
   let currentBlockType: string | null = null;
@@ -160,10 +165,13 @@ async function processClaudeStream(
               currentToolCall = null;
             }
             currentBlockType = null;
+          } else if (parsed.type === "message_start") {
+            inputTokens = parsed.message?.usage?.input_tokens ?? inputTokens;
           } else if (parsed.type === "message_delta") {
             if (parsed.delta?.stop_reason) {
               stopReason = parsed.delta.stop_reason;
             }
+            outputTokens = parsed.usage?.output_tokens ?? outputTokens;
           }
         } catch {
           // skip unparseable SSE lines
@@ -174,7 +182,7 @@ async function processClaudeStream(
     reader.releaseLock();
   }
 
-  return { text: fullText, toolCalls, stopReason };
+  return { text: fullText, toolCalls, stopReason, inputTokens, outputTokens };
 }
 
 export async function POST(request: Request) {
@@ -281,6 +289,12 @@ export async function POST(request: Request) {
   }
 
   const encoder = new TextEncoder();
+  const chatModel = process.env.ANTHROPIC_DEFAULT_OPUS_MODEL || "claude-opus-4-6";
+  const recordChatUsage = (r: StreamResult) =>
+    runWithUsageContext(
+      { userId: user.id, projectId: effectiveContext.projectId ?? null, agent: "chat", phase: "chat" },
+      () => recordLlmUsage({ provider: "claude", model: chatModel, inputTokens: r.inputTokens, outputTokens: r.outputTokens }),
+    );
 
   const stream = new ReadableStream({
     async start(controller) {
@@ -299,6 +313,7 @@ export async function POST(request: Request) {
       while (rounds-- > 0) {
         if (request.signal.aborted) break;
         const result = await processClaudeStream(currentResponse, controller, encoder);
+        recordChatUsage(result);
         fullResponse += result.text;
         lastStopReason = result.stopReason;
 
@@ -400,6 +415,7 @@ export async function POST(request: Request) {
         try {
           const finalResp = await streamClaude(systemPrompt, apiMessages, undefined, request.signal);
           const finalResult = await processClaudeStream(finalResp, controller, encoder);
+          recordChatUsage(finalResult);
           fullResponse += finalResult.text;
         } catch {
           // keep whatever we have

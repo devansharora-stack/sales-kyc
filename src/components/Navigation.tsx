@@ -29,6 +29,9 @@ export default function Navigation() {
               { href: "/", label: "Dashboard" },
               { href: "/projects", label: "Projects" },
               { href: "/stakeholders", label: "Stakeholders" },
+              ...((session?.user as { isAdmin?: boolean } | undefined)?.isAdmin
+                ? [{ href: "/admin/usage", label: "Usage" }]
+                : []),
             ].map((item) => {
               const isActive =
                 item.href === "/"

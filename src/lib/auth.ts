@@ -1,5 +1,6 @@
 import type { NextAuthOptions } from "next-auth";
 import GoogleProvider from "next-auth/providers/google";
+import { isAdmin } from "@/lib/admin";
 
 // In production, never let NEXTAUTH_URL be a localhost/internal address — that
 // makes Google OAuth redirect users back to localhost after sign-in. Force the
@@ -36,6 +37,12 @@ export const authOptions: NextAuthOptions = {
         return false;
       }
       return false;
+    },
+    async session({ session }) {
+      if (session.user) {
+        (session.user as { isAdmin?: boolean }).isAdmin = isAdmin(session.user.email);
+      }
+      return session;
     },
   },
   pages: {

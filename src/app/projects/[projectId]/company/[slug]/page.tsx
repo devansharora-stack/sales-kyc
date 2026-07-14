@@ -19,6 +19,7 @@ import NumberedList from "@/components/company/NumberedList";
 import CollapsibleItem from "@/components/company/CollapsibleItem";
 import StakeholderDrawer from "@/components/stakeholder/StakeholderDrawer";
 import InfoHint from "@/components/InfoHint";
+import ShareButton from "@/components/ShareButton";
 
 const solName = (id: SolutionId | string) =>
   ALL_SOLUTIONS.find(s => s.id === id)?.name ?? id;
@@ -422,7 +423,8 @@ export default function CompanyPage() {
               <span className="text-slate-400 dark:text-slate-500 text-xs">/100</span>
             </span>
             <RatingBadge rating={company.rating} size="md" />
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
+              {companyProfileId && <ShareButton resourceType="company" resourceId={companyProfileId} />}
               <PdfMenu company={company} />
             </div>
           </div>

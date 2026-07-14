@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { recordLlmUsage } from "@/lib/usage-context";
 
 /**
  * Gemini client that supports two auth modes:
@@ -105,6 +106,13 @@ async function callGeminiOnce({
     },
   });
 
+  recordLlmUsage({
+    provider: "gemini",
+    model: modelId,
+    inputTokens: response.usageMetadata?.promptTokenCount,
+    outputTokens: response.usageMetadata?.candidatesTokenCount,
+  });
+
   return response.text || "";
 }
 
@@ -187,6 +195,13 @@ export async function callGeminiGrounded<T>(options: Omit<GeminiOptions, "useGro
           temperature: options.temperature ?? 0.2,
           tools: [{ googleSearch: {} }],
         },
+      });
+
+      recordLlmUsage({
+        provider: "gemini",
+        model: modelId,
+        inputTokens: response.usageMetadata?.promptTokenCount,
+        outputTokens: response.usageMetadata?.candidatesTokenCount,
       });
 
       const text = response.text || "";

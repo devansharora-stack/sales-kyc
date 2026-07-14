@@ -6,6 +6,7 @@ import { users, projects, researchJobs, researchSteps, companyProfiles } from "@
 import { and, eq, gte, desc, inArray, sql } from "drizzle-orm";
 import { serializeJob } from "@/lib/serializers";
 import { inngest } from "@/lib/inngest";
+import { canReadResource } from "@/lib/access";
 import type { CompanyDetail } from "@/lib/types";
 
 /**
@@ -98,24 +99,9 @@ export async function GET(
   }
 
   const { projectId } = await params;
-
-  // Verify project belongs to this user
-  const [userRecord] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, session.user.email));
-  if (userRecord) {
-    const [project] = await db
-      .select({ id: projects.id })
-      .from(projects)
-      .where(and(eq(projects.id, projectId), eq(projects.userId, userRecord.id)));
-    if (!project) {
-      return NextResponse.json({ error: "Project not found" }, { status: 404 });
-    }
-  }
-
   const { searchParams } = new URL(request.url);
   const slug = searchParams.get("slug");
+  const shareToken = searchParams.get("shareToken");
 
   // If slug is provided, return full profile data for a single company
   if (slug) {
@@ -125,6 +111,18 @@ export async function GET(
       .where(and(eq(companyProfiles.projectId, projectId), eq(companyProfiles.slug, slug)));
 
     if (!profile) {
+      return NextResponse.json({ error: "Company not found" }, { status: 404 });
+    }
+
+    // Read allowed if owner, a company-scoped share for this profile, or a
+    // project-scoped share covering it.
+    const allowed = await canReadResource({
+      email: session.user.email,
+      resourceType: "company",
+      resourceId: profile.id,
+      shareToken,
+    });
+    if (!allowed) {
       return NextResponse.json({ error: "Company not found" }, { status: 404 });
     }
 
@@ -144,6 +142,18 @@ export async function GET(
       ],
       jobs: [],
     });
+  }
+
+  // Full-list read requires owner or a whole-project share (a single-company
+  // share does not expose the rest of the project).
+  const allowedList = await canReadResource({
+    email: session.user.email,
+    resourceType: "project",
+    resourceId: projectId,
+    shareToken,
+  });
+  if (!allowedList) {
+    return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
   // Profiles and jobs are independent — fetch in parallel to cut the
