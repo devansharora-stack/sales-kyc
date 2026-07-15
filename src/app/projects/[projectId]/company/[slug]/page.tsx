@@ -104,8 +104,18 @@ function PdfMenu({ company }: { company: CompanyDetail }) {
   );
 }
 
-export default function CompanyPage() {
+export default function CompanyPage(props?: {
+  projectIdProp?: string;
+  slugProp?: string;
+  shareToken?: string;
+  readOnly?: boolean;
+  headerActions?: React.ReactNode;
+}) {
   const params = useParams();
+  const readOnly = props?.readOnly ?? false;
+  const shareToken = props?.shareToken;
+  const shareQ = shareToken ? `&shareToken=${shareToken}` : "";
+  const shareQ1 = shareToken ? `?shareToken=${shareToken}` : "";
   const [company, setCompany] = useState<CompanyDetail | null>(null);
   const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
@@ -126,11 +136,12 @@ export default function CompanyPage() {
   const [addUrl, setAddUrl] = useState("");
   const [addBusy, setAddBusy] = useState(false);
 
-  const projectId = params.projectId as string;
-  const slug = params.slug as string;
+  const projectId = props?.projectIdProp ?? (params.projectId as string);
+  const slug = props?.slugProp ?? (params.slug as string);
 
   const fetchDeep = (pid: string) => {
-    fetch(`/api/projects/${pid}/stakeholders`)
+    if (readOnly) return; // shared read-only view: no deep-analysis overlay/actions
+    fetch(`/api/projects/${pid}/stakeholders${shareQ1}`)
       .then(r => r.ok ? r.json() : { stakeholders: [] })
       .then(d => setDeepRows(d.stakeholders || []))
       .catch(() => {});
@@ -138,7 +149,7 @@ export default function CompanyPage() {
 
   const fetchCompany = useCallback(() => {
     if (!projectId || !slug) return;
-    fetch(`/api/projects/${projectId}/companies?slug=${slug}`)
+    fetch(`/api/projects/${projectId}/companies?slug=${slug}${shareQ}`)
       .then(r => { if (!r.ok) throw new Error(); return r.json(); })
       .then(data => {
         // API returns { profiles, jobs } — find the matching profile
@@ -149,7 +160,7 @@ export default function CompanyPage() {
         setCompany(profile.data || profile);
       })
       .catch(() => setError(true));
-  }, [projectId, slug]);
+  }, [projectId, slug, shareQ]);
 
   useEffect(() => {
     if (!projectId || !slug) return;
@@ -363,7 +374,7 @@ export default function CompanyPage() {
 
   return (
     <div className="animate-fade-in">
-      <Link href={`/projects/${projectId}`} className="text-sm text-slate-500 dark:text-slate-400 hover:text-[#3289FF] mb-4 inline-flex items-center gap-1 transition-colors">&larr; Back to Project</Link>
+      {!readOnly && <Link href={`/projects/${projectId}`} className="text-sm text-slate-500 dark:text-slate-400 hover:text-[#3289FF] mb-4 inline-flex items-center gap-1 transition-colors">&larr; Back to Project</Link>}
 
       {/* Company Hero Card — scrolls away normally. Nothing here changes height on
           scroll, so the page never jumps (this was the source of the scroll jank). */}
@@ -424,7 +435,9 @@ export default function CompanyPage() {
             </span>
             <RatingBadge rating={company.rating} size="md" />
             <div className="ml-auto flex items-center gap-2">
-              {companyProfileId && <ShareButton resourceType="company" resourceId={companyProfileId} />}
+              {readOnly
+                ? props?.headerActions
+                : (companyProfileId && <ShareButton resourceType="company" resourceId={companyProfileId} />)}
               <PdfMenu company={company} />
             </div>
           </div>
@@ -779,7 +792,7 @@ export default function CompanyPage() {
       {/* TAB: Stakeholders */}
       {activeTab === "stakeholders" && (
         <div className="space-y-6">
-          {pendingReuse.length > 0 && (
+          {!readOnly && pendingReuse.length > 0 && (
             <div className="space-y-2">
               {pendingReuse.map(p => (
                 <div key={p.name} className="card p-4 flex items-center justify-between border-amber-200 dark:border-slate-700 bg-amber-50/40 dark:bg-slate-800/60">
@@ -816,6 +829,7 @@ export default function CompanyPage() {
               title="Key Stakeholders"
               subtitle={`${company.stakeholders.length} contacts identified`}
               action={
+                readOnly ? undefined : (
                 <button
                   onClick={handleDeepAnalyze}
                   disabled={analyzing || selected.size === 0}
@@ -823,6 +837,7 @@ export default function CompanyPage() {
                 >
                   {analyzing ? "Queuing…" : `Deep-analyze ${selected.size} selected`}
                 </button>
+                )
               }
             >
               <div className="flex flex-wrap gap-4 mb-4 pb-3 border-b border-slate-100 dark:border-slate-700">
@@ -864,7 +879,7 @@ export default function CompanyPage() {
                         <div key={i} className={`${tc.bg} border ${tc.border} rounded-lg p-3`}>
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-start gap-2 min-w-0">
-                              {!deep ? (
+                              {readOnly ? null : !deep ? (
                                 <input
                                   type="checkbox"
                                   checked={selected.has(s.name)}
@@ -1003,7 +1018,7 @@ export default function CompanyPage() {
           )}
 
           {/* Add a stakeholder the research missed — scoped to this company */}
-          <div>
+          {!readOnly && <div>
             {!addOpen ? (
               <button onClick={() => { setAddCompany(company.name); setAddOpen(true); }} className="btn-ghost text-sm">
                 + Add stakeholder
@@ -1026,7 +1041,7 @@ export default function CompanyPage() {
                 </div>
               </Card>
             )}
-          </div>
+          </div>}
         </div>
       )}
 
@@ -1039,6 +1054,7 @@ export default function CompanyPage() {
                 matrix={company.stakeholderOfferingMatrix}
                 projectId={projectId}
                 deepByName={deepByName}
+                readOnly={readOnly}
                 onDeepResearch={handleMatrixDeepResearch}
                 onOpenDeep={(id, name, title) => openDrawer(id, { name, title, company: company.name })}
               />

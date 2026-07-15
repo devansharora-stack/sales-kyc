@@ -2,8 +2,8 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { useParams } from "next/navigation";
-import type { CompanyDetail, DeepStakeholderProfile } from "@/lib/types";
-import CompanyReadOnly from "./CompanyReadOnly";
+import type { DeepStakeholderProfile } from "@/lib/types";
+import CompanyPage from "@/app/projects/[projectId]/company/[slug]/page";
 import ProjectReadOnly from "./ProjectReadOnly";
 import AddToProjectDialog from "./AddToProjectDialog";
 import StakeholderProfileView from "@/components/StakeholderProfileView";
@@ -30,7 +30,6 @@ export default function SharedPage() {
   const token = params.token as string;
 
   const [resolved, setResolved] = useState<Resolved | null>(null);
-  const [company, setCompany] = useState<CompanyDetail | null>(null);
   const [stakeholder, setStakeholder] = useState<DeepStakeholderProfile | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,12 +43,7 @@ export default function SharedPage() {
       const res: Resolved = await r.json();
       setResolved(res);
 
-      if (res.resourceType === "company") {
-        const cr = await fetch(`/api/projects/${res.projectId}/companies?slug=${encodeURIComponent(res.slug || "")}&shareToken=${token}`);
-        if (!cr.ok) throw new Error("Could not load the shared company.");
-        const cd = await cr.json();
-        setCompany((cd.profiles?.[0]?.data as CompanyDetail) ?? null);
-      } else if (res.resourceType === "stakeholder") {
+      if (res.resourceType === "stakeholder") {
         const sr = await fetch(`/api/stakeholders/${res.resourceId}?shareToken=${token}`);
         if (!sr.ok) throw new Error("Could not load the shared stakeholder.");
         const sd = await sr.json();
@@ -78,11 +72,16 @@ export default function SharedPage() {
   }
 
   if (resolved.resourceType === "company") {
-    if (!company) return <div className="py-20 text-center text-sm text-slate-400">Loading shared research…</div>;
     return (
       <>
         <ShareBanner />
-        <CompanyReadOnly company={company} actions={<AddToProjectDialog token={token} label="this company" />} />
+        <CompanyPage
+          projectIdProp={resolved.projectId}
+          slugProp={resolved.slug}
+          shareToken={token}
+          readOnly
+          headerActions={<AddToProjectDialog token={token} label="this company" />}
+        />
       </>
     );
   }
