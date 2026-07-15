@@ -33,6 +33,8 @@ interface MatrixPanelProps {
   onDeepResearch: (name: string, title: string) => Promise<void> | void;
   /** Open the existing deep profile in a slide-over (keeps company context). */
   onOpenDeep: (id: string, name: string, title: string) => void;
+  /** Read-only (shared view): hide deep-research / open-profile actions. */
+  readOnly?: boolean;
 }
 
 function deepLabel(status: string): string {
@@ -44,7 +46,7 @@ function deepLabel(status: string): string {
   return "View ▸";
 }
 
-export default function StakeholderMatrixPanel({ matrix, deepByName, onDeepResearch, onOpenDeep }: MatrixPanelProps) {
+export default function StakeholderMatrixPanel({ matrix, deepByName, onDeepResearch, onOpenDeep, readOnly = false }: MatrixPanelProps) {
   const [busy, setBusy] = useState<Set<string>>(new Set());
 
   async function handleResearch(name: string, title: string) {
@@ -110,7 +112,7 @@ export default function StakeholderMatrixPanel({ matrix, deepByName, onDeepResea
                       {row.powerLabel}
                     </span>
                   )}
-                  <div className="mt-1.5">
+                  {!readOnly && <div className="mt-1.5">
                     {(() => {
                       const deep = deepByName.get(normalizeStakeholderName(row.stakeholderName));
                       if (deep) {
@@ -138,7 +140,7 @@ export default function StakeholderMatrixPanel({ matrix, deepByName, onDeepResea
                         </button>
                       );
                     })()}
-                  </div>
+                  </div>}
                   {row.enriched && (
                     <span className="block mt-1 text-[10px] font-medium text-[#3289FF]" title="This row was built using verified deep-research intel">
                       ✦ deep-informed

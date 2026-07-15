@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import type { CompanyDetail, Rating } from "@/lib/types";
+import { useEffect, useState } from "react";
+import type { Rating } from "@/lib/types";
 import RatingBadge from "@/components/company/RatingBadge";
-import CompanyReadOnly from "./CompanyReadOnly";
+import CompanyPage from "@/app/projects/[projectId]/company/[slug]/page";
 
 interface ProfileSummary {
   id: string;
@@ -20,8 +20,7 @@ export default function ProjectReadOnly({ projectId, token }: { projectId: strin
   const [profiles, setProfiles] = useState<ProfileSummary[]>([]);
   const [projectName, setProjectName] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
-  const [selected, setSelected] = useState<CompanyDetail | null>(null);
-  const [loadingCompany, setLoadingCompany] = useState(false);
+  const [selectedSlug, setSelectedSlug] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
@@ -38,23 +37,13 @@ export default function ProjectReadOnly({ projectId, token }: { projectId: strin
     })();
   }, [projectId, token]);
 
-  const openCompany = useCallback(async (slug: string) => {
-    setLoadingCompany(true);
-    try {
-      const cr = await fetch(`/api/projects/${projectId}/companies?slug=${encodeURIComponent(slug)}&shareToken=${token}`);
-      if (cr.ok) setSelected(((await cr.json()).profiles?.[0]?.data as CompanyDetail) ?? null);
-    } finally {
-      setLoadingCompany(false);
-    }
-  }, [projectId, token]);
-
   if (error) return <div className="py-20 text-center text-sm text-slate-500">{error}</div>;
 
-  if (selected) {
+  if (selectedSlug) {
     return (
       <div>
-        <button onClick={() => setSelected(null)} className="btn-ghost text-sm mb-3">← Back to project</button>
-        <CompanyReadOnly company={selected} />
+        <button onClick={() => setSelectedSlug(null)} className="btn-ghost text-sm mb-3">← Back to project</button>
+        <CompanyPage projectIdProp={projectId} slugProp={selectedSlug} shareToken={token} readOnly />
       </div>
     );
   }
@@ -64,13 +53,11 @@ export default function ProjectReadOnly({ projectId, token }: { projectId: strin
       <h1 className="heading-display text-2xl mb-1">{projectName || "Shared project"}</h1>
       <p className="text-sm text-slate-400 mb-6">{profiles.length} compan{profiles.length === 1 ? "y" : "ies"}</p>
 
-      {loadingCompany && <div className="text-sm text-slate-400 mb-3">Loading company…</div>}
-
       <div className="grid sm:grid-cols-2 gap-3">
         {profiles.map((p) => (
           <button
             key={p.id}
-            onClick={() => openCompany(p.slug)}
+            onClick={() => setSelectedSlug(p.slug)}
             className="card p-4 text-left hover:border-[#3289FF]/40 transition-colors"
           >
             <div className="flex items-start justify-between gap-2">
