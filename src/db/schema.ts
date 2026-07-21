@@ -155,6 +155,7 @@ export const llmUsage = kyc.table(
     outputTokens: integer("output_tokens").notNull().default(0),
     projectId: uuid("project_id"),
     companyProfileId: uuid("company_profile_id"),
+    stakeholderId: uuid("stakeholder_id"),
     userId: uuid("user_id"),
     jobId: uuid("job_id"),
     agent: text("agent"),
@@ -192,5 +193,25 @@ export const shares = kyc.table(
     uniqueIndex("idx_shares_token").on(t.token),
     index("idx_shares_resource").on(t.resourceType, t.resourceId),
     index("idx_shares_created_by").on(t.createdBy),
+  ],
+);
+
+// Behavioral activity events for the admin usage dashboard. Only PASSIVE opens
+// are logged here (project/company views); research runs and deep analyses are
+// derived from research_jobs / stakeholder_profiles at read time, not re-logged.
+export const activity = kyc.table(
+  "activity",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    userId: uuid("user_id").references(() => users.id, { onDelete: "cascade" }),
+    type: text("type").notNull(), // "project_open" | "company_open" (+ export/share later)
+    projectId: uuid("project_id"),
+    companyProfileId: uuid("company_profile_id"),
+    label: text("label"), // denormalized project/company name for cheap display
+    createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  },
+  (t) => [
+    index("idx_activity_user").on(t.userId),
+    index("idx_activity_created").on(t.createdAt),
   ],
 );

@@ -3,10 +3,11 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { users, projects, stakeholderProfiles } from "@/db/schema";
-import { and, eq, desc, gte, isNull } from "drizzle-orm";
+import { and, eq, desc, gte } from "drizzle-orm";
 import { serializeStakeholder } from "@/lib/serializers";
 import { inngest } from "@/lib/inngest";
 import { canReadResource } from "@/lib/access";
+import { matchStakeholder, type StakeholderCandidate, type MatchType } from "@/lib/company-match";
 
 async function getUserAndProject(email: string, projectId: string) {
   const [user] = await db.select({ id: users.id }).from(users).where(eq(users.email, email));
@@ -95,32 +96,52 @@ export async function POST(
   cutoffDate.setDate(cutoffDate.getDate() - CACHE_MAX_AGE_DAYS);
 
   const created = [];
-  const existing: { name: string; company: string | null; updated_at: Date | null }[] = [];
-  for (const p of people) {
-    // Look for a fresh, completed analysis of this person to reuse.
-    if (!forceRefresh) {
-      const companyCond = p.company
-        ? eq(stakeholderProfiles.company, p.company)
-        : isNull(stakeholderProfiles.company);
-      const [cached] = await db
+  const existing: {
+    name: string;
+    company: string | null;
+    updated_at: Date | null;
+    matched_name?: string;
+    match_type?: MatchType;
+  }[] = [];
+
+  // Fetch recent completed analyses ONCE (any user/project — this cache is
+  // intentionally shared) and match each input by LinkedIn URL / fuzzy name, so
+  // "Robert Day" and "Robert (Bob) Day" reuse one analysis instead of each
+  // triggering a fresh (paid) LinkedIn scrape.
+  const cachedRows = forceRefresh
+    ? []
+    : await db
         .select()
         .from(stakeholderProfiles)
-        .where(
-          and(
-            eq(stakeholderProfiles.name, p.name),
-            companyCond,
-            eq(stakeholderProfiles.status, "completed"),
-            gte(stakeholderProfiles.updatedAt, cutoffDate),
-          ),
-        )
+        .where(and(eq(stakeholderProfiles.status, "completed"), gte(stakeholderProfiles.updatedAt, cutoffDate)))
         .orderBy(desc(stakeholderProfiles.updatedAt))
-        .limit(1);
+        .limit(1000);
+  const rowById = new Map(cachedRows.map((r) => [r.id, r]));
+  const stakeholderCandidates: StakeholderCandidate[] = cachedRows.map((r) => ({
+    key: r.id,
+    name: r.name,
+    company: r.company,
+    linkedinUrl: r.linkedinUrl,
+  }));
 
-      if (cached) {
-        if (!reuse) {
-          existing.push({ name: p.name, company: p.company, updated_at: cached.updatedAt });
-          continue;
-        }
+  for (const p of people) {
+    // Look for a fresh, completed analysis of this person to reuse.
+    const match = forceRefresh ? null : matchStakeholder(p, stakeholderCandidates);
+    if (match) {
+      const cached = rowById.get(match.key)!;
+      if (!reuse) {
+        // A "similar" match is surfaced for the user to confirm — never
+        // auto-copied — so two different people who share a name aren't merged.
+        existing.push({
+          name: p.name,
+          company: p.company,
+          updated_at: cached.updatedAt,
+          matched_name: cached.name,
+          match_type: match.matchType,
+        });
+        continue;
+      }
+      {
         // User chose "Use existing" — copy the completed profile into this
         // project without re-running the scrape pipeline.
         const [row] = await db

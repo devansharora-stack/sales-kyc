@@ -413,6 +413,7 @@ export interface CompanyDetail {
   fullName: string;
   industry: string;
   subSector: string;
+  domain?: string;
   hqCity: string;
   state: string;
   revenue: CitedValue<string>;

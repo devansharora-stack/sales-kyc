@@ -2,8 +2,49 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { users, researchJobs, stakeholderProfiles } from "@/db/schema";
+import { users, researchJobs, stakeholderProfiles, activity } from "@/db/schema";
 import { and, eq, gte, inArray, lt, or } from "drizzle-orm";
+
+const ALLOWED_ACTIVITY_TYPES = new Set(["project_open", "company_open"]);
+
+/**
+ * Record a passive activity event (project/company open) for the signed-in
+ * user — behavioral telemetry for the admin usage dashboard. Best-effort; a
+ * user can only record their own activity, and failures never surface.
+ */
+export async function POST(request: Request) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ ok: false }, { status: 401 });
+  }
+
+  const body = await request.json().catch(() => ({}));
+  const type = typeof body.type === "string" ? body.type : "";
+  if (!ALLOWED_ACTIVITY_TYPES.has(type)) {
+    return NextResponse.json({ ok: false, error: "Invalid type" }, { status: 400 });
+  }
+
+  try {
+    const [user] = await db
+      .select({ id: users.id })
+      .from(users)
+      .where(eq(users.email, session.user.email))
+      .limit(1);
+    if (user) {
+      await db.insert(activity).values({
+        userId: user.id,
+        type,
+        projectId: typeof body.projectId === "string" ? body.projectId : null,
+        companyProfileId: typeof body.companyProfileId === "string" ? body.companyProfileId : null,
+        label: typeof body.label === "string" ? body.label.slice(0, 200) : null,
+      });
+    }
+  } catch (e) {
+    console.log(`[activity] failed to record: ${e instanceof Error ? e.message : e}`);
+  }
+
+  return NextResponse.json({ ok: true });
+}
 
 // In-progress status sets.
 const COMPANY_ACTIVE = ["queued", "running"] as const;

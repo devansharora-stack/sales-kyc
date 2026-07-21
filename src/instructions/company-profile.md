@@ -22,6 +22,7 @@ Search for: "{company} revenue employees headquarters", "{company} about company
   "fullName": "Full Legal Name Inc.",
   "industry": "Industry Name",
   "subSector": "Sub-Sector Name",
+  "domain": "companywebsite.com",
   "hqCity": "City",
   "state": "ST",
   "revenue": { "value": "$X.XB", "sources": [{ "label": "", "url": "", "date": "", "type": "" }] },

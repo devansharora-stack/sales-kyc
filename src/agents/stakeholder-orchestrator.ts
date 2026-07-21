@@ -131,7 +131,7 @@ export const analyzeStakeholder = inngest.createFunction(
       );
       const intelBrief = await step.run("synthesize", () =>
         runWithUsageContext(
-          { projectId: row.projectId, userId: row.userId, companyProfileId: row.companyProfileId, agent: "stakeholder_deep", phase: "stakeholder" },
+          { projectId: row.projectId, userId: row.userId, companyProfileId: row.companyProfileId, stakeholderId, agent: "stakeholder_deep", phase: "stakeholder" },
           () => synthesizeStakeholder(raw),
         ),
       );

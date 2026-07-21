@@ -83,7 +83,7 @@ export default function ProjectDetailPage() {
   const [newCompanies, setNewCompanies] = useState("");
   const [retrying, setRetrying] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>("score");
-  const [pendingReuse, setPendingReuse] = useState<{ company_name: string; slug: string; updated_at: string | null; days_old?: number | null; source_project?: string | null }[]>([]);
+  const [pendingReuse, setPendingReuse] = useState<{ company_name: string; matched_name?: string; slug: string; updated_at: string | null; days_old?: number | null; source_project?: string | null; match_type?: "domain" | "exact" | "similar" }[]>([]);
   const [resolvingReuse, setResolvingReuse] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
@@ -108,6 +108,17 @@ export default function ProjectDetailPage() {
     fetchData();
   }, [fetchData]);
 
+  // Record a passive "project opened" activity event (best-effort telemetry for
+  // the admin usage dashboard). Fires once per project view; never blocks.
+  useEffect(() => {
+    if (!projectId) return;
+    fetch("/api/activity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "project_open", projectId }),
+    }).catch(() => {});
+  }, [projectId]);
+
   // Poll for live progress while any job is active (replaces Supabase Realtime).
   const hasActiveJobs = jobs.some((j) => j.status === "queued" || j.status === "running");
   useEffect(() => {
@@ -123,7 +134,7 @@ export default function ProjectDetailPage() {
       body: JSON.stringify({ companies: names, ...opts }),
     });
     const data = await res.json().catch(() => ({}));
-    const found = (data?.existing ?? []) as { company_name: string; slug: string; updated_at: string | null; days_old?: number | null; source_project?: string | null }[];
+    const found = (data?.existing ?? []) as { company_name: string; matched_name?: string; slug: string; updated_at: string | null; days_old?: number | null; source_project?: string | null; match_type?: "domain" | "exact" | "similar" }[];
     if (found.length > 0) {
       setPendingReuse((prev) => {
         const seen = new Set(prev.map((p) => p.slug));
@@ -298,12 +309,19 @@ export default function ProjectDetailPage() {
           {pendingReuse.map((p) => (
             <div key={p.slug} className="card p-4 flex items-center justify-between border-amber-200 dark:border-slate-700 bg-amber-50/40 dark:bg-amber-900/30">
               <div>
-                <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                  Found recent research for <span className="font-semibold">{p.company_name}</span>
-                  {typeof p.days_old === "number" && (
-                    <span className="text-slate-500 dark:text-slate-400 font-normal"> ({p.days_old === 0 ? "today" : `${p.days_old} day${p.days_old === 1 ? "" : "s"} old`})</span>
-                  )}
-                </p>
+                {p.match_type === "similar" ? (
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                    Possible match: <span className="font-semibold">{p.matched_name || p.company_name}</span> — did you mean this?
+                    <span className="text-slate-500 dark:text-slate-400 font-normal"> (you entered &ldquo;{p.company_name}&rdquo;)</span>
+                  </p>
+                ) : (
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                    Found recent research for <span className="font-semibold">{p.matched_name || p.company_name}</span>
+                    {typeof p.days_old === "number" && (
+                      <span className="text-slate-500 dark:text-slate-400 font-normal"> ({p.days_old === 0 ? "today" : `${p.days_old} day${p.days_old === 1 ? "" : "s"} old`})</span>
+                    )}
+                  </p>
+                )}
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Last researched {p.updated_at ? new Date(p.updated_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "recently"}
                   {p.source_project ? ` · in "${p.source_project}"` : ""}

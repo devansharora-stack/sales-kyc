@@ -7,16 +7,18 @@ import { and, eq, gte, desc, inArray, sql } from "drizzle-orm";
 import { serializeJob } from "@/lib/serializers";
 import { inngest } from "@/lib/inngest";
 import { canReadResource } from "@/lib/access";
+import { matchCompany, type MatchCandidate, type MatchType } from "@/lib/company-match";
 import type { CompanyDetail } from "@/lib/types";
 
 /**
- * Extract company name from a URL by fetching the page title.
- * Falls back to domain name if fetch fails.
+ * Extract company name (and root domain) from a URL by fetching the page title.
+ * Falls back to the domain name if fetch fails.
  */
-async function extractCompanyFromUrl(url: string): Promise<string> {
+async function extractCompanyFromUrl(url: string): Promise<{ name: string; domain: string }> {
+  let domain = "";
   try {
     const parsed = new URL(url.startsWith("http") ? url : `https://${url}`);
-    const domain = parsed.hostname.replace(/^www\./, "");
+    domain = parsed.hostname.replace(/^www\./, "");
     const domainBase = domain.split(".")[0].toLowerCase();
 
     // Try fetching the page to get the title
@@ -45,7 +47,7 @@ async function extractCompanyFromUrl(url: string): Promise<string> {
       if (ogSiteName) {
         const name = decodeEntities(ogSiteName[1]);
         if (name.length >= 2 && name.length <= 100) {
-          return name;
+          return { name, domain };
         }
       }
 
@@ -58,30 +60,30 @@ async function extractCompanyFromUrl(url: string): Promise<string> {
         if (parts.length > 1) {
           // If any part resembles the domain name, prefer that (e.g., "NextEra Energy" from nexteraenergy.com)
           const domainMatch = parts.find(p => domainBase.includes(p.toLowerCase().replace(/\s+/g, "")));
-          if (domainMatch && domainMatch.length >= 2 && domainMatch.length <= 100) return domainMatch;
+          if (domainMatch && domainMatch.length >= 2 && domainMatch.length <= 100) return { name: domainMatch, domain };
 
           // Otherwise, the company name is usually the shortest part (taglines are longer)
           const sorted = [...parts].sort((a, b) => a.length - b.length);
           const shortest = sorted[0];
-          if (shortest.length >= 2 && shortest.length <= 100) return shortest;
+          if (shortest.length >= 2 && shortest.length <= 100) return { name: shortest, domain };
         }
 
         // Single-part title — check if it looks like a tagline (4+ words, all lowercase style)
         const wordCount = parts[0]?.split(/\s+/).length || 0;
         if (wordCount <= 4 && parts[0].length >= 2 && parts[0].length <= 100) {
-          return parts[0];
+          return { name: parts[0], domain };
         }
       }
     }
 
     // Fallback: capitalize domain name (e.g., "nexteraenergy" → "Nexteraenergy")
     // Try to split camelCase or known patterns
-    const name = domainBase.replace(/([a-z])([A-Z])/g, "$1 $2");
-    return name.charAt(0).toUpperCase() + name.slice(1);
+    const fallback = domainBase.replace(/([a-z])([A-Z])/g, "$1 $2");
+    return { name: fallback.charAt(0).toUpperCase() + fallback.slice(1), domain };
   } catch {
     // Last resort: clean the URL into something usable
     const cleaned = url.replace(/^https?:\/\/(www\.)?/, "").split(/[./]/)[0];
-    return cleaned.charAt(0).toUpperCase() + cleaned.slice(1);
+    return { name: cleaned.charAt(0).toUpperCase() + cleaned.slice(1), domain };
   }
 }
 
@@ -237,19 +239,19 @@ export async function POST(
     .map((c: string) => c.trim())
     .filter((c: string) => c.length > 0 && c.length <= 500);
 
-  // Resolve any URLs to company names
-  const companyNames: string[] = [];
+  // Resolve any URLs to company names, keeping the domain for dedup matching.
+  const companyInputs: { name: string; domain?: string }[] = [];
   for (const input of validInputs) {
     if (looksLikeUrl(input)) {
-      const name = await extractCompanyFromUrl(input);
-      console.log(`[companies] Resolved URL "${input}" → "${name}"`);
-      companyNames.push(name);
+      const { name, domain } = await extractCompanyFromUrl(input);
+      console.log(`[companies] Resolved URL "${input}" → "${name}" (${domain})`);
+      companyInputs.push({ name, domain: domain || undefined });
     } else {
-      companyNames.push(input);
+      companyInputs.push({ name: input });
     }
   }
 
-  if (companyNames.length === 0) {
+  if (companyInputs.length === 0) {
     return NextResponse.json({ error: "No valid companies provided" }, { status: 400 });
   }
 
@@ -291,98 +293,129 @@ export async function POST(
   const jobs = [];
   const existing: {
     company_name: string;
+    matched_name: string;
     slug: string;
     updated_at: Date | null;
     days_old: number | null;
     source_project: string | null;
+    match_type: MatchType;
   }[] = [];
-  for (const companyName of companyNames) {
-    // Normalize slug for cache lookup
-    const normalizedSlug = companyName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
-    // Check for existing cached profile (any project, within 7 days)
-    if (!forceRefresh) {
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - CACHE_MAX_AGE_DAYS);
+  // Fetch all recently-researched profiles ONCE, then match each input against
+  // them in-app (domain / exact / fuzzy). Matching only the exact normalized
+  // name let variants ("Darling" vs "Darling Ingredients" vs typos) slip past
+  // and trigger duplicate research.
+  type CachedRow = {
+    slug: string;
+    jobId: string | null;
+    data: unknown;
+    totalScore: number | null;
+    rating: string | null;
+    industry: string | null;
+    urgency: string | null;
+    primarySolution: string | null;
+    geminiStatus: string | null;
+    updatedAt: Date | null;
+    projectName: string | null;
+  };
+  let candidateRows: CachedRow[] = [];
+  if (!forceRefresh) {
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - CACHE_MAX_AGE_DAYS);
+    candidateRows = await db
+      .select({
+        slug: companyProfiles.slug,
+        jobId: companyProfiles.jobId,
+        data: companyProfiles.data,
+        totalScore: companyProfiles.totalScore,
+        rating: companyProfiles.rating,
+        industry: companyProfiles.industry,
+        urgency: companyProfiles.urgency,
+        primarySolution: companyProfiles.primarySolution,
+        geminiStatus: companyProfiles.geminiStatus,
+        updatedAt: companyProfiles.updatedAt,
+        projectName: projects.name,
+      })
+      .from(companyProfiles)
+      .leftJoin(projects, eq(companyProfiles.projectId, projects.id))
+      .where(gte(companyProfiles.updatedAt, cutoffDate))
+      .orderBy(desc(companyProfiles.updatedAt))
+      .limit(500);
+  }
+  // Newest row per slug (rows are already newest-first).
+  const rowBySlug = new Map<string, CachedRow>();
+  for (const r of candidateRows) if (!rowBySlug.has(r.slug)) rowBySlug.set(r.slug, r);
+  const matchCandidates: MatchCandidate[] = [...rowBySlug.values()].map((r) => ({
+    slug: r.slug,
+    name: (r.data as { name?: string } | null)?.name ?? null,
+    domain: (r.data as { domain?: string } | null)?.domain ?? null,
+  }));
 
-      const [cached] = await db
-        .select({
-          slug: companyProfiles.slug,
-          jobId: companyProfiles.jobId,
-          data: companyProfiles.data,
-          totalScore: companyProfiles.totalScore,
-          rating: companyProfiles.rating,
-          industry: companyProfiles.industry,
-          urgency: companyProfiles.urgency,
-          primarySolution: companyProfiles.primarySolution,
-          geminiStatus: companyProfiles.geminiStatus,
-          updatedAt: companyProfiles.updatedAt,
-          projectName: projects.name,
-        })
-        .from(companyProfiles)
-        .leftJoin(projects, eq(companyProfiles.projectId, projects.id))
-        .where(and(eq(companyProfiles.slug, normalizedSlug), gte(companyProfiles.updatedAt, cutoffDate)))
-        .orderBy(desc(companyProfiles.updatedAt))
-        .limit(1);
+  for (const input of companyInputs) {
+    const companyName = input.name;
+    const match = forceRefresh ? null : matchCompany(companyName, input.domain, matchCandidates);
 
-      if (cached) {
-        // Not yet confirmed by the user — report the hit and let the
-        // frontend prompt "already researched N days ago, refresh?".
-        if (!reuse) {
-          const daysOld = cached.updatedAt
-            ? Math.max(0, Math.floor((Date.now() - new Date(cached.updatedAt).getTime()) / 86400000))
-            : null;
-          existing.push({
-            company_name: companyName,
+    if (match) {
+      const cached = rowBySlug.get(match.slug)!;
+      // Not yet confirmed by the user — report the hit and let the frontend
+      // prompt. A "similar" match is always surfaced (never auto-reused) so the
+      // user confirms it's the same company.
+      if (!reuse) {
+        const daysOld = cached.updatedAt
+          ? Math.max(0, Math.floor((Date.now() - new Date(cached.updatedAt).getTime()) / 86400000))
+          : null;
+        existing.push({
+          company_name: companyName,
+          matched_name: match.name ?? cached.slug,
+          slug: cached.slug,
+          updated_at: cached.updatedAt,
+          days_old: daysOld,
+          source_project: cached.projectName ?? null,
+          match_type: match.matchType,
+        });
+        continue;
+      }
+      // User chose "Use existing" — copy the cached profile to this project.
+      try {
+        await db
+          .insert(companyProfiles)
+          .values({
+            jobId: cached.jobId,
+            projectId,
+            userId: user.id,
             slug: cached.slug,
-            updated_at: cached.updatedAt,
-            days_old: daysOld,
-            source_project: cached.projectName ?? null,
-          });
-          continue;
-        }
-        // User chose "Use existing" — copy the cached profile to this project
-        try {
-          await db
-            .insert(companyProfiles)
-            .values({
+            data: cached.data as CompanyDetail,
+            totalScore: cached.totalScore,
+            rating: cached.rating,
+            industry: cached.industry,
+            urgency: cached.urgency,
+            primarySolution: cached.primarySolution,
+            geminiStatus: cached.geminiStatus,
+          })
+          .onConflictDoUpdate({
+            target: [companyProfiles.projectId, companyProfiles.slug],
+            set: {
               jobId: cached.jobId,
-              projectId,
               userId: user.id,
-              slug: cached.slug,
-              data: cached.data,
+              data: cached.data as CompanyDetail,
               totalScore: cached.totalScore,
               rating: cached.rating,
               industry: cached.industry,
               urgency: cached.urgency,
               primarySolution: cached.primarySolution,
               geminiStatus: cached.geminiStatus,
-            })
-            .onConflictDoUpdate({
-              target: [companyProfiles.projectId, companyProfiles.slug],
-              set: {
-                jobId: cached.jobId,
-                userId: user.id,
-                data: cached.data,
-                totalScore: cached.totalScore,
-                rating: cached.rating,
-                industry: cached.industry,
-                urgency: cached.urgency,
-                primarySolution: cached.primarySolution,
-                geminiStatus: cached.geminiStatus,
-                updatedAt: new Date(),
-              },
-            });
+              updatedAt: new Date(),
+            },
+          });
 
-          jobs.push({ id: cached.jobId, cached: true, company_name: companyName, slug: cached.slug });
-          continue;
-        } catch {
-          // fall through to creating a fresh job
-        }
+        jobs.push({ id: cached.jobId, cached: true, company_name: companyName, slug: cached.slug });
+        continue;
+      } catch {
+        // fall through to creating a fresh job
       }
     }
 
-    // No cache hit — create a new research job
+    // No match — create a new research job
     const [job] = await db
       .insert(researchJobs)
       .values({ projectId, userId: user.id, companyName })

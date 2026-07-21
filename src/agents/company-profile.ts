@@ -23,6 +23,7 @@ interface CompanyProfileOutput {
   fullName: string;
   industry: string;
   subSector: string;
+  domain: string;
   hqCity: string;
   state: string;
   revenue: { value: string; sources: { label: string; url: string; date: string; type: string }[] };
@@ -39,7 +40,7 @@ export async function runCompanyProfile(companyName: string, context?: Record<st
   const prompt = `Research and produce the company profile for: ${companyName}${contextStr}
 
 Search for real, current information about the company:
-1. Company official website and about page
+1. Company official website and about page — capture the primary web domain (e.g. "almabase.com"), root domain only, no protocol or path
 2. Recent revenue figures (10-K filings, earnings releases, news)
 3. Employee count (company website, LinkedIn, recent filings)
 4. Headquarters location

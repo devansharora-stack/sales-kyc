@@ -168,6 +168,18 @@ export default function CompanyPage(props?: {
     fetchDeep(projectId);
   }, [projectId, slug, fetchCompany]);
 
+  // Record a passive "company opened" activity event (best-effort telemetry for
+  // the admin usage dashboard). Skipped in shared read-only views. Never blocks.
+  useEffect(() => {
+    if (readOnly || !companyProfileId) return;
+    fetch("/api/activity", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ type: "company_open", projectId, companyProfileId, label: company?.name ?? slug }),
+    }).catch(() => {});
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [readOnly, companyProfileId, projectId]);
+
   const deepByName = new Map(deepRows.map(d => [normalizeStakeholderName(d.name), d]));
 
   const hasActiveDeep = deepRows.some(d => ["queued", "resolving", "scraping", "synthesizing"].includes(d.status));
