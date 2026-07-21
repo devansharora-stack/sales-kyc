@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { isAdmin } from "@/lib/admin";
 import { db } from "@/lib/db";
-import { users, researchJobs, stakeholderProfiles, activity } from "@/db/schema";
+import { users, researchJobs, stakeholderProfiles, activity, projects, companyProfiles } from "@/db/schema";
 import { and, desc, eq, gte, inArray, lt, sql, type SQL, type AnyColumn } from "drizzle-orm";
 
 const TZ = "America/New_York";
@@ -75,9 +75,18 @@ export async function GET(request: Request) {
   if (userList.length) opConds.push(inArray(users.email, userList));
   if (companyList.length) opConds.push(inArray(activity.label, companyList));
   const opRows = await db
-    .select({ email: users.email, type: activity.type, label: activity.label, at: activity.createdAt })
+    .select({
+      email: users.email,
+      type: activity.type,
+      // project_open didn't always store a name — resolve it from the linked
+      // project/company so the feed shows the real name, not "(unknown)".
+      label: sql<string>`coalesce(${activity.label}, ${projects.name}, ${companyProfiles.data}->>'name', '(unknown)')`,
+      at: activity.createdAt,
+    })
     .from(activity)
     .leftJoin(users, eq(activity.userId, users.id))
+    .leftJoin(projects, eq(activity.projectId, projects.id))
+    .leftJoin(companyProfiles, eq(activity.companyProfileId, companyProfiles.id))
     .where(whereOf(opConds))
     .orderBy(desc(activity.createdAt))
     .limit(limit);

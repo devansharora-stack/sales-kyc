@@ -77,6 +77,8 @@ export async function GET(request: Request) {
       inputTokens: sql<number>`sum(${llmUsage.inputTokens})::int`,
       outputTokens: sql<number>`sum(${llmUsage.outputTokens})::int`,
       lastActivity: sql<string>`max(${llmUsage.createdAt})`.as("last_activity"),
+      // Which user(s) drove this row — "who researched/analyzed it".
+      who: sql<string>`string_agg(distinct coalesce(${users.email}, ${L}), ', ')`,
     })
     .from(llmUsage)
     .leftJoin(researchJobs, eq(llmUsage.jobId, researchJobs.id))
@@ -88,7 +90,7 @@ export async function GET(request: Request) {
     .where(where)
     .groupBy(GROUP_LABEL[group], llmUsage.model);
 
-  const byLabel = new Map<string, { inputTokens: number; outputTokens: number; costUsd: number; lastActivity: string | null }>();
+  const byLabel = new Map<string, { inputTokens: number; outputTokens: number; costUsd: number; lastActivity: string | null; who: Set<string> }>();
   const byModel = new Map<string, { inputTokens: number; outputTokens: number; costUsd: number }>();
   let totalIn = 0;
   let totalOut = 0;
@@ -97,11 +99,12 @@ export async function GET(request: Request) {
   for (const r of rows) {
     const cost = estimateCostUsd(r.model, r.inputTokens, r.outputTokens);
     const label = String(r.label ?? LOCAL);
-    const l = byLabel.get(label) || { inputTokens: 0, outputTokens: 0, costUsd: 0, lastActivity: null };
+    const l = byLabel.get(label) || { inputTokens: 0, outputTokens: 0, costUsd: 0, lastActivity: null, who: new Set<string>() };
     l.inputTokens += r.inputTokens;
     l.outputTokens += r.outputTokens;
     l.costUsd += cost;
     if (r.lastActivity && (!l.lastActivity || r.lastActivity > l.lastActivity)) l.lastActivity = r.lastActivity;
+    for (const email of String(r.who ?? "").split(", ").filter(Boolean)) l.who.add(email);
     byLabel.set(label, l);
 
     const m = byModel.get(r.model) || { inputTokens: 0, outputTokens: 0, costUsd: 0 };
@@ -139,7 +142,10 @@ export async function GET(request: Request) {
   }
 
   const breakdown = [...byLabel.entries()]
-    .map(([label, v]) => ({ label, ...v, tokens: v.inputTokens + v.outputTokens }))
+    .map(([label, v]) => {
+      const { who, ...rest } = v;
+      return { label, ...rest, tokens: v.inputTokens + v.outputTokens, who: [...who].join(", ") };
+    })
     .sort((a, b) => b.costUsd - a.costUsd);
 
   const models = [...byModel.entries()]

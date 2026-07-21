@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState, useCallback } from "react";
 type Group = "company" | "stakeholder" | "user" | "project";
 type SortKey = "cost" | "tokens" | "name" | "recency";
 
-interface Row { label: string; tokens: number; inputTokens: number; outputTokens: number; costUsd: number; lastActivity?: string | null; }
+interface Row { label: string; tokens: number; inputTokens: number; outputTokens: number; costUsd: number; lastActivity?: string | null; who?: string; }
 interface ModelRow { model: string; tokens: number; inputTokens: number; outputTokens: number; costUsd: number; }
 interface SeriesPoint { day: string; tokens: number; costUsd: number; }
 interface Options { users: { id: string; email: string }[]; companies: { slug: string; name: string }[]; }
@@ -278,10 +278,15 @@ export default function UsageDashboard({ preview }: { preview?: (g: Group) => Us
               <tbody>
                 {sortedBreakdown.map((r) => (
                   <tr key={r.label} className="border-b border-slate-50 dark:border-slate-800 last:border-0">
-                    <td className="px-4 py-2 text-slate-700 dark:text-slate-200">
-                      <div className="flex items-center gap-2">
-                        <span className="inline-block h-1.5 rounded-full bg-[#3289FF]/40" style={{ width: `${Math.max(4, (r.costUsd / maxRow) * 80)}px` }} />
-                        <span className="truncate max-w-[220px]">{r.label}</span>
+                    <td className="px-4 py-2 text-slate-700 dark:text-slate-200 align-top">
+                      <div className="flex items-start gap-2">
+                        <span className="inline-block h-1.5 rounded-full bg-[#3289FF]/40 mt-2 shrink-0" style={{ width: `${Math.max(4, (r.costUsd / maxRow) * 80)}px` }} />
+                        <div className="min-w-0">
+                          <div className="break-words" title={r.label}>{r.label}</div>
+                          {r.who && (data.groupBy === "company" || data.groupBy === "stakeholder") && (
+                            <div className="text-[11px] text-slate-400 dark:text-slate-500 break-words">by {r.who}</div>
+                          )}
+                        </div>
                       </div>
                     </td>
                     <td className="px-4 py-2 text-right text-slate-500 dark:text-slate-400">{fmtTokens(r.inputTokens)}</td>
