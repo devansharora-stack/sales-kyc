@@ -37,18 +37,21 @@ export async function GET(request: Request) {
   // Second users alias for the project's owner (llm_usage.userId already joins users).
   const projectOwner = alias(users, "project_owner");
 
-  // The fallback label MUST be inlined as raw SQL text (not `${LOCAL}`, which
-  // drizzle turns into a bind param). A param renders with different indices in
-  // SELECT vs GROUP BY, so Postgres treats them as different expressions and
-  // rejects the GROUP BY. LOCAL is a fixed constant, so raw-inlining is safe.
+  // Fallback for rows with no entity attribution. Only NULL user = genuinely
+  // local/test (scripts, no logged-in user) → "Local development". A real user
+  // with no company/project (e.g. chat) is "Untracked", NOT local dev — don't
+  // lump real people's usage into local dev.
+  // NOTE: must be inlined literals (not bind params) so the expression renders
+  // identically in SELECT and GROUP BY (a param mismatch breaks the GROUP BY).
+  const FB = sql`case when ${llmUsage.userId} is null then 'Local development' else 'Untracked' end`;
   const L = sql.raw(`'${LOCAL}'`);
   const GROUP_LABEL: Record<Group, ReturnType<typeof sql>> = {
-    user: sql`coalesce(${users.email}, ${L})`,
+    user: sql`coalesce(${users.email}, ${FB})`,
     // company identity = display name (consistent with jobs/stakeholders/activity).
-    company: sql`coalesce(${companyProfiles.data}->>'name', ${researchJobs.companyName}, ${L})`,
+    company: sql`coalesce(${companyProfiles.data}->>'name', ${researchJobs.companyName}, ${FB})`,
     // stakeholder = the analyzed person.
-    stakeholder: sql`coalesce(${stakeholderProfiles.name}, ${L})`,
-    project: sql`case when ${projects.name} is not null then ${projects.name} || coalesce(' · ' || ${projectOwner.email}, '') else ${L} end`,
+    stakeholder: sql`coalesce(${stakeholderProfiles.name}, ${FB})`,
+    project: sql`case when ${projects.name} is not null then ${projects.name} || coalesce(' · ' || ${projectOwner.email}, '') else ${FB} end`,
   };
 
   // ET day-bucket expression — timezone inlined (not a bind param) so SELECT and
