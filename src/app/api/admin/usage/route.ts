@@ -37,13 +37,18 @@ export async function GET(request: Request) {
   // Second users alias for the project's owner (llm_usage.userId already joins users).
   const projectOwner = alias(users, "project_owner");
 
+  // The fallback label MUST be inlined as raw SQL text (not `${LOCAL}`, which
+  // drizzle turns into a bind param). A param renders with different indices in
+  // SELECT vs GROUP BY, so Postgres treats them as different expressions and
+  // rejects the GROUP BY. LOCAL is a fixed constant, so raw-inlining is safe.
+  const L = sql.raw(`'${LOCAL}'`);
   const GROUP_LABEL: Record<Group, ReturnType<typeof sql>> = {
-    user: sql`coalesce(${users.email}, ${LOCAL})`,
+    user: sql`coalesce(${users.email}, ${L})`,
     // company identity = display name (consistent with jobs/stakeholders/activity).
-    company: sql`coalesce(${companyProfiles.data}->>'name', ${researchJobs.companyName}, ${LOCAL})`,
-    // stakeholder = the analyzed person; owner shown for context on projects.
-    stakeholder: sql`coalesce(${stakeholderProfiles.name}, ${LOCAL})`,
-    project: sql`case when ${projects.name} is not null then ${projects.name} || coalesce(' · ' || ${projectOwner.email}, '') else ${LOCAL} end`,
+    company: sql`coalesce(${companyProfiles.data}->>'name', ${researchJobs.companyName}, ${L})`,
+    // stakeholder = the analyzed person.
+    stakeholder: sql`coalesce(${stakeholderProfiles.name}, ${L})`,
+    project: sql`case when ${projects.name} is not null then ${projects.name} || coalesce(' · ' || ${projectOwner.email}, '') else ${L} end`,
   };
 
   // ET day-bucket expression — timezone inlined (not a bind param) so SELECT and
