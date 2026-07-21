@@ -318,10 +318,18 @@ export async function runVerification(profile: CompanyDetail): Promise<{
   // ========================================
 
   if (corrected.stakeholders?.length) {
+    // Lusha-sourced people are already verified as currently-employed with real
+    // LinkedIn URLs. Skip the liveness check for them — LinkedIn frequently
+    // blocks/ times out bot HEAD requests, which would wrongly strip good URLs.
     const stakeholderChecks = await Promise.allSettled(
       corrected.stakeholders.map(async (s) => ({
         name: s.name,
-        status: s.sourceUrl ? await checkUrlStatus(s.sourceUrl) : "unknown" as UrlStatus,
+        status:
+          s.source === "Lusha"
+            ? ("live" as UrlStatus)
+            : s.sourceUrl
+              ? await checkUrlStatus(s.sourceUrl)
+              : ("unknown" as UrlStatus),
       }))
     );
 

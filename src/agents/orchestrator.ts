@@ -30,6 +30,7 @@ import { runFinancialSignal } from "./financial-signal";
 import { runTriggerScanner } from "./trigger-scanner";
 import { runPainPointAnalyzer } from "./pain-point-analyzer";
 import { runStakeholderResearcher } from "./stakeholder-researcher";
+import { getDecisionMakers } from "@/lib/lusha";
 import { runPartnerLandscape } from "./partner-landscape";
 import { runStakeholderOfferingMapper } from "./stakeholder-offering-mapper";
 import { runSolutionMapper } from "./solution-mapper";
@@ -159,9 +160,18 @@ export const researchCompany = inngest.createFunction(
               },
             })
           ),
-          runAgentStep(jobId, "stakeholder_researcher", () =>
-            runStakeholderResearcher(companyName)
-          ),
+          runAgentStep(jobId, "stakeholder_researcher", async () => {
+            // Primary: Lusha decision-makers — current people + real LinkedIn
+            // URLs, free preview. Fixes ghost stakeholders on thin-web companies.
+            const domain = safe(profile.domain, "");
+            if (domain) {
+              const viaLusha = await getDecisionMakers(domain);
+              if (viaLusha.length > 0) return viaLusha;
+            }
+            // Fallback: Gemini-grounded researcher (with currency guardrails)
+            // when Lusha has no coverage or no domain was resolved.
+            return runStakeholderResearcher(companyName);
+          }),
           runAgentStep(jobId, "partner_landscape", () =>
             runPartnerLandscape({
               companyName,
@@ -410,6 +420,7 @@ export const researchCompany = inngest.createFunction(
         fullName: profile.fullName,
         industry: profile.industry,
         subSector: profile.subSector,
+        domain: safe(profile.domain, ""),
         hqCity: profile.hqCity,
         state: profile.state,
         revenue: profile.revenue,

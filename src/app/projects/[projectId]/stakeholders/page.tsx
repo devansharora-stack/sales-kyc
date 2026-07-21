@@ -48,6 +48,8 @@ interface PendingReuse {
   input: StakeholderInput;
   inputType: "manual" | "csv";
   updated_at: string | null;
+  matched_name?: string;
+  match_type?: "linkedin" | "domain" | "exact" | "similar";
 }
 
 export default function ProjectStakeholdersPage() {
@@ -87,12 +89,12 @@ export default function ProjectStakeholdersPage() {
       body: JSON.stringify({ stakeholders: people, inputType }),
     });
     const data = await res.json().catch(() => ({}));
-    const found = (data?.existing ?? []) as { name: string; company: string | null; updated_at: string | null }[];
+    const found = (data?.existing ?? []) as { name: string; company: string | null; updated_at: string | null; matched_name?: string; match_type?: PendingReuse["match_type"] }[];
     if (found.length > 0) {
       const matched: PendingReuse[] = found
-        .map((f) => {
+        .map((f): PendingReuse | null => {
           const input = people.find((p) => p.name === f.name && (p.company || null) === (f.company || null));
-          return input ? { input, inputType, updated_at: f.updated_at } : null;
+          return input ? { input, inputType, updated_at: f.updated_at, matched_name: f.matched_name, match_type: f.match_type } : null;
         })
         .filter((x): x is PendingReuse => x !== null);
       setPendingReuse((prev) => [...prev, ...matched]);
@@ -137,10 +139,17 @@ export default function ProjectStakeholdersPage() {
             return (
               <div key={key} className="card p-4 flex items-center justify-between border-amber-200 dark:border-amber-900/30 bg-amber-50/40 dark:bg-amber-900/30">
                 <div>
-                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                    <span className="font-semibold">{item.input.name}</span>
-                    {item.input.company ? ` @ ${item.input.company}` : ""} already analyzed
-                  </p>
+                  {item.match_type === "similar" ? (
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                      Possible match: <span className="font-semibold">{item.matched_name || item.input.name}</span> already analyzed — same person?
+                      <span className="text-slate-500 dark:text-slate-400 font-normal"> (you entered &ldquo;{item.input.name}&rdquo;)</span>
+                    </p>
+                  ) : (
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                      <span className="font-semibold">{item.matched_name || item.input.name}</span>
+                      {item.input.company ? ` @ ${item.input.company}` : ""} already analyzed
+                    </p>
+                  )}
                   <p className="text-xs text-slate-500 dark:text-slate-400">
                     Last updated {item.updated_at ? new Date(item.updated_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "recently"} &middot; reusing skips the LinkedIn scrape
                   </p>

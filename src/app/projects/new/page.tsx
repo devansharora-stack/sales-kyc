@@ -19,7 +19,7 @@ export default function NewProjectPage() {
   // or re-research — instead of silently copying the cached profile.
   const [createdProjectId, setCreatedProjectId] = useState<string | null>(null);
   const [pendingReuse, setPendingReuse] = useState<
-    { company_name: string; slug: string; updated_at: string | null; days_old?: number | null; source_project?: string | null }[]
+    { company_name: string; matched_name?: string; slug: string; updated_at: string | null; days_old?: number | null; source_project?: string | null; match_type?: "domain" | "exact" | "similar" }[]
   >([]);
   const [resolvingReuse, setResolvingReuse] = useState<string | null>(null);
 
@@ -163,12 +163,19 @@ export default function NewProjectPage() {
           {pendingReuse.map((p) => (
             <div key={p.slug} className="card p-4 flex items-center justify-between border-amber-200 dark:border-amber-900/30 bg-amber-50/40 dark:bg-amber-900/20">
               <div>
-                <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
-                  Found recent research for <span className="font-semibold">{p.company_name}</span>
-                  {typeof p.days_old === "number" && (
-                    <span className="text-slate-500 dark:text-slate-400 font-normal"> ({p.days_old === 0 ? "today" : `${p.days_old} day${p.days_old === 1 ? "" : "s"} old`})</span>
-                  )}
-                </p>
+                {p.match_type === "similar" ? (
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                    Possible match: <span className="font-semibold">{p.matched_name || p.company_name}</span> — did you mean this?
+                    <span className="text-slate-500 dark:text-slate-400 font-normal"> (you entered &ldquo;{p.company_name}&rdquo;)</span>
+                  </p>
+                ) : (
+                  <p className="text-sm font-medium text-slate-800 dark:text-slate-100">
+                    Found recent research for <span className="font-semibold">{p.matched_name || p.company_name}</span>
+                    {typeof p.days_old === "number" && (
+                      <span className="text-slate-500 dark:text-slate-400 font-normal"> ({p.days_old === 0 ? "today" : `${p.days_old} day${p.days_old === 1 ? "" : "s"} old`})</span>
+                    )}
+                  </p>
+                )}
                 <p className="text-xs text-slate-500 dark:text-slate-400">
                   Last researched {p.updated_at ? new Date(p.updated_at).toLocaleDateString(undefined, { year: "numeric", month: "short", day: "numeric" }) : "recently"}
                   {p.source_project ? ` · in "${p.source_project}"` : ""}

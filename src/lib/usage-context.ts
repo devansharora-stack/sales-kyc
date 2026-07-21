@@ -7,6 +7,7 @@ import { llmUsage } from "@/db/schema";
 export interface UsageContext {
   projectId?: string | null;
   companyProfileId?: string | null;
+  stakeholderId?: string | null;
   userId?: string | null;
   jobId?: string | null;
   agent?: string | null;
@@ -50,6 +51,7 @@ export function recordLlmUsage(u: RecordUsageInput): void {
       outputTokens: output,
       projectId: ctx.projectId ?? null,
       companyProfileId: ctx.companyProfileId ?? null,
+      stakeholderId: ctx.stakeholderId ?? null,
       userId: ctx.userId ?? null,
       jobId: ctx.jobId ?? null,
       agent: ctx.agent ?? null,

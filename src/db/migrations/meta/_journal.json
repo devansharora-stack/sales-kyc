@@ -36,6 +36,13 @@
       "when": 1784041178083,
       "tag": "0004_wet_doomsday",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1784554826079,
+      "tag": "0005_bitter_exodus",
+      "breakpoints": true
     }
   ]
 }
