@@ -100,11 +100,12 @@ async function runAgentStep<T>(
 export const researchCompany = inngest.createFunction(
   {
     id: "research-company",
-    // Bumped from 0 so transient step failures (provider 429s, empty responses)
-    // auto-retry instead of failing the whole account — important at batch scale.
+    // Step-level retries so transient failures auto-recover.
     retries: 2,
-    // Bumped from 5 to run larger batches faster; monitor provider rate limits.
-    concurrency: [{ limit: 10 }],
+    // 5 is the safe ceiling: at 10, concurrent Gemini calls throttled Vertex
+    // into empty responses en masse. Paired with the empty-response retry in
+    // gemini.ts, 5 completes batches reliably.
+    concurrency: [{ limit: 5 }],
     triggers: [{ event: "research/company.start" }],
   },
   async ({ event, step }: { event: { data: { jobId: string; companyName: string; companyContext?: Record<string, string> } }; step: { run: <T>(id: string, fn: () => Promise<T>) => Promise<T> } }) => {
