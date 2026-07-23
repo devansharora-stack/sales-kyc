@@ -357,7 +357,11 @@ export async function callGeminiGrounded<T>(options: Omit<GeminiOptions, "useGro
           error.message.includes("TimeoutError") ||
           error.message.includes("network") ||
           error.message.includes("JSON") ||
-          error.message.includes("parse"));
+          error.message.includes("parse") ||
+          // Empty completion — almost always transient throttling under load.
+          // Retry with backoff instead of hard-failing the whole agent/job.
+          error.message.includes("no text") ||
+          error.message.includes("empty response"));
 
       if (isRetryable && attempt < maxRetries - 1) {
         const backoff = error.message.includes("JSON") || error.message.includes("parse")
