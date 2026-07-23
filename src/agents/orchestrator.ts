@@ -100,8 +100,11 @@ async function runAgentStep<T>(
 export const researchCompany = inngest.createFunction(
   {
     id: "research-company",
-    retries: 0,
-    concurrency: [{ limit: 5 }],
+    // Bumped from 0 so transient step failures (provider 429s, empty responses)
+    // auto-retry instead of failing the whole account — important at batch scale.
+    retries: 2,
+    // Bumped from 5 to run larger batches faster; monitor provider rate limits.
+    concurrency: [{ limit: 10 }],
     triggers: [{ event: "research/company.start" }],
   },
   async ({ event, step }: { event: { data: { jobId: string; companyName: string; companyContext?: Record<string, string> } }; step: { run: <T>(id: string, fn: () => Promise<T>) => Promise<T> } }) => {
