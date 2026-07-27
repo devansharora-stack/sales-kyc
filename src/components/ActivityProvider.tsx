@@ -10,7 +10,7 @@ import {
 } from "react";
 
 export type ActivityItem = {
-  type: "company" | "stakeholder";
+  type: "company" | "stakeholder" | "portfolio";
   id: string;
   status: string;
   projectId: string | null;
@@ -18,6 +18,8 @@ export type ActivityItem = {
   companyName?: string;
   // present for stakeholder items
   name?: string;
+  // present for portfolio items
+  projectName?: string;
 };
 
 type Toast = { id: string; message: string };
@@ -40,13 +42,15 @@ const POLL_ACTIVE_MS = 5000; // poll fast while work is in flight
 const POLL_IDLE_MS = 30000; // back off when idle
 
 function labelFor(item: ActivityItem): string {
-  return item.type === "company" ? item.companyName ?? "Company" : item.name ?? "Stakeholder";
+  if (item.type === "company") return item.companyName ?? "Company";
+  if (item.type === "portfolio") return item.projectName ?? "Portfolio GTM";
+  return item.name ?? "Stakeholder";
 }
 
 function doneMessageFor(item: ActivityItem): string {
-  return item.type === "company"
-    ? `✓ ${labelFor(item)} research complete`
-    : `✓ ${labelFor(item)} analyzed`;
+  if (item.type === "company") return `✓ ${labelFor(item)} research complete`;
+  if (item.type === "portfolio") return `✓ ${labelFor(item)} portfolio GTM ready`;
+  return `✓ ${labelFor(item)} analyzed`;
 }
 
 export default function ActivityProvider({ children }: { children: React.ReactNode }) {

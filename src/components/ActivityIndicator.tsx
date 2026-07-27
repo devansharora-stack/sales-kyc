@@ -5,10 +5,20 @@ import Link from "next/link";
 import { useActivity, type ActivityItem } from "./ActivityProvider";
 
 function labelFor(item: ActivityItem): string {
-  return item.type === "company" ? item.companyName ?? "Company" : item.name ?? "Stakeholder";
+  if (item.type === "company") return item.companyName ?? "Company";
+  if (item.type === "portfolio") return item.projectName ?? "Portfolio GTM";
+  return item.name ?? "Stakeholder";
 }
 
-function statusLabel(status: string): string {
+const TYPE_LABEL: Record<ActivityItem["type"], string> = {
+  company: "Company",
+  stakeholder: "Stakeholder",
+  portfolio: "Portfolio GTM",
+};
+
+function statusLabel(item: ActivityItem): string {
+  const status = item.status;
+  if (item.type === "portfolio") return status === "queued" ? "Queued" : "Consolidating";
   switch (status) {
     case "queued":
       return "Queued";
@@ -71,15 +81,16 @@ export default function ActivityIndicator() {
                   <div className="min-w-0 flex-1">
                     <div className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{labelFor(item)}</div>
                     <div className="text-[10px] text-slate-400 dark:text-slate-500">
-                      {item.type === "company" ? "Company" : "Stakeholder"} · {statusLabel(item.status)}
+                      {TYPE_LABEL[item.type]} · {statusLabel(item)}
                     </div>
                   </div>
                 </div>
               );
+              const href = item.type === "portfolio" ? `/projects/${item.projectId}/gtm` : `/projects/${item.projectId}`;
               return item.projectId ? (
                 <Link
                   key={`${item.type}-${item.id}`}
-                  href={`/projects/${item.projectId}`}
+                  href={href}
                   onClick={() => setOpen(false)}
                   className="block"
                 >
