@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { users, researchJobs, stakeholderProfiles, activity } from "@/db/schema";
+import { users, researchJobs, stakeholderProfiles, activity, projects } from "@/db/schema";
 import { and, eq, gte, inArray, lt, or } from "drizzle-orm";
 
 const ALLOWED_ACTIVITY_TYPES = new Set(["project_open", "company_open"]);
@@ -49,6 +49,7 @@ export async function POST(request: Request) {
 // In-progress status sets.
 const COMPANY_ACTIVE = ["queued", "running"] as const;
 const STAKEHOLDER_ACTIVE = ["queued", "resolving", "scraping", "synthesizing"] as const;
+const PORTFOLIO_ACTIVE = ["queued", "running"] as const;
 
 // Recently-done window: items finished within the last ~2 minutes.
 const RECENT_WINDOW_MS = 2 * 60 * 1000;
@@ -57,6 +58,7 @@ const RECENT_WINDOW_MS = 2 * 60 * 1000;
 // status update was interrupted) is a zombie and must not show as in-progress.
 const COMPANY_STALE_MS = 2 * 60 * 60 * 1000; // 2h
 const STAKEHOLDER_STALE_MS = 60 * 60 * 1000; // 1h
+const PORTFOLIO_STALE_MS = 2 * 60 * 60 * 1000; // 2h
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -76,6 +78,7 @@ export async function GET() {
   const since = new Date(Date.now() - RECENT_WINDOW_MS);
   const companyStaleCutoff = new Date(Date.now() - COMPANY_STALE_MS);
   const stakeholderStaleCutoff = new Date(Date.now() - STAKEHOLDER_STALE_MS);
+  const portfolioStaleCutoff = new Date(Date.now() - PORTFOLIO_STALE_MS);
 
   // research_jobs: genuinely active (queued/running, progress < 100, started
   // recently) OR recently completed.
@@ -125,6 +128,30 @@ export async function GET() {
       ),
     );
 
+  // projects: a portfolio-GTM rollup that's generating (queued/running) OR just
+  // completed. portfolio_gtm_at is bumped on every status change, so it doubles
+  // as the staleness guard and the completion timestamp.
+  const projectRows = await db
+    .select({
+      id: projects.id,
+      name: projects.name,
+      status: projects.portfolioGtmStatus,
+      at: projects.portfolioGtmAt,
+    })
+    .from(projects)
+    .where(
+      and(
+        eq(projects.userId, user.id),
+        or(
+          and(
+            inArray(projects.portfolioGtmStatus, [...PORTFOLIO_ACTIVE]),
+            gte(projects.portfolioGtmAt, portfolioStaleCutoff),
+          ),
+          and(eq(projects.portfolioGtmStatus, "completed"), gte(projects.portfolioGtmAt, since)),
+        ),
+      ),
+    );
+
   const active: Array<Record<string, unknown>> = [];
   const recentlyDone: Array<Record<string, unknown>> = [];
 
@@ -166,6 +193,12 @@ export async function GET() {
         projectId: s.projectId,
       });
     }
+  }
+
+  for (const p of projectRows) {
+    const item = { type: "portfolio", id: p.id, projectName: p.name, status: p.status ?? "", projectId: p.id };
+    if ((PORTFOLIO_ACTIVE as readonly string[]).includes(p.status ?? "")) active.push(item);
+    else if (p.at && p.at >= since) recentlyDone.push(item);
   }
 
   return NextResponse.json({ active, recentlyDone });

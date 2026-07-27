@@ -65,7 +65,7 @@ export async function POST(_request: Request, { params }: { params: Promise<{ pr
 
   await db
     .update(projects)
-    .set({ portfolioGtmStatus: "queued", portfolioGtmError: null })
+    .set({ portfolioGtmStatus: "queued", portfolioGtmError: null, portfolioGtmAt: new Date() })
     .where(eq(projects.id, projectId));
 
   await inngest.send({ name: "portfolio/gtm.start", data: { projectId } });

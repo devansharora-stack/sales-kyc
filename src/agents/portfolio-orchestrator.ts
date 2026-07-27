@@ -23,7 +23,7 @@ export const generatePortfolioGTM = inngest.createFunction(
 
     await db
       .update(projects)
-      .set({ portfolioGtmStatus: "running", portfolioGtmError: null })
+      .set({ portfolioGtmStatus: "running", portfolioGtmError: null, portfolioGtmAt: new Date() })
       .where(eq(projects.id, projectId));
 
     try {
@@ -52,7 +52,7 @@ export const generatePortfolioGTM = inngest.createFunction(
       const message = err instanceof Error ? err.message : String(err);
       await db
         .update(projects)
-        .set({ portfolioGtmStatus: "failed", portfolioGtmError: message })
+        .set({ portfolioGtmStatus: "failed", portfolioGtmError: message, portfolioGtmAt: new Date() })
         .where(eq(projects.id, projectId));
       throw err;
     }
