@@ -2,7 +2,7 @@
 
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
-import type { CompanyDetail, Source, SolutionId, SolutionMapping, EstimatedImpact, DeepStakeholderProfile } from "@/lib/types";
+import type { CompanyDetail, Source, SolutionId, SolutionMapping, EstimatedImpact, DeepStakeholderProfile, PortfolioGTM } from "@/lib/types";
 import { ALL_SOLUTIONS, RATING_LABELS } from "@/lib/types";
 
 const solName = (id: SolutionId | string) =>
@@ -1277,4 +1277,159 @@ export function generateStakeholderPDF(p: DeepStakeholderProfile) {
 
   const slug = (p.fullName || "stakeholder").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
   doc.save(`${slug}-stakeholder-intel.pdf`);
+}
+
+export function generatePortfolioGTMPDF(gtm: PortfolioGTM) {
+  const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+  patchUnicode(doc);
+  const W = doc.internal.pageSize.getWidth();
+  const H = doc.internal.pageSize.getHeight();
+  const M = 15;
+  const CW = W - M * 2;
+  let y = M;
+
+  const setColor = (c: readonly [number, number, number]) => doc.setTextColor(c[0], c[1], c[2]);
+  const checkPage = (needed: number) => { if (y + needed > H - 15) { doc.addPage(); y = M; } };
+  const drawRect = (x: number, yy: number, w: number, h: number, c: readonly [number, number, number]) => {
+    doc.setFillColor(c[0], c[1], c[2]);
+    doc.rect(x, yy, w, h, "F");
+  };
+
+  function heading(text: string, size = 13) {
+    checkPage(14);
+    y += 3;
+    doc.setFontSize(size);
+    doc.setFont("helvetica", "bold");
+    setColor(DARK);
+    doc.text(text, M, y);
+    y += size * 0.4 + 3;
+  }
+  function body(text: string, indent = 0) {
+    if (!text) return;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    setColor(SLATE700);
+    for (const line of doc.splitTextToSize(text, CW - indent)) {
+      checkPage(4.6);
+      doc.text(line, M + indent, y);
+      y += 4.6;
+    }
+    y += 1.5;
+  }
+  function bullet(text: string, indent = 4) {
+    if (!text) return;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    setColor(SLATE700);
+    const lines = doc.splitTextToSize(text, CW - indent - 3);
+    lines.forEach((line: string, i: number) => {
+      checkPage(4.6);
+      doc.text(i === 0 ? "- " + line : "  " + line, M + indent, y);
+      y += 4.6;
+    });
+  }
+
+  // ─── Title ───
+  drawTitle();
+  function drawTitle() {
+    drawRect(0, 0, W, 30, DARK);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    setColor(WHITE);
+    doc.text("Portfolio GTM Strategy", M, 15);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.text(`${gtm.projectName} · ${gtm.accountCount} accounts · ${gtm.generatedDate}`, M, 23);
+    y = 38;
+  }
+
+  // 1. Thesis
+  heading("1. Territory thesis");
+  body(gtm.thesis);
+
+  // 2. The number
+  heading("2. The number");
+  bullet(`Aggregate estimated first-year opportunity: ${gtm.theNumber.aggregateFirstYear}`);
+  bullet(`Aggregate expansion potential: ${gtm.theNumber.aggregateExpansion}`);
+  if (gtm.theNumber.sharedEntryMotion) bullet(gtm.theNumber.sharedEntryMotion);
+  y += 1;
+  body(gtm.theNumber.commentary);
+
+  // 3. The wedge
+  heading("3. The wedge & expansion path");
+  if (gtm.wedge.entrySolution) body(`Entry wedge: ${gtm.wedge.entrySolution}`);
+  if (gtm.wedge.universalPain) body(`Universal pain: ${gtm.wedge.universalPain}`);
+  if (gtm.wedge.positioning) body(gtm.wedge.positioning);
+  gtm.wedge.expansionPath.forEach((s, i) => bullet(`${i + 1}. ${s.offering} — ${s.rationale}`));
+
+  // 4. Tiering
+  heading("4. Account tiering");
+  for (const tier of gtm.tiers) {
+    if (!tier.accounts.length) continue;
+    checkPage(10);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    setColor(SLATE700);
+    doc.text(`Tier ${tier.tier} — ${tier.label} (${tier.accounts.length})`, M, y);
+    y += 5;
+    if (tier.criteria) body(tier.criteria);
+    autoTable(doc, {
+      startY: y,
+      margin: { left: M, right: M },
+      head: [["Account", "Score", "Opp", "Est. Y1", "Why now"]],
+      body: tier.accounts.map((a) => [
+        a.name,
+        `${a.totalScore} (${a.rating})`,
+        a.opportunityScore != null ? String(a.opportunityScore) : "—",
+        a.estimatedFirstYear,
+        a.whyNow,
+      ]),
+      styles: { fontSize: 7.5, cellPadding: 1.5, valign: "top" },
+      headStyles: { fillColor: [50, 137, 255], fontSize: 8 },
+      columnStyles: { 0: { cellWidth: 32 }, 1: { cellWidth: 18 }, 2: { cellWidth: 12 }, 3: { cellWidth: 24 }, 4: { cellWidth: "auto" } },
+      theme: "grid",
+    });
+    // @ts-expect-error jspdf-autotable augments doc with lastAutoTable
+    y = (doc.lastAutoTable?.finalY ?? y) + 5;
+  }
+
+  // 5. Segment playbooks
+  heading("5. Segment playbooks");
+  for (const seg of gtm.segmentPlaybooks) {
+    checkPage(8);
+    doc.setFontSize(9.5);
+    doc.setFont("helvetica", "bold");
+    setColor(SLATE700);
+    doc.text(`${seg.segment} (${seg.accounts.length})`, M, y);
+    y += 4.6;
+    if (seg.play) body(seg.play, 4);
+  }
+
+  // 6. Buying committee
+  heading("6. Buying-committee pattern");
+  bullet(`Champion: ${gtm.buyingCommittee.champion}`);
+  bullet(`Economic buyer: ${gtm.buyingCommittee.economicBuyer}`);
+  bullet(`Strategic sign-off: ${gtm.buyingCommittee.signOff}`);
+  bullet(`Operational entry: ${gtm.buyingCommittee.operationalEntry}`);
+
+  // 7. Action plan
+  heading("7. Sequenced action plan");
+  for (const w of gtm.actionPlan) {
+    checkPage(8);
+    doc.setFontSize(9.5);
+    doc.setFont("helvetica", "bold");
+    setColor(SLATE700);
+    doc.text(`${w.wave} — ${w.focus}`, M, y);
+    y += 4.6;
+    for (const a of w.actions) bullet(a, 6);
+  }
+
+  // 8. Data-quality notes
+  if (gtm.dataQualityNotes.length) {
+    heading("8. Data-quality notes");
+    for (const n of gtm.dataQualityNotes) bullet(n);
+  }
+
+  const slug = (gtm.projectName || "portfolio").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+  doc.save(`${slug}-portfolio-gtm.pdf`);
 }

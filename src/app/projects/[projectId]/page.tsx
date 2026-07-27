@@ -239,6 +239,12 @@ export default function ProjectDetailPage() {
           </button>
           <ShareButton resourceType="project" resourceId={projectId} />
           <Link
+            href={`/projects/${projectId}/gtm`}
+            className="btn-ghost text-xs text-[#3289FF]"
+          >
+            Portfolio GTM
+          </Link>
+          <Link
             href={`/projects/${projectId}/stakeholders`}
             className="btn-ghost text-xs text-[#3289FF]"
           >

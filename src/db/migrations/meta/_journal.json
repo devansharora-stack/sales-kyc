@@ -43,6 +43,13 @@
       "when": 1784554826079,
       "tag": "0005_bitter_exodus",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1785156229084,
+      "tag": "0006_friendly_maximus",
+      "breakpoints": true
     }
   ]
 }

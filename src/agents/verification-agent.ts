@@ -318,14 +318,15 @@ export async function runVerification(profile: CompanyDetail): Promise<{
   // ========================================
 
   if (corrected.stakeholders?.length) {
-    // Lusha-sourced people are already verified as currently-employed with real
-    // LinkedIn URLs. Skip the liveness check for them — LinkedIn frequently
-    // blocks/ times out bot HEAD requests, which would wrongly strip good URLs.
+    // Lusha-sourced people and any resolved LinkedIn /in/ URL are already
+    // verified. Skip the liveness check for them — LinkedIn frequently blocks/
+    // times out bot HEAD requests, which would wrongly strip good URLs.
+    const isLinkedInProfile = (url: string | undefined) => /linkedin\.com\/in\//i.test(url || "");
     const stakeholderChecks = await Promise.allSettled(
       corrected.stakeholders.map(async (s) => ({
         name: s.name,
         status:
-          s.source === "Lusha"
+          s.source === "Lusha" || isLinkedInProfile(s.sourceUrl)
             ? ("live" as UrlStatus)
             : s.sourceUrl
               ? await checkUrlStatus(s.sourceUrl)
