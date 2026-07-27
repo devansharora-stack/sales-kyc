@@ -48,7 +48,9 @@ export async function GET(request: Request) {
   const GROUP_LABEL: Record<Group, ReturnType<typeof sql>> = {
     user: sql`coalesce(${users.email}, ${FB})`,
     // company identity = display name (consistent with jobs/stakeholders/activity).
-    company: sql`coalesce(${companyProfiles.data}->>'name', ${researchJobs.companyName}, ${FB})`,
+    // FSR bulk-research accounts (run from Devansh's account on Keshav's behalf)
+    // get a "(FSR – Keshav)" tag so that spend isn't read as personal usage.
+    company: sql`coalesce(${companyProfiles.data}->>'name', ${researchJobs.companyName}, ${FB}) || case when ${projects.name} ilike 'FSR%' then ' (FSR – Keshav)' else '' end`,
     // stakeholder = the analyzed person.
     stakeholder: sql`coalesce(${stakeholderProfiles.name}, ${FB})`,
     project: sql`case when ${projects.name} is not null then ${projects.name} || coalesce(' · ' || ${projectOwner.email}, '') else ${FB} end`,
