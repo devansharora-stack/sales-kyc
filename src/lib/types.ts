@@ -495,3 +495,70 @@ export interface CompanyProfile {
   created_at: string;
   updated_at: string;
 }
+
+// === Portfolio-Rollup GTM (project-level consolidated strategy) ===
+
+export type PortfolioGTMStatus = "idle" | "queued" | "running" | "completed" | "failed";
+
+export interface PortfolioTierAccount {
+  slug: string;
+  name: string;
+  totalScore: number;
+  rating: Rating;
+  opportunityScore?: number; // primary-solution opportunity score (1-10) if known
+  estimatedFirstYear: string; // display string, e.g. "$400–800K"
+  whyNow: string; // one-line, trigger-anchored (LLM)
+}
+
+export interface PortfolioTier {
+  tier: 1 | 2 | 3;
+  label: string; // "Strike now" | "Near-term" | "Nurture"
+  criteria: string; // what puts an account in this tier (LLM)
+  accounts: PortfolioTierAccount[];
+}
+
+export interface PortfolioSegment {
+  segment: string; // e.g. "Regulated electric/gas utilities"
+  accounts: string[]; // account names in this segment
+  play: string; // how the wedge is tailored for this segment (LLM)
+}
+
+export interface PortfolioExpansionStep {
+  offering: string;
+  rationale: string; // why this expansion recurs across the book (LLM)
+}
+
+export interface PortfolioWave {
+  wave: string; // "Wave 1 (wk 1–2)"
+  focus: string;
+  actions: string[];
+}
+
+export interface PortfolioGTM {
+  projectName: string;
+  accountCount: number;
+  generatedDate: string;
+  thesis: string; // the one-line + supporting narrative
+  theNumber: {
+    aggregateFirstYear: string; // computed, formatted (never LLM)
+    aggregateExpansion: string; // computed, formatted
+    sharedEntryMotion: string; // computed, e.g. "35 of 40 lead with Value Finder Workshop"
+    commentary: string; // LLM framing of the numbers
+  };
+  wedge: {
+    entrySolution: string;
+    universalPain: string;
+    positioning: string;
+    expansionPath: PortfolioExpansionStep[];
+  };
+  tiers: PortfolioTier[];
+  segmentPlaybooks: PortfolioSegment[];
+  buyingCommittee: {
+    champion: string;
+    economicBuyer: string;
+    signOff: string;
+    operationalEntry: string;
+  };
+  actionPlan: PortfolioWave[];
+  dataQualityNotes: string[];
+}
