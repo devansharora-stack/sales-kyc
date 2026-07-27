@@ -90,11 +90,18 @@ export default function PortfolioGTMPage() {
       {loading && <p className="text-sm text-slate-400">Loading…</p>}
 
       {!loading && isActive && (
-        <div className="card p-6 text-center">
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Rolling up every completed account into one consolidated strategy… this runs in the background and can take a
-            couple of minutes. This page will update automatically.
-          </p>
+        <div className="card p-10 flex flex-col items-center justify-center text-center gap-4">
+          <span className="w-9 h-9 rounded-full border-2 border-slate-200 dark:border-slate-700 border-t-[#3289FF] animate-spin" />
+          <div>
+            <p className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+              {data?.status === "queued" ? "Queued…" : "Consolidating the territory…"}
+            </p>
+            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 max-w-md">
+              Rolling up every researched account into one strategy — aggregating opportunity, tiering the strike list,
+              and finding the shared play. This runs in the background and can take a couple of minutes; the page updates
+              automatically.
+            </p>
+          </div>
         </div>
       )}
 
@@ -107,7 +114,8 @@ export default function PortfolioGTMPage() {
       {!loading && !gtm && !isActive && data?.status !== "failed" && (
         <div className="card p-6 text-center">
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            No rollup yet. Generate a consolidated, Brett-style GTM across every completed account in this project.
+            No rollup yet. Turn every researched account in this project into one consolidated go-to-market
+            strategy — a shared thesis, a tiered strike list, and one repeatable play.
           </p>
         </div>
       )}

@@ -119,13 +119,14 @@ export default function ProjectDetailPage() {
     }).catch(() => {});
   }, [projectId]);
 
-  // Poll for live progress while any job is active (replaces Supabase Realtime).
+  // Poll for live progress while any job — research OR the portfolio rollup — is active.
+  const portfolioGenerating = project?.portfolio_gtm_status === "queued" || project?.portfolio_gtm_status === "running";
   const hasActiveJobs = jobs.some((j) => j.status === "queued" || j.status === "running");
   useEffect(() => {
-    if (!hasActiveJobs) return;
+    if (!hasActiveJobs && !portfolioGenerating) return;
     const interval = setInterval(fetchData, 3000);
     return () => clearInterval(interval);
-  }, [hasActiveJobs, fetchData]);
+  }, [hasActiveJobs, portfolioGenerating, fetchData]);
 
   async function postCompanies(names: string[], opts?: { reuse?: boolean; forceRefresh?: boolean }) {
     const res = await fetch(`/api/projects/${projectId}/companies`, {
@@ -240,9 +241,12 @@ export default function ProjectDetailPage() {
           <ShareButton resourceType="project" resourceId={projectId} />
           <Link
             href={`/projects/${projectId}/gtm`}
-            className="btn-ghost text-xs text-[#3289FF]"
+            className="btn-ghost text-xs text-[#3289FF] flex items-center gap-1.5"
           >
-            Portfolio GTM
+            {portfolioGenerating && (
+              <span className="w-1.5 h-1.5 rounded-full bg-[#3289FF] inline-block animate-pulse-dot" />
+            )}
+            {portfolioGenerating ? "Portfolio GTM · generating…" : "Portfolio GTM"}
           </Link>
           <Link
             href={`/projects/${projectId}/stakeholders`}
@@ -355,10 +359,25 @@ export default function ProjectDetailPage() {
       )}
 
       {/* Active Research */}
-      {activeJobs.length > 0 && (
+      {(activeJobs.length > 0 || portfolioGenerating) && (
         <div className="mb-6">
           <h2 className="text-sm font-semibold text-slate-600 dark:text-slate-300 mb-3">Active Research</h2>
           <div className="space-y-2">
+            {portfolioGenerating && (
+              <Link href={`/projects/${projectId}/gtm`} className="card p-3 block hover:border-[#3289FF]/30 transition-colors">
+                <div className="flex items-center justify-between mb-1">
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-300">Portfolio GTM rollup</p>
+                  <span className="text-[10px] text-[#3289FF] font-medium capitalize">{project?.portfolio_gtm_status}</span>
+                </div>
+                <p className="text-[10px] text-[#3289FF] mb-1 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#3289FF] inline-block animate-pulse-dot" />
+                  Consolidating every completed account into one strategy…
+                </p>
+                <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                  <div className="h-full bg-[#3289FF] rounded-full animate-pulse" style={{ width: "60%" }} />
+                </div>
+              </Link>
+            )}
             {activeJobs.map((job) => {
               const completedSteps = job.research_steps?.filter((s) => s.status === "completed").length || 0;
               const totalSteps = job.research_steps?.length || 10;

@@ -18,6 +18,7 @@ export function serializeProject(p: ProjectRow) {
     description: p.description,
     status: p.status,
     company_count: p.companyCount,
+    portfolio_gtm_status: (p.portfolioGtmStatus ?? "idle") as "idle" | "queued" | "running" | "completed" | "failed",
     created_at: iso(p.createdAt),
     updated_at: iso(p.updatedAt),
   };

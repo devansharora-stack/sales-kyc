@@ -448,6 +448,7 @@ export interface Project {
   description: string | null;
   status: "active" | "archived";
   company_count: number;
+  portfolio_gtm_status: PortfolioGTMStatus;
   created_at: string;
   updated_at: string;
 }
