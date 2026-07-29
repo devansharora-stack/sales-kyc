@@ -29,10 +29,11 @@ const GROUPS: { id: Group; label: string }[] = [
   { id: "project", label: "Project" },
 ];
 
-type Preset = "all" | "today" | "7d" | "30d" | "mtd" | "lastMonth" | "ytd" | "custom";
+type Preset = "all" | "today" | "yesterday" | "7d" | "30d" | "mtd" | "lastMonth" | "ytd" | "custom";
 const PRESETS: { id: Preset; label: string }[] = [
   { id: "all", label: "All time" },
   { id: "today", label: "Today" },
+  { id: "yesterday", label: "Yesterday" },
   { id: "7d", label: "Last 7 days" },
   { id: "30d", label: "Last 30 days" },
   { id: "mtd", label: "Month to date" },
@@ -53,6 +54,7 @@ function rangeForPreset(p: Preset, from: string, to: string): { from: string; to
   switch (p) {
     case "all": return { from, to, allTime: true };
     case "today": return { from: today, to: today, allTime: false };
+    case "yesterday": { const y = isoDay(new Date(Date.now() - 86400000)); return { from: y, to: y, allTime: false }; }
     case "7d": return { from: isoDay(new Date(Date.now() - 6 * 86400000)), to: today, allTime: false };
     case "30d": return { from: isoDay(new Date(Date.now() - 29 * 86400000)), to: today, allTime: false };
     case "mtd": return { from: isoDay(new Date(now.getFullYear(), now.getMonth(), 1)), to: today, allTime: false };
@@ -266,8 +268,9 @@ export default function UsageDashboard({ preview }: { preview?: (g: Group) => Us
 
           <div className="card p-0 mb-6 overflow-hidden">
             <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-700"><p className="text-sm font-semibold text-slate-700 dark:text-slate-200">By {data.groupBy}</p></div>
+            <div className="max-h-[28rem] overflow-auto">
             <table className="w-full text-sm">
-              <thead><tr className="text-left text-label border-b border-slate-100 dark:border-slate-700">
+              <thead><tr className="text-left text-label border-b border-slate-100 dark:border-slate-700 [&>th]:sticky [&>th]:top-0 [&>th]:z-10 [&>th]:bg-white dark:[&>th]:bg-slate-900">
                 <th className="px-4 py-2 cursor-pointer" onClick={() => toggleSort("name")}>{data.groupBy}{sortArrow("name")}</th>
                 <th className="px-4 py-2 text-right">Input</th>
                 <th className="px-4 py-2 text-right">Output</th>
@@ -299,6 +302,7 @@ export default function UsageDashboard({ preview }: { preview?: (g: Group) => Us
                 {sortedBreakdown.length === 0 && <tr><td colSpan={6} className="px-4 py-6 text-center text-slate-400">No usage in this range.</td></tr>}
               </tbody>
             </table>
+            </div>
           </div>
 
           {/* Activity feed */}
