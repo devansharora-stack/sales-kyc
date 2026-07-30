@@ -7,7 +7,7 @@ import { and, eq, gte, desc, inArray, sql } from "drizzle-orm";
 import { serializeJob } from "@/lib/serializers";
 import { inngest } from "@/lib/inngest";
 import { canReadResource } from "@/lib/access";
-import { matchCompany, type MatchCandidate, type MatchType } from "@/lib/company-match";
+import { matchCompany, cleanDomain, type MatchCandidate, type MatchType } from "@/lib/company-match";
 import type { CompanyDetail } from "@/lib/types";
 
 /**
@@ -233,15 +233,20 @@ export async function POST(
   const body = await request.json();
   const rawCompanies = body.companies || [];
 
-  // Validate, sanitize, and resolve URLs to company names
-  const validInputs: string[] = rawCompanies
-    .filter((c: unknown): c is string => typeof c === "string")
-    .map((c: string) => c.trim())
-    .filter((c: string) => c.length > 0 && c.length <= 500);
-
-  // Resolve any URLs to company names, keeping the domain for dedup matching.
+  // Each item may be a plain string (name or URL) OR a { name, domain } object
+  // — the disambiguation picker sends the chosen candidate as an object so its
+  // domain anchors research directly, no re-fetch.
   const companyInputs: { name: string; domain?: string }[] = [];
-  for (const input of validInputs) {
+  for (const raw of Array.isArray(rawCompanies) ? rawCompanies : []) {
+    if (raw && typeof raw === "object" && typeof raw.name === "string") {
+      const nm = raw.name.trim();
+      const dom = typeof raw.domain === "string" ? cleanDomain(raw.domain) : "";
+      if (nm && nm.length <= 500) companyInputs.push({ name: nm, domain: dom || undefined });
+      continue;
+    }
+    if (typeof raw !== "string") continue;
+    const input = raw.trim();
+    if (!input || input.length > 500) continue;
     if (looksLikeUrl(input)) {
       const { name, domain } = await extractCompanyFromUrl(input);
       console.log(`[companies] Resolved URL "${input}" → "${name}" (${domain})`);

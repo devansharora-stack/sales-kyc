@@ -6,6 +6,9 @@ import Link from "next/link";
 import type { Project, ResearchJob, ResearchStep, Rating, SalesIntelligence, SalesMotionType } from "@/lib/types";
 import CSVUpload from "@/components/CSVUpload";
 import ShareButton from "@/components/ShareButton";
+import DisambiguationModal, { type Candidate } from "@/components/DisambiguationModal";
+
+const looksLikeUrl = (s: string) => /^https?:\/\//i.test(s) || /^www\./i.test(s) || /\.[a-z]{2,}(\/|$)/i.test(s);
 
 const RATING_STYLES: Record<Rating, string> = {
   A: "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-slate-700",
@@ -85,6 +88,8 @@ export default function ProjectDetailPage() {
   const [sortBy, setSortBy] = useState<SortKey>("score");
   const [pendingReuse, setPendingReuse] = useState<{ company_name: string; matched_name?: string; slug: string; updated_at: string | null; days_old?: number | null; source_project?: string | null; match_type?: "domain" | "exact" | "similar" }[]>([]);
   const [resolvingReuse, setResolvingReuse] = useState<string | null>(null);
+  const [disambig, setDisambig] = useState<{ name: string; candidates: Candidate[] } | null>(null);
+  const [disambigBusy, setDisambigBusy] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -128,7 +133,10 @@ export default function ProjectDetailPage() {
     return () => clearInterval(interval);
   }, [hasActiveJobs, portfolioGenerating, fetchData]);
 
-  async function postCompanies(names: string[], opts?: { reuse?: boolean; forceRefresh?: boolean }) {
+  async function postCompanies(
+    names: (string | { name: string; domain?: string })[],
+    opts?: { reuse?: boolean; forceRefresh?: boolean },
+  ) {
     const res = await fetch(`/api/projects/${projectId}/companies`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -148,9 +156,55 @@ export default function ProjectDetailPage() {
     const names = newCompanies.split(/[\n,;]+/).map((s) => s.trim()).filter(Boolean);
     if (names.length === 0) return;
     setAddingCompanies(true);
+
+    // Single bare name → disambiguate first so we research the RIGHT company
+    // (many companies share a name). Bulk adds / URLs skip this.
+    if (names.length === 1 && !looksLikeUrl(names[0])) {
+      try {
+        const res = await fetch(`/api/projects/${projectId}/companies/disambiguate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ name: names[0] }),
+        });
+        const data = await res.json().catch(() => ({}));
+        const candidates = (data?.candidates ?? []) as Candidate[];
+        if (candidates.length > 1) {
+          setDisambig({ name: names[0], candidates });
+          setAddingCompanies(false);
+          return; // wait for the user's pick
+        }
+        // 0 or 1 candidate — proceed, anchoring to the single candidate's domain if we got one.
+        await postCompanies(candidates.length === 1 ? [{ name: candidates[0].name, domain: candidates[0].domain }] : names);
+      } finally {
+        setNewCompanies("");
+        setAddingCompanies(false);
+        fetchData();
+      }
+      return;
+    }
+
     await postCompanies(names);
     setNewCompanies("");
     setAddingCompanies(false);
+    fetchData();
+  }
+
+  async function handlePickCandidate(c: Candidate) {
+    setDisambigBusy(true);
+    await postCompanies([{ name: c.name, domain: c.domain }]);
+    setDisambig(null);
+    setDisambigBusy(false);
+    setNewCompanies("");
+    fetchData();
+  }
+
+  async function handleResearchAsTyped() {
+    if (!disambig) return;
+    setDisambigBusy(true);
+    await postCompanies([disambig.name]);
+    setDisambig(null);
+    setDisambigBusy(false);
+    setNewCompanies("");
     fetchData();
   }
 
@@ -312,6 +366,18 @@ export default function ProjectDetailPage() {
           />
         </div>
       </div>
+
+      {/* Disambiguation picker — many companies can share a name */}
+      {disambig && (
+        <DisambiguationModal
+          name={disambig.name}
+          candidates={disambig.candidates}
+          busy={disambigBusy}
+          onPick={handlePickCandidate}
+          onResearchAsTyped={handleResearchAsTyped}
+          onClose={() => setDisambig(null)}
+        />
+      )}
 
       {/* Existing-research prompts */}
       {pendingReuse.length > 0 && (
