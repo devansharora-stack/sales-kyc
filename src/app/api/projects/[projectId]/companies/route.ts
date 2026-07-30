@@ -158,6 +158,18 @@ export async function GET(
     return NextResponse.json({ error: "Project not found" }, { status: 404 });
   }
 
+  // Self-heal: a job's terminal "mark completed" write runs in a separate Inngest
+  // step after the profile is saved; if that step is interrupted, the job is left
+  // at running/queued forever and lingers in "Active Research" even though it's
+  // done. Reconcile any such job (a profile exists) to completed on load.
+  await db.execute(sql`
+    update sales_kyc.research_jobs j
+    set status = 'completed', progress = 100, completed_at = coalesce(j.completed_at, now())
+    where j.project_id = ${projectId}
+      and j.status in ('queued', 'running')
+      and exists (select 1 from sales_kyc.company_profiles p where p.job_id = j.id)
+  `);
+
   // Profiles and jobs are independent — fetch in parallel to cut the
   // (region-distant) DB round-trips on this hot path.
   const [profileRows, jobRows] = await Promise.all([
