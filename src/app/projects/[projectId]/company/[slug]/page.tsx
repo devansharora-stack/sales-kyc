@@ -397,6 +397,17 @@ export default function CompanyPage(props?: {
               <h1 className="heading-display text-3xl mb-1">{company.name}</h1>
               {company.fullName !== company.name && <p className="text-sm text-slate-500 dark:text-slate-400">{company.fullName}</p>}
               <p className="text-sm text-slate-400 dark:text-slate-500 mt-1">{company.industry} &middot; {company.subSector} &middot; {company.hqCity}, {company.state}</p>
+              {company.domain && (
+                <a
+                  href={`https://${company.domain.replace(/^https?:\/\//, "")}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm text-[#3289FF] hover:underline mt-1"
+                >
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10" /><path d="M2 12h20M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" /></svg>
+                  {company.domain.replace(/^https?:\/\//, "").replace(/\/$/, "")}
+                </a>
+              )}
             </div>
             <div className="flex flex-col items-end gap-2 shrink-0">
               <div className="flex items-baseline gap-1.5">
