@@ -415,10 +415,13 @@ export async function POST(
       }
     }
 
-    // No match — create a new research job
+    // No match — create a new research job. Carry the resolved domain (from a
+    // pasted URL) as context so the profile agent pins to the RIGHT company
+    // rather than a same-named one.
+    const companyContext = input.domain ? { domain: input.domain } : {};
     const [job] = await db
       .insert(researchJobs)
-      .values({ projectId, userId: user.id, companyName })
+      .values({ projectId, userId: user.id, companyName, companyContext })
       .returning();
 
     if (job) {
@@ -434,7 +437,7 @@ export async function POST(
       // Trigger Inngest pipeline
       await inngest.send({
         name: "research/company.start",
-        data: { jobId: job.id, companyName },
+        data: { jobId: job.id, companyName, ...(input.domain ? { companyContext } : {}) },
       });
 
       jobs.push(serializeJob(job));

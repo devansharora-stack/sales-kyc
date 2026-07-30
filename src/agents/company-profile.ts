@@ -33,11 +33,19 @@ interface CompanyProfileOutput {
 }
 
 export async function runCompanyProfile(companyName: string, context?: Record<string, string>): Promise<CompanyProfileOutput> {
-  const contextStr = context && Object.keys(context).length > 0
-    ? `\n\nAdditional context: ${JSON.stringify(context)}`
+  const domain = (context?.domain || "").trim();
+  // A provided domain is a HARD disambiguation anchor — many companies share a
+  // name (e.g. "MedVision Solutions"), so pin research to the exact company at
+  // this website instead of letting the model pick a same-named entity.
+  const anchorStr = domain
+    ? `\n\nCRITICAL — COMPANY IDENTITY: Research ONLY the specific company whose official website is ${domain}. Multiple different companies may share the name "${companyName}"; you must profile the one at ${domain} and no other. Treat ${domain} as the source of truth, cross-check every fact against it, and ignore any source that clearly refers to a different company with a similar name. Set the profile's domain to ${domain}.`
+    : "";
+  const otherContext = context ? Object.fromEntries(Object.entries(context).filter(([k]) => k !== "domain")) : {};
+  const contextStr = Object.keys(otherContext).length > 0
+    ? `\n\nAdditional context: ${JSON.stringify(otherContext)}`
     : "";
 
-  const prompt = `Research and produce the company profile for: ${companyName}${contextStr}
+  const prompt = `Research and produce the company profile for: ${companyName}${anchorStr}${contextStr}
 
 Search for real, current information about the company:
 1. Company official website and about page — capture the primary web domain (e.g. "almabase.com"), root domain only, no protocol or path
