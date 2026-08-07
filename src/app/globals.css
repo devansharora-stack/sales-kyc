@@ -220,6 +220,59 @@ body {
 .stagger-3 { animation-delay: 0.15s; }
 .stagger-4 { animation-delay: 0.2s; }
 
+/* Login live-console scan sweep + fit-bar grow */
+@keyframes scanSweep {
+  0%   { transform: translateY(-100%); opacity: 0; }
+  40%  { opacity: 1; }
+  100% { transform: translateY(320%); opacity: 0; }
+}
+.animate-scan { animation: scanSweep 3.2s cubic-bezier(0.4, 0, 0.2, 1) infinite; }
+
+@keyframes barGrow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.animate-bar { transform-origin: left; animation: barGrow 0.9s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+
+/* Login knowledge-graph */
+@keyframes nodePop {
+  from { opacity: 0; transform: scale(0.4); }
+  to   { opacity: 1; transform: scale(1); }
+}
+.g-node {
+  transform-box: fill-box;
+  transform-origin: center;
+  opacity: 0;
+  animation: nodePop 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+@keyframes edgeDraw { to { stroke-dashoffset: 0; } }
+.g-edge {
+  stroke-dasharray: 1;
+  stroke-dashoffset: 1;
+  animation: edgeDraw 1.1s ease forwards;
+}
+.g-label { opacity: 0; animation: fadeIn 0.6s ease forwards; }
+@keyframes pulseRing {
+  0%   { opacity: 0.45; transform: scale(0.8); }
+  70%  { opacity: 0; transform: scale(1.9); }
+  100% { opacity: 0; transform: scale(1.9); }
+}
+.g-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: pulseRing 2.8s ease-out infinite;
+}
+@keyframes graphDrift {
+  0%, 100% { transform: translate(0, 0); }
+  50%      { transform: translate(-14px, 10px); }
+}
+.g-drift { animation: graphDrift 22s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  .g-node, .g-edge, .g-label { animation: none; opacity: 1; stroke-dashoffset: 0; }
+  .g-pulse, .g-drift { animation: none; }
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
