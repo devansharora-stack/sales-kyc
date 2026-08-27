@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import type { CompanyDetail, Source, SolutionId, SolutionMapping, EstimatedImpact, SalesMotionType, ValueFinderCopy } from "@/lib/types";
+import type { CompanyDetail, Source, SolutionId, SolutionMapping, EstimatedImpact, SalesMotionType } from "@/lib/types";
 import { ALL_SOLUTIONS } from "@/lib/types";
 import { generateCompanyPDF, generateCompanyOnePager } from "@/lib/generate-pdf";
 import { normalizeStakeholderName, formatStakeholderName } from "@/lib/names";
@@ -20,9 +20,6 @@ import CollapsibleItem from "@/components/company/CollapsibleItem";
 import StakeholderDrawer from "@/components/stakeholder/StakeholderDrawer";
 import InfoHint from "@/components/InfoHint";
 import ShareButton from "@/components/ShareButton";
-import ValueFinderView from "@/components/company/ValueFinderView";
-import ValueFinderReport from "@/components/company/value-finder/ValueFinderReport";
-import type { Variant } from "@/components/company/value-finder/theme";
 
 const solName = (id: SolutionId | string) =>
   ALL_SOLUTIONS.find(s => s.id === id)?.name ?? id;
@@ -35,8 +32,6 @@ const TABS = [
   { id: "partners", label: "Partner Landscape" },
   { id: "stakeholders", label: "Stakeholders" },
   { id: "matrix", label: "Stakeholder Matrix" },
-  { id: "valuefinder", label: "Value Finder" },
-  { id: "onepager", label: "Outreach One-Pager" },
   { id: "sources", label: "Sources" },
 ];
 
@@ -109,6 +104,44 @@ function PdfMenu({ company }: { company: CompanyDetail }) {
   );
 }
 
+function OnePagerMenu({ projectId, slug }: { projectId: string; slug: string }) {
+  const [open, setOpen] = useState(false);
+  const openReport = (variant: "dataroom" | "dataroom-cool") => {
+    window.open(`/value-finder/${projectId}/${slug}?variant=${variant}`, "_blank", "noopener,noreferrer");
+    setOpen(false);
+  };
+  return (
+    <div className="relative shrink-0">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-[#3289FF] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-[#3289FF]/30 rounded-lg transition-colors cursor-pointer"
+        title="Open the client-facing outreach one-pager"
+      >
+        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+        </svg>
+        Outreach One-Pager
+        <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute right-0 mt-1 w-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-50 overflow-hidden">
+            <button onClick={() => openReport("dataroom")} className="block w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+              Warm skin
+            </button>
+            <button onClick={() => openReport("dataroom-cool")} className="block w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 border-t border-slate-100 dark:border-slate-700 cursor-pointer">
+              Cool skin
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
 export default function CompanyPage(props?: {
   projectIdProp?: string;
   slugProp?: string;
@@ -124,10 +157,6 @@ export default function CompanyPage(props?: {
   const [company, setCompany] = useState<CompanyDetail | null>(null);
   const [error, setError] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
-  const [vfMode, setVfMode] = useState<"plain" | "tease" | "full">("tease");
-  const [vfVariant, setVfVariant] = useState<Variant>("dataroom");
-  const [vfCopy, setVfCopy] = useState<ValueFinderCopy | undefined>(undefined);
-  const [vfCopyLoading, setVfCopyLoading] = useState(true);
   const [companyProfileId, setCompanyProfileId] = useState<string | null>(null);
   const [deepRows, setDeepRows] = useState<DeepStakeholderRow[]>([]);
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -214,19 +243,6 @@ export default function CompanyPage(props?: {
     return () => timers.forEach(clearTimeout);
   }, [deepRows, fetchCompany]);
 
-
-  // Lazy-load second-person Value Finder copy when tab first opened. The API
-  // returns cached copy (data.valueFinderCopy) if present, else generates it.
-  const vfFetchedRef = useRef(false);
-  useEffect(() => {
-    if ((activeTab !== "valuefinder" && activeTab !== "onepager") || vfFetchedRef.current) return;
-    vfFetchedRef.current = true;
-    fetch(`/api/projects/${projectId}/value-finder-copy?slug=${slug}${shareToken ? `&shareToken=${shareToken}` : ""}`)
-      .then((r) => (r.ok ? r.json() : { copy: undefined }))
-      .then((d) => setVfCopy(d.copy))
-      .catch(() => {})
-      .finally(() => setVfCopyLoading(false));
-  }, [activeTab, projectId, slug, shareToken]);
 
   function toggleSelect(name: string) {
     setSelected(prev => {
@@ -483,20 +499,7 @@ export default function CompanyPage(props?: {
               {readOnly
                 ? props?.headerActions
                 : (companyProfileId && <ShareButton resourceType="company" resourceId={companyProfileId} />)}
-              {!readOnly && (
-                <a
-                  href={`/value-finder/${projectId}/${slug}?variant=dataroom`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-[#3289FF] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-[#3289FF]/30 rounded-lg transition-colors cursor-pointer shrink-0"
-                  title="Open the client-facing outreach one-pager"
-                >
-                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                  </svg>
-                  Outreach One-Pager
-                </a>
-              )}
+              {!readOnly && <OnePagerMenu projectId={projectId} slug={slug} />}
               <PdfMenu company={company} />
             </div>
           </div>
@@ -1123,88 +1126,6 @@ export default function CompanyPage(props?: {
               </p>
             )}
           </Card>
-        </div>
-      )}
-
-      {/* TAB: Value Finder (client-facing one-pager) */}
-      {activeTab === "valuefinder" && (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden text-sm">
-              <button
-                onClick={() => setVfMode("plain")}
-                className={`px-4 py-1.5 font-medium cursor-pointer ${vfMode === "plain" ? "bg-[#3289FF] text-white" : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
-              >
-                Plain
-              </button>
-              <button
-                onClick={() => setVfMode("tease")}
-                className={`px-4 py-1.5 font-medium cursor-pointer border-l border-slate-300 dark:border-slate-600 ${vfMode === "tease" ? "bg-[#3289FF] text-white" : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
-              >
-                Value Finder 1 · Tease
-              </button>
-              <button
-                onClick={() => setVfMode("full")}
-                className={`px-4 py-1.5 font-medium cursor-pointer border-l border-slate-300 dark:border-slate-600 ${vfMode === "full" ? "bg-[#3289FF] text-white" : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
-              >
-                Value Finder 2 · Full
-              </button>
-            </div>
-            <a
-              href={`/value-finder/${projectId}/${slug}?mode=${vfMode}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 rounded-lg cursor-pointer"
-            >
-              Open printable / Save as PDF →
-            </a>
-          </div>
-          <p className="text-xs text-slate-400">
-            Client-facing one-pager. &quot;Tease&quot; shows one signal + teases the rest; &quot;Full&quot; presents everything (problem + how AI solves it + proof). Export via the printable view.
-          </p>
-          {vfCopyLoading && <p className="text-xs text-slate-400">Generating second-person copy…</p>}
-          <div className="card p-8 bg-white">
-            <ValueFinderView company={company} mode={vfMode} copy={vfCopy} />
-          </div>
-        </div>
-      )}
-
-      {/* TAB: Outreach One-Pager (client-facing, two-page report, warm/cool skin) */}
-      {activeTab === "onepager" && (
-        <div className="space-y-4">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="inline-flex rounded-lg border border-slate-300 dark:border-slate-600 overflow-hidden text-sm">
-              <button
-                onClick={() => setVfVariant("dataroom")}
-                className={`px-4 py-1.5 font-medium cursor-pointer ${vfVariant === "dataroom" ? "bg-[#3289FF] text-white" : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
-              >
-                Warm
-              </button>
-              <button
-                onClick={() => setVfVariant("dataroom-cool")}
-                className={`px-4 py-1.5 font-medium cursor-pointer border-l border-slate-300 dark:border-slate-600 ${vfVariant === "dataroom-cool" ? "bg-[#3289FF] text-white" : "text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800"}`}
-              >
-                Cool
-              </button>
-            </div>
-            <a
-              href={`/value-finder/${projectId}/${slug}?variant=${vfVariant}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 px-4 py-1.5 text-sm font-medium text-white bg-slate-800 hover:bg-slate-900 rounded-lg cursor-pointer"
-            >
-              Open printable / Save as PDF →
-            </a>
-          </div>
-          <p className="text-xs text-slate-400">
-            Client-facing two-page report. Same layout for every company; warm and cool are two house skins. Export via the printable view.
-          </p>
-          {vfCopyLoading && <p className="text-xs text-slate-400">Generating second-person copy…</p>}
-          <div className="rounded-xl overflow-hidden" style={{ background: "#F1F5F9" }}>
-            <div className="max-w-[820px] mx-auto bg-white shadow-sm rounded-xl overflow-hidden p-6 sm:p-8 my-6">
-              <ValueFinderReport company={company} copy={vfCopy} variant={vfVariant} />
-            </div>
-          </div>
         </div>
       )}
 
