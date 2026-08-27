@@ -37,6 +37,7 @@ import { runGTMGenerator } from "./gtm-generator";
 import { runScoringAgent } from "./scoring-agent";
 import { runVerification } from "./verification-agent";
 import { runSalesIntelligence } from "./sales-intelligence";
+import { generateValueFinderCopy } from "@/lib/value-finder-copy";
 
 // Helper: update a research step's status
 async function updateStep(
@@ -454,6 +455,22 @@ export const researchCompany = inngest.createFunction(
           return result;
         }
       );
+
+      // Precompute client-facing Value Finder copy so the Outreach One-Pager
+      // renders instantly and consistently — no cold generation on first open.
+      // Best-effort: a failure here must not fail the research job. The step
+      // RETURNS the copy; we assign it in the durable body (outside step.run) so
+      // it survives Inngest replay and is present for the save-profile step.
+      const vfCopy = await step.run("phase-5-value-finder-copy", async () => {
+        try {
+          const c = await generateValueFinderCopy(correctedProfile);
+          return c?.pains?.length ? c : null;
+        } catch (e) {
+          console.error(`[${jobId}] value-finder copy precompute failed`, e);
+          return null;
+        }
+      });
+      if (vfCopy) (correctedProfile as CompanyDetail).valueFinderCopy = vfCopy;
 
       // ============================
       // Save to database

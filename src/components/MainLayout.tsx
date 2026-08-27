@@ -8,8 +8,13 @@ import ActivityProvider from "./ActivityProvider";
 export default function MainLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isLoginPage = pathname === "/login";
+  // Value Finder is a standalone print-to-PDF sheet — render without app chrome.
+  const isBarePage =
+    isLoginPage ||
+    pathname.startsWith("/value-finder") ||
+    pathname.startsWith("/preview/value-finder");
 
-  if (isLoginPage) {
+  if (isBarePage) {
     return <>{children}</>;
   }
 

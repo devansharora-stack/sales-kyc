@@ -407,6 +407,41 @@ export interface StakeholderOfferingMatrix {
   rows: MatrixRow[];
 }
 
+// === Value Finder client-facing copy (second-person lead-magnet rewrite) ===
+
+export interface ValueFinderPainCopy {
+  title: string;    // punchy pain headline
+  problem: string;  // 2 sentences: what's happening + why it hurts (context + risk)
+  solution: string; // 2 sentences: the concrete Techolution fix (mechanism, no product names)
+  outcome: string;  // quantified outcome, may be empty (deprecated: prefer metric)
+  // A HARD scale figure copied from the source facts (never invented), e.g.
+  // "250+ engineers", "75,000+ customers", "$3.4B debt". This is THEIR real
+  // number — the scale at stake. Empty when no sourced number.
+  metric?: string;
+  // The exact label of the pain's source that backs `metric` (must match one of
+  // the pain's Source.label values). Empty when no metric.
+  metricSource?: string;
+  // Key into the vetted benchmark library (src/lib/value-finder-benchmarks.ts).
+  // The LLM only PICKS the category; the actual % + citation come from code so
+  // the impact number is always a real, cited industry benchmark — never invented.
+  benchmarkCategory?: string;
+  // Short second-person phrase applying the benchmark to THEIR scale, e.g.
+  // "across your 250+ specialists". <= 42 chars. Empty when no metric.
+  appliedScope?: string;
+  // Deprecated free-text impact — retained for back-compat, no longer rendered.
+  impact?: string;
+}
+
+export interface ValueFinderCopy {
+  // Aligned to the first N painPoints, in the same order.
+  pains: ValueFinderPainCopy[];
+  generatedAt?: string;
+  // Comparative peer-benchmark line, computed fresh server-side from other
+  // companies we've researched in the same project + subSector/industry.
+  // Absent when there aren't enough peers (view falls back to a soft self-band).
+  benchmark?: string;
+}
+
 export interface CompanyDetail {
   slug: string;
   name: string;
@@ -433,6 +468,7 @@ export interface CompanyDetail {
   partnerLandscape: PartnerEntry[];
   stakeholderOfferingMatrix?: StakeholderOfferingMatrix;
   salesIntelligence?: SalesIntelligence;
+  valueFinderCopy?: ValueFinderCopy;
   relatedCompanies: { slug: string; name: string; relationship: string }[];
   sources: Source[];
   generatedDate: string;
