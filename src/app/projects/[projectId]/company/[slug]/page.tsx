@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams } from "next/navigation";
 import Link from "next/link";
-import type { CompanyDetail, Source, SolutionId, SolutionMapping, EstimatedImpact, SalesMotionType } from "@/lib/types";
+import type { CompanyDetail, Source, SolutionId, SolutionMapping, EstimatedImpact, SalesMotionType, ValueFinderCopy } from "@/lib/types";
 import { ALL_SOLUTIONS } from "@/lib/types";
 import { generateCompanyPDF, generateCompanyOnePager } from "@/lib/generate-pdf";
 import { normalizeStakeholderName, formatStakeholderName } from "@/lib/names";
@@ -104,35 +104,54 @@ function PdfMenu({ company }: { company: CompanyDetail }) {
   );
 }
 
-function OnePagerMenu({ projectId, slug }: { projectId: string; slug: string }) {
+function OnePagerMenu({ company, projectId, slug, shareToken }: { company: CompanyDetail; projectId: string; slug: string; shareToken?: string }) {
   const [open, setOpen] = useState(false);
-  const openReport = (variant: "dataroom" | "dataroom-cool") => {
-    window.open(`/value-finder/${projectId}/${slug}?variant=${variant}`, "_blank", "noopener,noreferrer");
-    setOpen(false);
+  const [busy, setBusy] = useState<"dataroom" | "dataroom-cool" | null>(null);
+  const copyRef = useRef<ValueFinderCopy | undefined>(company.valueFinderCopy);
+
+  const download = async (variant: "dataroom" | "dataroom-cool") => {
+    setBusy(variant);
+    try {
+      // Reuse cached copy (precomputed in the pipeline) when present; otherwise
+      // fetch it once from the copy API and remember it for the other skin.
+      if (!copyRef.current) {
+        const r = await fetch(`/api/projects/${projectId}/value-finder-copy?slug=${slug}${shareToken ? `&shareToken=${shareToken}` : ""}`);
+        if (r.ok) copyRef.current = (await r.json()).copy;
+      }
+      const { downloadOnePagerPDF } = await import("@/lib/value-finder-download");
+      await downloadOnePagerPDF(company, copyRef.current, variant);
+    } catch (e) {
+      console.error("one-pager download failed", e);
+    } finally {
+      setBusy(null);
+      setOpen(false);
+    }
   };
+
   return (
     <div className="relative shrink-0">
       <button
         onClick={() => setOpen(o => !o)}
-        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-[#3289FF] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-[#3289FF]/30 rounded-lg transition-colors cursor-pointer"
-        title="Open the client-facing outreach one-pager"
+        disabled={busy !== null}
+        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-[#3289FF] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-[#3289FF]/30 rounded-lg transition-colors cursor-pointer disabled:opacity-60"
+        title="Download the client-facing outreach one-pager"
       >
         <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
         </svg>
-        Outreach One-Pager
+        {busy ? "Generating…" : "Outreach One-Pager"}
         <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
           <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
         </svg>
       </button>
-      {open && (
+      {open && busy === null && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
           <div className="absolute right-0 mt-1 w-40 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-50 overflow-hidden">
-            <button onClick={() => openReport("dataroom")} className="block w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
+            <button onClick={() => download("dataroom")} className="block w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer">
               Warm skin
             </button>
-            <button onClick={() => openReport("dataroom-cool")} className="block w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 border-t border-slate-100 dark:border-slate-700 cursor-pointer">
+            <button onClick={() => download("dataroom-cool")} className="block w-full text-left px-3 py-2 text-xs text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 border-t border-slate-100 dark:border-slate-700 cursor-pointer">
               Cool skin
             </button>
           </div>
@@ -499,7 +518,7 @@ export default function CompanyPage(props?: {
               {readOnly
                 ? props?.headerActions
                 : (companyProfileId && <ShareButton resourceType="company" resourceId={companyProfileId} />)}
-              {!readOnly && <OnePagerMenu projectId={projectId} slug={slug} />}
+              {!readOnly && <OnePagerMenu company={company} projectId={projectId} slug={slug} shareToken={shareToken} />}
               <PdfMenu company={company} />
             </div>
           </div>
