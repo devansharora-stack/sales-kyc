@@ -12,6 +12,7 @@
     "@google/genai": "^1.50.1",
     "@supabase/supabase-js": "^2.104.1",
     "drizzle-orm": "^0.45.2",
+    "html2canvas-pro": "^1.5.11",
     "inngest": "^4.2.4",
     "jspdf": "^4.2.1",
     "jspdf-autotable": "^5.0.8",
