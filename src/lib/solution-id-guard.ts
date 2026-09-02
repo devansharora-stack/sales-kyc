@@ -27,6 +27,9 @@ for (const id of LEGACY_IDS) VALID_IDS.add(id);
 const SCALAR_FIELDS = new Set(["entrySolution", "solution"]);
 // Fields that hold SolutionId[].
 const ARRAY_FIELDS = new Set(["techolutionSolutions"]);
+// Agents whose `solution` field is FREE PROSE, not a SolutionId — never guard it
+// (value-finder-copy emits pains[].solution as a written description).
+const PROSE_SOLUTION_AGENTS = new Set(["value-finder-copy"]);
 
 function norm(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
@@ -44,6 +47,15 @@ function remap(value: string): SolutionId | null {
     const n = norm(s.name), sn = norm(s.shortName);
     if (v.includes(n) || n.includes(v) || v.includes(sn) || sn.includes(v)) return s.id;
   }
+  // Stale-id backstop: models fluent in current Google product names "modernize"
+  // our legacy ids by appending them (contextual-search → contextual-search-agentspace,
+  // gemini-expand → gemini-enterprise-expand). Recover by progressively trimming
+  // trailing hyphen tokens and re-checking every valid id (catalog + legacy).
+  const tokens = value.toLowerCase().split("-").filter(Boolean);
+  for (let end = tokens.length - 1; end >= 2; end--) {
+    const candidate = tokens.slice(0, end).join("-");
+    if (VALID_IDS.has(candidate)) return candidate as SolutionId;
+  }
   return null;
 }
 
@@ -54,6 +66,7 @@ export interface GuardResult {
 /** Mutates `obj` in place. Returns offenders found. */
 export function sanitizeSolutionIds(obj: unknown, agent = "unknown"): GuardResult {
   const invalid: GuardResult["invalid"] = [];
+  const guardSolutionScalar = !PROSE_SOLUTION_AGENTS.has(agent);
 
   const walk = (node: any): void => {
     if (!node || typeof node !== "object") return;
@@ -62,7 +75,9 @@ export function sanitizeSolutionIds(obj: unknown, agent = "unknown"): GuardResul
       return;
     }
     for (const [key, val] of Object.entries(node)) {
-      if (SCALAR_FIELDS.has(key) && typeof val === "string") {
+      if (key === "solution" && !guardSolutionScalar) {
+        walk(val);
+      } else if (SCALAR_FIELDS.has(key) && typeof val === "string") {
         if (!VALID_IDS.has(val)) {
           const remapped = remap(val);
           invalid.push({ field: key, value: val, remappedTo: remapped });
