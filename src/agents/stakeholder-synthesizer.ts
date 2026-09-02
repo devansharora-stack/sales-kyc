@@ -9,7 +9,7 @@
 
 import { readFileSync } from "fs";
 import { join } from "path";
-import { callClaudeJSON } from "@/lib/claude";
+import { callReasoningJSON } from "@/lib/reasoning";
 import type { DeepStakeholderProfile, StakeholderIntelBrief } from "@/lib/types";
 
 const systemPrompt = readFileSync(
@@ -56,7 +56,8 @@ export async function synthesizeStakeholder(raw: RawProfile): Promise<Stakeholde
   };
 
   try {
-    const brief = await callClaudeJSON<StakeholderIntelBrief>({
+    const brief = await callReasoningJSON<StakeholderIntelBrief>({
+      agent: "stakeholder-synthesizer",
       systemPrompt,
       userPrompt: `Here is the scraped LinkedIn data for one person. Synthesize the sales intelligence brief per your instructions.\n\n${JSON.stringify(payload, null, 2)}`,
       temperature: 0.3,

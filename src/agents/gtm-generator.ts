@@ -6,7 +6,7 @@
 
 import { readFileSync } from "fs";
 import { join } from "path";
-import { callClaudeJSON } from "@/lib/claude";
+import { callReasoningJSON } from "@/lib/reasoning";
 import type {
   GTMStrategy,
   TechLandscape,
@@ -83,7 +83,8 @@ export async function runGTMGenerator(input: GTMGeneratorInput): Promise<GTMStra
     name: s.name, title: s.title, tier: s.tier, relevance: s.relevance,
   }));
 
-  const gtm = await callClaudeJSON<GTMStrategy>({
+  const gtm = await callReasoningJSON<GTMStrategy>({
+    agent: "gtm-generator",
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
     userPrompt: `Generate a go-to-market strategy for: ${input.companyName}
 

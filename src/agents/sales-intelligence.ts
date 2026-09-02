@@ -6,7 +6,7 @@
 
 import { readFileSync } from "fs";
 import { join } from "path";
-import { callClaudeJSON } from "@/lib/claude";
+import { callReasoningJSON } from "@/lib/reasoning";
 import type {
   SalesIntelligence,
   Stakeholder,
@@ -58,7 +58,8 @@ export async function runSalesIntelligence(input: SalesIntelligenceInput): Promi
     tier: s.tier,
   }));
 
-  return callClaudeJSON<SalesIntelligence>({
+  return callReasoningJSON<SalesIntelligence>({
+    agent: "sales-intelligence",
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
     userPrompt: `Assess this company: ${input.companyName}
 

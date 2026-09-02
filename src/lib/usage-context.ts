@@ -28,7 +28,7 @@ export function getUsageContext(): UsageContext {
 }
 
 interface RecordUsageInput {
-  provider: "claude" | "gemini";
+  provider: "claude" | "gemini" | "luna";
   model: string;
   inputTokens?: number | null;
   outputTokens?: number | null;

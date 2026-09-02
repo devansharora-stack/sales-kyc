@@ -5,7 +5,7 @@
 
 import { readFileSync } from "fs";
 import { join } from "path";
-import { callClaudeJSON } from "@/lib/claude";
+import { callReasoningJSON } from "@/lib/reasoning";
 import type {
   Source,
   ScoreBreakdown,
@@ -76,7 +76,8 @@ export async function runScoringAgent(input: ScoringInput): Promise<ScoreBreakdo
     name: s.name, title: s.title, tier: s.tier,
   }));
 
-  const scores = await callClaudeJSON<ScoreBreakdown>({
+  const scores = await callReasoningJSON<ScoreBreakdown>({
+    agent: "scoring-agent",
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
     userPrompt: `Score this company: ${input.companyName}
 

@@ -6,7 +6,7 @@
 
 import { readFileSync } from "fs";
 import { join } from "path";
-import { callClaudeJSON } from "@/lib/claude";
+import { callReasoningJSON } from "@/lib/reasoning";
 import type { SolutionMapping, PainPoint, TechLandscape, TriggerEvent, Source } from "@/lib/types";
 import type { FinancialSignalOutput } from "./financial-signal";
 
@@ -61,7 +61,8 @@ export async function runSolutionMapper(input: SolutionMapperInput): Promise<Sol
     event: t.event, date: t.date, category: t.category, impact: t.impact,
   }));
 
-  const mappings = await callClaudeJSON<SolutionMapping[]>({
+  const mappings = await callReasoningJSON<SolutionMapping[]>({
+    agent: "solution-mapper",
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
     userPrompt: `Create solution mappings for: ${input.companyName}
 

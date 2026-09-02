@@ -16,6 +16,11 @@ const PRICES: { prefix: string; price: Price }[] = [
   { prefix: "gemini-1.5-pro", price: { inputPerM: 1.25, outputPerM: 5 } },
   { prefix: "gemini-1.5-flash", price: { inputPerM: 0.075, outputPerM: 0.3 } },
   { prefix: "gemini", price: { inputPerM: 0.3, outputPerM: 2.5 } },
+  // Luna (GPT-5.6) on Azure Foundry — Standard Global, short context.
+  // As of Aug 2026 price cut: $0.20/M in, $1.20/M out. Long-context tier is
+  // higher ($0.40/$1.80) — verify in Azure Cost Management for real billing.
+  { prefix: "gpt-5.6-luna", price: { inputPerM: 0.2, outputPerM: 1.2 } },
+  { prefix: "gpt-5.6", price: { inputPerM: 0.2, outputPerM: 1.2 } },
 ];
 
 const FALLBACK: Price = { inputPerM: 5, outputPerM: 25 };

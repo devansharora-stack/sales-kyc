@@ -10,7 +10,7 @@
  * once per company, not per view.
  */
 
-import { callClaudeJSON } from "@/lib/claude";
+import { callReasoningJSON } from "@/lib/reasoning";
 import type { CompanyDetail, EstimatedImpact, ValueFinderCopy } from "@/lib/types";
 import { BENCHMARK_CATEGORIES, isBenchmarkCategory } from "@/lib/value-finder-benchmarks";
 
@@ -86,7 +86,8 @@ ${JSON.stringify(input, null, 2)}
 
 Return JSON exactly: {"pains":[{"title":"","problem":"","solution":"","metric":"","metricSource":"","benchmarkCategory":"","appliedScope":"","outcome":""}, ...]} in the SAME ORDER, one object per input item.`;
 
-  const result = await callClaudeJSON<{ pains: ValueFinderCopy["pains"] }>({
+  const result = await callReasoningJSON<{ pains: ValueFinderCopy["pains"] }>({
+    agent: "value-finder-copy",
     systemPrompt: SYSTEM_PROMPT,
     userPrompt,
   });
