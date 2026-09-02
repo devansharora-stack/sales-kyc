@@ -38,7 +38,7 @@ You are a business analyst specializing in identifying operational challenges an
     "description": "2-3 sentence explanation of the challenge",
     "severity": "Critical | High | Medium",
     "affectedFunctions": ["Operations", "Legal", "Customer Service"],
-    "techolutionSolutions": ["contract-intelligence", "ai-voice-assistants"],
+    "techolutionSolutions": ["bpa-value-finder", "ge-expand-agents"],
     "sources": []
   }
 ]

@@ -6,8 +6,13 @@
 import { readFileSync } from "fs";
 import { join } from "path";
 import { callReasoningJSON } from "@/lib/reasoning";
-import type { PainPoint, TriggerEvent, TechLandscape, Source } from "@/lib/types";
+import { ALL_SOLUTIONS, type PainPoint, type TriggerEvent, type TechLandscape, type Source } from "@/lib/types";
 import type { FinancialSignalOutput } from "./financial-signal";
+
+// The exact solution-id vocabulary, injected into the prompt. Without it the
+// model fills ids from its own knowledge (current-model drift — e.g. Luna emits
+// "contextual-search-agentspace" for our legacy "contextual-search").
+const SOLUTION_ID_LIST = ALL_SOLUTIONS.map((s) => `- ${s.id} (${s.shortName})`).join("\n");
 
 const systemPrompt = readFileSync(
   join(process.cwd(), "src/instructions/system-prompt.md"),
@@ -70,6 +75,9 @@ ${JSON.stringify(techSummary, null, 2)}
 
 Financial signals:
 ${JSON.stringify(finSummary, null, 2)}
+
+Valid Techolution solution IDs — for every pain point's "techolutionSolutions", use ONLY these exact id strings, copied verbatim. Never invent an id and never append product/marketing names to one:
+${SOLUTION_ID_LIST}
 
 Respond ONLY with a JSON array matching the output schema. Set sources to an empty array — sources will be injected programmatically.`,
   });
