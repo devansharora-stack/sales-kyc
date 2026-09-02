@@ -5,7 +5,7 @@
 
 import { readFileSync } from "fs";
 import { join } from "path";
-import { callClaudeJSON } from "@/lib/claude";
+import { callReasoningJSON } from "@/lib/reasoning";
 import type { PainPoint, TriggerEvent, TechLandscape, Source } from "@/lib/types";
 import type { FinancialSignalOutput } from "./financial-signal";
 
@@ -51,7 +51,8 @@ export async function runPainPointAnalyzer(input: PainPointInput): Promise<PainP
     costPressure: input.financialSignals?.costPressure || [],
   };
 
-  const painPoints = await callClaudeJSON<PainPoint[]>({
+  const painPoints = await callReasoningJSON<PainPoint[]>({
+    agent: "pain-point-analyzer",
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
     userPrompt: `Analyze pain points for: ${input.companyName}
 

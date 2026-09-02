@@ -8,7 +8,7 @@
 
 import { readFileSync } from "fs";
 import { join } from "path";
-import { callClaudeJSON } from "@/lib/claude";
+import { callReasoningJSON } from "@/lib/reasoning";
 import { buildPortfolioFacts, type PortfolioFacts, type AccountSummary } from "@/lib/portfolio-rollup";
 import type { CompanyDetail, PortfolioGTM, PortfolioTier, PortfolioTierAccount } from "@/lib/types";
 
@@ -128,7 +128,8 @@ function assemble(facts: PortfolioFacts, n: PortfolioNarrative): PortfolioGTM {
 export async function runPortfolioGTMGenerator(projectName: string, companies: CompanyDetail[]): Promise<PortfolioGTM> {
   const facts = buildPortfolioFacts(projectName, companies);
 
-  const narrative = await callClaudeJSON<PortfolioNarrative>({
+  const narrative = await callReasoningJSON<PortfolioNarrative>({
+    agent: "portfolio-gtm-generator",
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
     userPrompt: `Consolidate a portfolio GTM strategy for the project "${projectName}" (${facts.accountCount} researched accounts).
 

@@ -74,7 +74,7 @@ A complete GTM strategy document with:
 
 ## Rules
 - The brief must be compelling enough for a sales VP to approve pursuing this account
-- entrySolution must match a Primary priority solution from the Solution Mapper output
+- `entrySolution` MUST be an exact solution **id** string (e.g. `bpa-value-finder`, `bpa-100k`, `bpa-full`, `value-finder`) copied verbatim from the `solution` field of a Primary-priority mapping in the Solution Mapper output. Never invent an id and never use a human-readable name like "AI Vision QA" or "Ambient Clinical Documentation" — use only the id.
 - entryStrategy steps must reference real stakeholders and real pain points from the research
 - pilotStrategy must be realistic in scope and budget for the company's size
 - competitivePositioning should leverage Techolution's Google Cloud partnership and implementation speed

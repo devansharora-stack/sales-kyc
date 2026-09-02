@@ -8,7 +8,7 @@
 
 import { readFileSync } from "fs";
 import { join } from "path";
-import { callClaudeJSON } from "@/lib/claude";
+import { callReasoningJSON } from "@/lib/reasoning";
 import { ALL_SOLUTIONS } from "@/lib/types";
 import { normalizeStakeholderName } from "@/lib/names";
 import type {
@@ -105,7 +105,8 @@ export async function runStakeholderOfferingMapper(
     severity: p.severity,
   }));
 
-  const parsed = await callClaudeJSON<{ rows: MatrixRow[] }>({
+  const parsed = await callReasoningJSON<{ rows: MatrixRow[] }>({
+    agent: "stakeholder-offering-mapper",
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
     userPrompt: `Build the stakeholder × offering decision matrix for: ${input.companyName}
 

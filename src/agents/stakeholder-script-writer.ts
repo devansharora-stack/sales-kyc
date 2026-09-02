@@ -14,7 +14,7 @@
 
 import { readFileSync } from "fs";
 import { join } from "path";
-import { callClaudeJSON } from "@/lib/claude";
+import { callReasoningJSON } from "@/lib/reasoning";
 import type {
   DeepStakeholderProfile,
   ScriptTone,
@@ -95,7 +95,8 @@ async function writeOneScript(
     ? `\n\nRep guidance for this generation (honor it, but never break the non-negotiable rules): ${input.customInstruction.trim()}`
     : "";
 
-  const script = await callClaudeJSON<Partial<StakeholderScript>>({
+  const script = await callReasoningJSON<Partial<StakeholderScript>>({
+    agent: "stakeholder-script-writer",
     systemPrompt,
     userPrompt:
       `Write the ONE "${tone}" (${TONE_LABELS[tone]}) elevator-pitch script for this stakeholder, ` +
@@ -118,7 +119,8 @@ async function predictTone(
   payload: ReturnType<typeof buildStakeholderPayload>,
 ): Promise<TonePrediction> {
   try {
-    return await callClaudeJSON<TonePrediction>({
+    return await callReasoningJSON<TonePrediction>({
+      agent: "stakeholder-tone-predictor",
       systemPrompt:
         `You assess how a specific B2B buyer is most likely to show up in a first sales ` +
         `conversation, from their profile (headline, seniority, function, post sentiment, ` +
