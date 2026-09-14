@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { Suspense, useEffect, useState, useCallback } from "react";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
 import type { DeepStakeholderProfile, StakeholderScriptSet, StakeholderStatus } from "@/lib/types";
 import StakeholderProfileView from "@/components/StakeholderProfileView";
 import ShareButton from "@/components/ShareButton";
@@ -35,8 +35,24 @@ const STATUS_LABEL: Record<StakeholderStatus, string> = {
 };
 
 export default function StakeholderDetailPage() {
+  return (
+    <Suspense fallback={null}>
+      <StakeholderDetail />
+    </Suspense>
+  );
+}
+
+function StakeholderDetail() {
   const { projectId, id } = useParams<{ projectId: string; id: string }>();
   const router = useRouter();
+  // When opened from a shared link, carry the token so the read is authorized;
+  // without it the API 401s and the page looks broken/not-found.
+  const shareToken = useSearchParams().get("shareToken");
+  const shareQ = shareToken ? `?shareToken=${shareToken}` : "";
+  // In a shared context there is no owning "Stakeholders" list to return to and
+  // no re-share; go back to wherever the reader came from and hide the share UI.
+  const goBack = () =>
+    shareToken ? router.back() : router.push(`/projects/${projectId}/stakeholders`);
   const [s, setS] = useState<StakeholderResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -47,7 +63,7 @@ export default function StakeholderDetailPage() {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch(`/api/stakeholders/${id}`);
+      const res = await fetch(`/api/stakeholders/${id}${shareQ}`);
       if (!res.ok) throw new Error();
       const data = await res.json();
       setS(data.stakeholder);
@@ -56,7 +72,7 @@ export default function StakeholderDetailPage() {
       setError(true);
       setLoading(false);
     }
-  }, [id]);
+  }, [id, shareQ]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -114,8 +130,8 @@ export default function StakeholderDetailPage() {
     return (
       <div className="text-center py-20">
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-3">Stakeholder not found or failed to load.</p>
-        <button onClick={() => router.push(`/projects/${projectId}/stakeholders`)} className="btn-ghost text-sm">
-          Back to Stakeholders
+        <button onClick={goBack} className="btn-ghost text-sm">
+          Back
         </button>
       </div>
     );
@@ -127,14 +143,14 @@ export default function StakeholderDetailPage() {
     <div className="animate-fade-in">
       <div className="max-w-6xl mx-auto mb-6 flex items-center justify-between">
         <button
-          onClick={() => router.push(`/projects/${projectId}/stakeholders`)}
+          onClick={goBack}
           className="text-xs text-slate-400 dark:text-slate-500 hover:text-[#3289FF] mb-1 cursor-pointer"
         >
-          &larr; Stakeholders
+          &larr; Back
         </button>
         {profile && (
           <div className="flex items-center gap-2">
-            <ShareButton resourceType="stakeholder" resourceId={id} />
+            {!shareToken && <ShareButton resourceType="stakeholder" resourceId={id} />}
             <button
               onClick={() => generateStakeholderPDF(profile)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-[#3289FF] bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 hover:border-[#3289FF]/30 rounded-lg transition-colors cursor-pointer"
