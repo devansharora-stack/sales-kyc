@@ -369,7 +369,7 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
         {/* Footer */}
         <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-700 shrink-0">
           <Link
-            href={`/projects/${projectId}/stakeholder/${stakeholderId}`}
+            href={`/projects/${projectId}/stakeholder/${stakeholderId}${shareToken ? `?shareToken=${shareToken}` : ""}`}
             className="text-xs font-medium text-[#3289FF] hover:underline inline-flex items-center gap-1"
           >
             Open full page ↗
