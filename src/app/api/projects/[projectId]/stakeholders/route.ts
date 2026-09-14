@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { users, projects, stakeholderProfiles } from "@/db/schema";
-import { and, eq, desc, gte } from "drizzle-orm";
+import { users, projects, stakeholderProfiles, companyProfiles } from "@/db/schema";
+import { and, eq, desc, gte, type SQL } from "drizzle-orm";
 import { serializeStakeholder } from "@/lib/serializers";
 import { inngest } from "@/lib/inngest";
-import { canReadResource } from "@/lib/access";
+import { canReadResource, resolveShare } from "@/lib/access";
 import { matchStakeholder, type StakeholderCandidate, type MatchType } from "@/lib/company-match";
 
 async function getUserAndProject(email: string, projectId: string) {
@@ -36,20 +36,40 @@ export async function GET(
   const { projectId } = await params;
   const shareToken = new URL(request.url).searchParams.get("shareToken");
 
-  // Owner or a whole-project share may list stakeholders (a single-stakeholder
-  // share only exposes that one person via /api/stakeholders/[id]).
-  const allowed = await canReadResource({
+  // Owner or a whole-project share sees every stakeholder in the project.
+  const projectAllowed = await canReadResource({
     email: session.user.email,
     resourceType: "project",
     resourceId: projectId,
     shareToken,
   });
-  if (!allowed) return NextResponse.json({ error: "Project not found" }, { status: 404 });
+
+  let where: SQL = eq(stakeholderProfiles.projectId, projectId);
+  if (!projectAllowed) {
+    // A company-scoped share still exposes that company's stakeholders (the
+    // deep-analysis rows the company-page overlay needs) — scoped to just that
+    // company so it never leaks other companies in the same project.
+    const share = await resolveShare(shareToken);
+    if (share?.resourceType !== "company") {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    const [cp] = await db
+      .select({ projectId: companyProfiles.projectId })
+      .from(companyProfiles)
+      .where(eq(companyProfiles.id, share.resourceId));
+    if (!cp || cp.projectId !== projectId) {
+      return NextResponse.json({ error: "Project not found" }, { status: 404 });
+    }
+    where = and(
+      eq(stakeholderProfiles.projectId, projectId),
+      eq(stakeholderProfiles.companyProfileId, share.resourceId),
+    )!;
+  }
 
   const rows = await db
     .select()
     .from(stakeholderProfiles)
-    .where(eq(stakeholderProfiles.projectId, projectId))
+    .where(where)
     .orderBy(desc(stakeholderProfiles.createdAt));
 
   return NextResponse.json({ stakeholders: rows.map((r) => serializeStakeholder(r, false)) });
