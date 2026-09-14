@@ -67,6 +67,14 @@ export async function canReadResource(opts: {
       const projectId = await getResourceProjectId(resourceType, resourceId);
       if (projectId && projectId === share.resourceId) return true;
     }
+    // A company share covers the stakeholders belonging to that company.
+    if (share.resourceType === "company" && resourceType === "stakeholder") {
+      const [r] = await db
+        .select({ companyProfileId: stakeholderProfiles.companyProfileId })
+        .from(stakeholderProfiles)
+        .where(eq(stakeholderProfiles.id, resourceId));
+      if (r?.companyProfileId && r.companyProfileId === share.resourceId) return true;
+    }
   }
   return false;
 }
