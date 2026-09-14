@@ -140,7 +140,7 @@ export default function CompanyPage(props?: {
   const slug = props?.slugProp ?? (params.slug as string);
 
   const fetchDeep = (pid: string) => {
-    if (readOnly) return; // shared read-only view: no deep-analysis overlay/actions
+    if (readOnly && !shareToken) return; // no deep overlay without a share token to authorize the read
     fetch(`/api/projects/${pid}/stakeholders${shareQ1}`)
       .then(r => r.ok ? r.json() : { stakeholders: [] })
       .then(d => setDeepRows(d.stakeholders || []))
@@ -945,12 +945,12 @@ export default function CompanyPage(props?: {
                               >
                                 View profile
                               </button>
-                              <button
+                              {!readOnly && <button
                                 onClick={() => handleReanalyze(s.name, s.title)}
                                 className="text-[11px] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:underline cursor-pointer"
                               >
                                 Re-analyze
-                              </button>
+                              </button>}
                             </div>
                           )}
                           <p className="text-xs text-slate-600 dark:text-slate-300 mt-2 leading-relaxed">{s.relevance}</p>
@@ -1021,7 +1021,7 @@ export default function CompanyPage(props?: {
                             View profile
                           </button>
                         )}
-                        {done && (
+                        {done && !readOnly && (
                           <button
                             onClick={() => handleReanalyze(d.name, d.title ?? "")}
                             className="text-[11px] text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300 hover:underline cursor-pointer"
@@ -1111,6 +1111,7 @@ export default function CompanyPage(props?: {
         stakeholderId={drawerId}
         projectId={projectId}
         fallback={drawerFallback}
+        shareToken={shareToken}
         onClose={() => setDrawerId(null)}
       />
     </div>
