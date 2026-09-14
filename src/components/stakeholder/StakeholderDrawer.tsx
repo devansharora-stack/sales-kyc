@@ -42,10 +42,12 @@ interface DrawerProps {
   projectId: string;
   /** Fallback display info shown before/while data loads or if no deep data. */
   fallback?: { name?: string; title?: string | null; company?: string | null };
+  /** When set, reads are authorized via a share token (read-only shared view). */
+  shareToken?: string;
   onClose: () => void;
 }
 
-export default function StakeholderDrawer({ stakeholderId, projectId, fallback, onClose }: DrawerProps) {
+export default function StakeholderDrawer({ stakeholderId, projectId, fallback, shareToken, onClose }: DrawerProps) {
   const [s, setS] = useState<StakeholderResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -58,7 +60,7 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
   const fetchData = useCallback(async () => {
     if (!stakeholderId) return;
     try {
-      const res = await fetch(`/api/stakeholders/${stakeholderId}`);
+      const res = await fetch(`/api/stakeholders/${stakeholderId}${shareToken ? `?shareToken=${shareToken}` : ""}`);
       if (!res.ok) throw new Error();
       const data = await res.json();
       setS(data.stakeholder);
@@ -67,7 +69,7 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
       setError(true);
       setLoading(false);
     }
-  }, [stakeholderId]);
+  }, [stakeholderId, shareToken]);
 
   // (Re)load when the target id changes.
   useEffect(() => {
@@ -240,7 +242,7 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
                 </p>
               )}
 
-              {s.status === "needs_confirmation" && (
+              {s.status === "needs_confirmation" && !shareToken && (
                 <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-slate-700 rounded-lg px-4 py-3 space-y-2.5">
                   <p className="text-sm text-slate-600 dark:text-slate-300">
                     Couldn&apos;t confirm a LinkedIn URL automatically. Paste it to analyze, or mark that they don&apos;t have one.
