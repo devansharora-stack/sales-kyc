@@ -55,6 +55,33 @@ function getClient(): GoogleGenAI {
   );
 }
 
+/**
+ * Run a Vertex generateContent call. If VERTEX_RELAY_URL is set, the call is
+ * forwarded to an external relay that CAN reach Vertex (used when this runtime
+ * is blocked by VPC-SC). Otherwise it hits Vertex directly. Env-gated + fully
+ * reversible: unset VERTEX_RELAY_URL to restore direct calls.
+ */
+async function generateContent(
+  args: Parameters<ReturnType<typeof getClient>["models"]["generateContent"]>[0]
+): Promise<{ text?: string; usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number }; candidates?: unknown[] }> {
+  const relay = process.env.VERTEX_RELAY_URL;
+  if (relay) {
+    const res = await fetch(relay, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        "x-relay-key": process.env.VERTEX_RELAY_KEY || "",
+      },
+      body: JSON.stringify(args),
+    });
+    if (!res.ok) {
+      throw new Error(`Vertex relay error ${res.status}: ${await res.text().catch(() => "")}`);
+    }
+    return res.json();
+  }
+  return getClient().models.generateContent(args);
+}
+
 // Research agents — use Gemini 2.5 Flash (fast, cheaper)
 const RESEARCH_MODEL = "gemini-2.5-flash";
 // Light tasks — verification, summaries
@@ -90,13 +117,12 @@ async function callGeminiOnce({
   model = "research",
   temperature = 0.2,
 }: GeminiOptions): Promise<string> {
-  const genAI = getClient();
   const modelId = model === "research" ? RESEARCH_MODEL : LIGHT_MODEL;
   const tools = useGrounding ? [{ googleSearch: {} }] : undefined;
 
   await waitForRateLimit();
 
-  const response = await genAI.models.generateContent({
+  const response = await generateContent({
     model: modelId,
     contents: [{ role: "user", parts: [{ text: userPrompt }] }],
     config: {
@@ -182,12 +208,11 @@ export async function callGeminiGrounded<T>(options: Omit<GeminiOptions, "useGro
   const maxRetries = 5;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      const genAI = getClient();
       const modelId = options.model === "light" ? LIGHT_MODEL : RESEARCH_MODEL;
 
       await waitForRateLimit();
 
-      const response = await genAI.models.generateContent({
+      const response = await generateContent({
         model: modelId,
         contents: [{ role: "user", parts: [{ text: options.userPrompt }] }],
         config: {
