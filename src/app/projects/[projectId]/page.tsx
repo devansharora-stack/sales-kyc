@@ -85,6 +85,7 @@ export default function ProjectDetailPage() {
   const [addingCompanies, setAddingCompanies] = useState(false);
   const [newCompanies, setNewCompanies] = useState("");
   const [retrying, setRetrying] = useState<string | null>(null);
+  const [deletingSlug, setDeletingSlug] = useState<string | null>(null);
   const [sortBy, setSortBy] = useState<SortKey>("score");
   const [pendingReuse, setPendingReuse] = useState<{ company_name: string; matched_name?: string; slug: string; updated_at: string | null; days_old?: number | null; source_project?: string | null; match_type?: "domain" | "exact" | "similar" }[]>([]);
   const [resolvingReuse, setResolvingReuse] = useState<string | null>(null);
@@ -221,6 +222,22 @@ export default function ProjectDetailPage() {
     // Retry means the user explicitly wants a fresh run — skip the cache.
     await postCompanies([companyName], { forceRefresh: true });
     setRetrying(null);
+    fetchData();
+  }
+
+  async function handleDeleteCompany(slug: string, name: string) {
+    if (!confirm(`Remove "${name}" from this project? This deletes its report and can't be undone.`)) return;
+    setDeletingSlug(slug);
+    // Optimistic: drop the row immediately so the list feels responsive.
+    setProfiles((prev) => prev.filter((p) => p.slug !== slug));
+    const res = await fetch(`/api/projects/${projectId}/companies?slug=${encodeURIComponent(slug)}`, {
+      method: "DELETE",
+    });
+    setDeletingSlug(null);
+    if (!res.ok) {
+      // Revert on failure by re-fetching the authoritative list.
+      alert("Failed to remove the company. Please try again.");
+    }
     fetchData();
   }
 
@@ -535,6 +552,7 @@ export default function ProjectDetailPage() {
                   <th className="text-center p-3">Sales Motion</th>
                   <th className="text-center p-3">Urgency</th>
                   <th className="text-left p-3">Solution</th>
+                  <th className="p-3"></th>
                 </tr>
               </thead>
               <tbody>
@@ -587,6 +605,23 @@ export default function ProjectDetailPage() {
                     </td>
                     <td className="p-3 text-center text-xs text-slate-500 dark:text-slate-400">{p.urgency}</td>
                     <td className="p-3 text-xs text-slate-500 dark:text-slate-400">{p.primary_solution?.replace(/-/g, " ")}</td>
+                    <td className="p-3 text-right">
+                      <button
+                        onClick={() => handleDeleteCompany(p.slug, p.name || p.slug)}
+                        disabled={deletingSlug === p.slug}
+                        title="Remove from project"
+                        aria-label={`Remove ${p.name || p.slug} from project`}
+                        className="text-slate-300 dark:text-slate-600 hover:text-red-500 dark:hover:text-red-400 transition-colors disabled:opacity-40 cursor-pointer"
+                      >
+                        {deletingSlug === p.slug ? (
+                          <span className="text-[10px]">Removing…</span>
+                        ) : (
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+                          </svg>
+                        )}
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>

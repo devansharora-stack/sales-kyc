@@ -191,7 +191,9 @@ export const researchCompany = inngest.createFunction(
 
       // Partner Landscape is the authoritative vendor source — derive
       // techLandscape.knownVendors from it so the two views can never disagree.
-      if (safePartnerLandscape.length > 0 && techLandscape?.knownVendors) {
+      // Populate even when the tech-stack agent omitted knownVendors entirely
+      // (e.g. consultancies like Deloitte) — the partners are the vendor list.
+      if (safePartnerLandscape.length > 0 && techLandscape) {
         const partnerNames = safePartnerLandscape.map((p) => p.partner).filter(Boolean);
         const partnerSources = safePartnerLandscape.flatMap((p) => p.sources || []);
         techLandscape.knownVendors = {
@@ -199,7 +201,7 @@ export const researchCompany = inngest.createFunction(
           sources:
             partnerSources.length > 0
               ? partnerSources.slice(0, 3)
-              : techLandscape.knownVendors.sources || [],
+              : techLandscape.knownVendors?.sources || [],
         };
       }
 

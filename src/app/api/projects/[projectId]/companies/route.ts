@@ -2,11 +2,11 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { users, projects, researchJobs, researchSteps, companyProfiles } from "@/db/schema";
+import { users, projects, researchJobs, researchSteps, companyProfiles, stakeholderProfiles, shares } from "@/db/schema";
 import { and, eq, gte, desc, inArray, sql } from "drizzle-orm";
 import { serializeJob } from "@/lib/serializers";
 import { inngest } from "@/lib/inngest";
-import { canReadResource } from "@/lib/access";
+import { canReadResource, getUserByEmail } from "@/lib/access";
 import { matchCompany, cleanDomain, type MatchCandidate, type MatchType } from "@/lib/company-match";
 import type { CompanyDetail } from "@/lib/types";
 
@@ -471,4 +471,81 @@ export async function POST(
     .where(eq(projects.id, projectId));
 
   return NextResponse.json({ jobs, count: jobs.length, existing });
+}
+
+/**
+ * Delete a single company report from a project (by ?slug=…).
+ *
+ * Removes ONLY this project's profile row plus its stakeholders and any share
+ * links. The backing research_job/steps are left intact — a cached "Use
+ * existing" copy shares the same job_id across projects, so dropping the job
+ * would break other projects' copies. llm_usage rows are also kept (cost
+ * history). Owner-only.
+ */
+export async function DELETE(
+  request: Request,
+  { params }: { params: Promise<{ projectId: string }> }
+) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const { projectId } = await params;
+  const slug = new URL(request.url).searchParams.get("slug");
+  if (!slug) {
+    return NextResponse.json({ error: "slug is required" }, { status: 400 });
+  }
+
+  const user = await getUserByEmail(session.user.email);
+  if (!user) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
+  // Owner check — only the project's owner can delete its reports.
+  const [project] = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(and(eq(projects.id, projectId), eq(projects.userId, user.id)));
+  if (!project) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
+  const [profile] = await db
+    .select({ id: companyProfiles.id })
+    .from(companyProfiles)
+    .where(and(eq(companyProfiles.projectId, projectId), eq(companyProfiles.slug, slug)));
+  if (!profile) {
+    return NextResponse.json({ error: "Company not found" }, { status: 404 });
+  }
+
+  await db.transaction(async (tx) => {
+    const stk = await tx
+      .select({ id: stakeholderProfiles.id })
+      .from(stakeholderProfiles)
+      .where(eq(stakeholderProfiles.companyProfileId, profile.id));
+    const stkIds = stk.map((s) => s.id);
+
+    // Drop share links pointing at this company or its stakeholders (shares
+    // reference resources by id with no FK, so they'd otherwise dangle).
+    await tx
+      .delete(shares)
+      .where(and(eq(shares.resourceType, "company"), eq(shares.resourceId, profile.id)));
+    if (stkIds.length) {
+      await tx
+        .delete(shares)
+        .where(and(eq(shares.resourceType, "stakeholder"), inArray(shares.resourceId, stkIds)));
+    }
+
+    await tx.delete(stakeholderProfiles).where(eq(stakeholderProfiles.companyProfileId, profile.id));
+    await tx.delete(companyProfiles).where(eq(companyProfiles.id, profile.id));
+
+    await tx
+      .update(projects)
+      .set({
+        companyCount: sql`GREATEST(0, ${projects.companyCount} - 1)`,
+        updatedAt: new Date(),
+      })
+      .where(eq(projects.id, projectId));
+  });
+
+  return NextResponse.json({ success: true });
 }
