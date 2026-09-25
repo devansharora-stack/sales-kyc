@@ -282,6 +282,17 @@ export async function POST(
     return NextResponse.json({ error: "User not found" }, { status: 404 });
   }
 
+  // Ownership guard — only the project's owner may add/research companies in it.
+  // Without this, any signed-in user could POST to another user's projectId and
+  // kick off (billable) research runs under their project. Mirrors the DELETE.
+  const [ownedProject] = await db
+    .select({ id: projects.id })
+    .from(projects)
+    .where(and(eq(projects.id, projectId), eq(projects.userId, user.id)));
+  if (!ownedProject) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   // Create research jobs for each company
   const agentSteps = [
     { agent_name: "company_profile", phase: 1 },

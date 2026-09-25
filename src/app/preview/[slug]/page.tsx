@@ -13,6 +13,7 @@ import Sources from "@/components/company/Sources";
 import TechLandscapePanel from "@/components/company/TechLandscapePanel";
 import NumberedList from "@/components/company/NumberedList";
 import CollapsibleItem from "@/components/company/CollapsibleItem";
+import { safeHref } from "@/lib/safe-url";
 
 const solName = (id: SolutionId | string) =>
   ALL_SOLUTIONS.find((s) => s.id === id)?.name ?? id;
@@ -433,7 +434,7 @@ export default function PreviewPage() {
                           <p className="text-xs text-slate-400">
                             Source:{" "}
                             {s.sourceUrl ? (
-                              <a href={s.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[#3289FF] hover:underline">
+                              <a href={safeHref(s.sourceUrl)} target="_blank" rel="noopener noreferrer" className="text-[#3289FF] hover:underline">
                                 {s.source}
                               </a>
                             ) : (
@@ -467,7 +468,7 @@ export default function PreviewPage() {
               <div key={i} className="text-xs flex gap-2 items-start py-0.5">
                 <span className="text-slate-400 shrink-0 font-mono w-6 text-right">[{i + 1}]</span>
                 <div className="min-w-0">
-                  <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-[#3289FF] hover:underline">
+                  <a href={safeHref(s.url)} target="_blank" rel="noopener noreferrer" className="text-[#3289FF] hover:underline">
                     {s.label}
                   </a>
                   <span className="text-slate-400 ml-1">&mdash; {s.type} &mdash; {s.date}</span>

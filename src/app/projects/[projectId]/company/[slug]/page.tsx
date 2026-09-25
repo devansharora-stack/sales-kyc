@@ -20,6 +20,7 @@ import CollapsibleItem from "@/components/company/CollapsibleItem";
 import StakeholderDrawer from "@/components/stakeholder/StakeholderDrawer";
 import InfoHint from "@/components/InfoHint";
 import ShareButton from "@/components/ShareButton";
+import { safeHref } from "@/lib/safe-url";
 
 const solName = (id: SolutionId | string) =>
   ALL_SOLUTIONS.find(s => s.id === id)?.name ?? id;
@@ -957,7 +958,7 @@ export default function CompanyPage(props?: {
                           <div className="flex items-center gap-2 mt-1">
                             <p className="text-xs text-slate-400 dark:text-slate-500">
                               Source: {s.sourceUrl
-                                ? <a href={s.sourceUrl} target="_blank" rel="noopener noreferrer" className="text-[#3289FF] hover:underline">{s.source}</a>
+                                ? <a href={safeHref(s.sourceUrl)} target="_blank" rel="noopener noreferrer" className="text-[#3289FF] hover:underline">{s.source}</a>
                                 : s.source}
                             </p>
                             {s.confidence && (
@@ -1030,7 +1031,7 @@ export default function CompanyPage(props?: {
                           </button>
                         )}
                         {d.linkedin_url && (
-                          <a href={d.linkedin_url} target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#3289FF] hover:underline">LinkedIn</a>
+                          <a href={safeHref(d.linkedin_url)} target="_blank" rel="noopener noreferrer" className="text-[11px] text-[#3289FF] hover:underline">LinkedIn</a>
                         )}
                       </div>
                     </div>
@@ -1098,7 +1099,7 @@ export default function CompanyPage(props?: {
               <div key={i} className="text-xs flex gap-2 items-start py-0.5">
                 <span className="text-slate-400 dark:text-slate-500 shrink-0 font-mono w-6 text-right">[{i + 1}]</span>
                 <div className="min-w-0">
-                  <a href={s.url} target="_blank" rel="noopener noreferrer" className="text-[#3289FF] hover:underline">{s.label}</a>
+                  <a href={safeHref(s.url)} target="_blank" rel="noopener noreferrer" className="text-[#3289FF] hover:underline">{s.label}</a>
                   <span className="text-slate-400 dark:text-slate-500 ml-1">&mdash; {s.type} &mdash; {s.date}</span>
                 </div>
               </div>

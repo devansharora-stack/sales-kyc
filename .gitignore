@@ -39,6 +39,9 @@ yarn-error.log*
 # mcp config
 .mcp.json
 
+# claude code local settings (may contain tokens in allow-list commands)
+.claude/settings.local.json
+
 # GCP service account keys
 gcp-service-account.json
 

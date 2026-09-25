@@ -1,6 +1,7 @@
 import type { Source } from "@/lib/types";
 import type { Theme } from "../theme";
 import { fmtSourceDate } from "../shared";
+import { safeHref } from "@/lib/safe-url";
 
 // A clickable source citation. Data-room: boxed pill (type · date). Ledger:
 // inline underlined text. Both link out when the source has a URL.
@@ -12,7 +13,7 @@ export default function SourceChip({ theme, s }: { theme: Theme; s: Source }) {
     if (s.url) {
       return (
         <a
-          href={s.url}
+          href={safeHref(s.url)}
           target="_blank"
           rel="noopener noreferrer"
           title={s.label}

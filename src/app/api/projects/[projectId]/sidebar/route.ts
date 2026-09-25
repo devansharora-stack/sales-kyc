@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { researchJobs, researchSteps, companyProfiles } from "@/db/schema";
 import { and, eq, inArray, desc } from "drizzle-orm";
+import { getUserByEmail, ownsResource } from "@/lib/access";
 
 // Backs ProgressSidebar (polled). Returns active + recently-completed jobs with
 // their steps, plus a resolved slug for each completed job.
@@ -10,6 +13,16 @@ export async function GET(
   { params }: { params: Promise<{ projectId: string }> }
 ) {
   const { projectId } = await params;
+
+  // Owner-only — jobs/steps expose research activity for a project.
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const user = await getUserByEmail(session.user.email);
+  if (!user || !(await ownsResource(user.id, "project", projectId))) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
 
   const activeRows = await db
     .select()

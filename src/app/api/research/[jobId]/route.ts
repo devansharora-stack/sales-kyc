@@ -2,19 +2,58 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { researchJobs, researchSteps, companyProfiles } from "@/db/schema";
+import { researchJobs, researchSteps, companyProfiles, projects } from "@/db/schema";
 import { and, eq, inArray } from "drizzle-orm";
 import { serializeJob } from "@/lib/serializers";
+import { getUserByEmail } from "@/lib/access";
+
+// A caller may read/dismiss a job if they started it, own its project, OR own a
+// project that references it via a cached/reused company profile (a "Use existing"
+// copy shares one job_id across projects). This covers every legitimate view
+// while blocking cross-user access to arbitrary jobIds.
+async function callerCanAccessJob(
+  userId: string,
+  job: { id: string; userId: string | null; projectId: string | null },
+): Promise<boolean> {
+  if (job.userId && job.userId === userId) return true;
+  if (job.projectId) {
+    const [p] = await db
+      .select({ id: projects.id })
+      .from(projects)
+      .where(and(eq(projects.id, job.projectId), eq(projects.userId, userId)));
+    if (p) return true;
+  }
+  const [ref] = await db
+    .select({ id: companyProfiles.id })
+    .from(companyProfiles)
+    .innerJoin(projects, eq(companyProfiles.projectId, projects.id))
+    .where(and(eq(companyProfiles.jobId, job.id), eq(projects.userId, userId)));
+  return !!ref;
+}
 
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ jobId: string }> }
 ) {
+  const session = await getServerSession(authOptions);
+  if (!session?.user?.email) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+  const user = await getUserByEmail(session.user.email);
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { jobId } = await params;
 
   const [job] = await db.select().from(researchJobs).where(eq(researchJobs.id, jobId));
 
   if (!job) {
+    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
+
+  if (!(await callerCanAccessJob(user.id, job))) {
+    // Same shape as not-found so a stranger can't probe which jobIds exist.
     return NextResponse.json({ error: "Job not found" }, { status: 404 });
   }
 
@@ -41,7 +80,20 @@ export async function DELETE(
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const user = await getUserByEmail(session.user.email);
+  if (!user) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { jobId } = await params;
+
+  const [job] = await db.select().from(researchJobs).where(eq(researchJobs.id, jobId));
+  if (!job) {
+    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
+  if (!(await callerCanAccessJob(user.id, job))) {
+    return NextResponse.json({ error: "Job not found" }, { status: 404 });
+  }
 
   // Mark job as failed/dismissed
   await db

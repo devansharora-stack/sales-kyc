@@ -1,6 +1,7 @@
 "use client";
 
 import type { Source } from "@/lib/types";
+import { safeHref } from "@/lib/safe-url";
 
 const linkIcon = (
   <svg className="w-2.5 h-2.5 shrink-0 opacity-60" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -15,7 +16,7 @@ export default function Sources({ sources }: { sources?: Source[] }) {
       {sources.map((s, i) => (
         <a
           key={i}
-          href={s.url}
+          href={safeHref(s.url)}
           target="_blank"
           rel="noopener noreferrer"
           className="text-[10px] text-[#3289FF] hover:text-[#3289FF]/80 hover:underline flex items-center gap-0.5"

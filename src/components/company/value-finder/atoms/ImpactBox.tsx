@@ -1,6 +1,7 @@
 import type { Theme } from "../theme";
 import type { ResolvedImpact } from "@/lib/value-finder-benchmarks";
 import { stripDashes } from "../shared";
+import { safeHref } from "@/lib/safe-url";
 
 // Quantified impact for a finding: a real cited benchmark headline applied to
 // the company's own real scale figure, with BOTH citations shown. Never faked —
@@ -20,7 +21,7 @@ export default function ImpactBox({
 }) {
   const cite = impact.benchmarkUrl ? (
     <a
-      href={impact.benchmarkUrl}
+      href={safeHref(impact.benchmarkUrl)}
       target="_blank"
       rel="noopener noreferrer"
       className="block leading-tight"
@@ -84,7 +85,7 @@ export default function ImpactBox({
         <div className="mt-1 leading-tight line-clamp-1" style={{ fontSize: 9, color: theme.mute }}>
           {impact.benchmarkUrl ? (
             <a
-              href={impact.benchmarkUrl}
+              href={safeHref(impact.benchmarkUrl)}
               target="_blank"
               rel="noopener noreferrer"
               style={{ color: theme.mute, textDecoration: "underline", textDecorationColor: theme.hair, textUnderlineOffset: "2px" }}

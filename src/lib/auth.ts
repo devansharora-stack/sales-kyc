@@ -17,8 +17,18 @@ if (
   process.env.NEXTAUTH_URL = PUBLIC_URL;
 }
 
-const ALLOWED_DOMAINS = (process.env.ALLOWED_DOMAINS || "").split(",").filter(Boolean);
-const ALLOWED_EMAILS = (process.env.ALLOWED_EMAILS || "").split(",").filter(Boolean);
+// Normalize to bare, lowercased domains ("@techolution.com" → "techolution.com")
+// so the sign-in check can compare the email's domain part EXACTLY. An
+// unanchored endsWith() would let lookalike domains (e.g. "eviltecholution.com")
+// or subdomains slip through if the env were ever set without the leading "@".
+const ALLOWED_DOMAINS = (process.env.ALLOWED_DOMAINS || "")
+  .split(",")
+  .map((d) => d.trim().toLowerCase().replace(/^@/, ""))
+  .filter(Boolean);
+const ALLOWED_EMAILS = (process.env.ALLOWED_EMAILS || "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
 
 export const authOptions: NextAuthOptions = {
   providers: [
@@ -32,7 +42,8 @@ export const authOptions: NextAuthOptions = {
       if (account?.provider === "google") {
         const email = profile?.email?.toLowerCase();
         if (!email) return false;
-        if (ALLOWED_DOMAINS.some((domain) => email.endsWith(domain))) return true;
+        const domain = email.split("@")[1];
+        if (domain && ALLOWED_DOMAINS.includes(domain)) return true;
         if (ALLOWED_EMAILS.includes(email)) return true;
         return false;
       }

@@ -1,4 +1,5 @@
 import type { DeepStakeholderProfile } from "@/lib/types";
+import { safeHref } from "@/lib/safe-url";
 
 function Section({ title, children, empty }: { title: string; children: React.ReactNode; empty?: boolean }) {
   if (empty) return null;
@@ -30,7 +31,7 @@ function IntelQualityBadge({ quality }: { quality: string }) {
 function SourceLink({ url, label }: { url?: string; label: string }) {
   if (!url) return null;
   return (
-    <a href={url} target="_blank" rel="noopener noreferrer"
+    <a href={safeHref(url)} target="_blank" rel="noopener noreferrer"
       className="text-xs text-[#3289FF] hover:text-[#1C57FF] underline underline-offset-2">
       [{label}]
     </a>
@@ -71,7 +72,7 @@ export default function StakeholderProfileView({ p }: { p: DeepStakeholderProfil
               {brief?.intelQuality && <IntelQualityBadge quality={brief.intelQuality} />}
               {p.location && <Badge className="bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800/60 dark:text-slate-400 dark:border-slate-700">{p.location}</Badge>}
               {p.linkedinUrl && (
-                <a href={p.linkedinUrl} target="_blank" rel="noopener noreferrer"
+                <a href={safeHref(p.linkedinUrl)} target="_blank" rel="noopener noreferrer"
                   className="text-xs text-[#3289FF] hover:text-[#1C57FF] ml-2">LinkedIn ↗</a>
               )}
             </div>
@@ -278,7 +279,7 @@ export default function StakeholderProfileView({ p }: { p: DeepStakeholderProfil
                       <div className="shrink-0 text-right space-y-0.5">
                         {pi.engagement && <div className="text-xs text-slate-400 dark:text-slate-500">{pi.engagement}</div>}
                         {pi.sourceUrl && (
-                          <a href={pi.sourceUrl} target="_blank" rel="noopener noreferrer"
+                          <a href={safeHref(pi.sourceUrl)} target="_blank" rel="noopener noreferrer"
                             className="text-xs text-[#3289FF] hover:text-[#1C57FF]">View post ↗</a>
                         )}
                       </div>
@@ -304,7 +305,7 @@ export default function StakeholderProfileView({ p }: { p: DeepStakeholderProfil
                           {(post.likes ?? 0) > 0 && `${post.likes}L`}{(post.likes ?? 0) > 0 && (post.comments ?? 0) > 0 && " · "}{(post.comments ?? 0) > 0 && `${post.comments}C`}
                         </div>
                         {post.url && (
-                          <a href={post.url} target="_blank" rel="noopener noreferrer"
+                          <a href={safeHref(post.url)} target="_blank" rel="noopener noreferrer"
                             className="text-xs text-[#3289FF] hover:text-[#1C57FF]">View ↗</a>
                         )}
                       </div>

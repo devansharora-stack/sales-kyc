@@ -1,5 +1,65 @@
 import { GoogleGenAI } from "@google/genai";
 import { recordLlmUsage } from "@/lib/usage-context";
+import net from "net";
+import { lookup } from "dns/promises";
+
+// ─── SSRF guard ───
+// The URL-liveness / redirect-resolution fetches below run against URLs that
+// come straight out of LLM output. Without a guard, a model-emitted URL like
+// http://169.254.169.254/… or http://localhost could make the server fetch its
+// own cloud metadata / internal services (SSRF). Only allow public http(s)
+// hosts; anything that resolves to a private/loopback/link-local address is
+// treated as unreachable so it's stripped from results like any dead URL.
+function isPrivateIp(ip: string): boolean {
+  if (net.isIPv4(ip)) {
+    const [a, b] = ip.split(".").map(Number);
+    if (a === 0 || a === 10 || a === 127) return true;
+    if (a === 169 && b === 254) return true; // link-local + cloud metadata
+    if (a === 172 && b >= 16 && b <= 31) return true;
+    if (a === 192 && b === 168) return true;
+    if (a === 100 && b >= 64 && b <= 127) return true; // CGNAT
+    return false;
+  }
+  if (net.isIPv6(ip)) {
+    const low = ip.toLowerCase();
+    if (low === "::1" || low === "::") return true;
+    if (low.startsWith("fe80") || low.startsWith("fc") || low.startsWith("fd")) return true;
+    const mapped = low.match(/::ffff:(\d+\.\d+\.\d+\.\d+)/);
+    if (mapped) return isPrivateIp(mapped[1]);
+    return false;
+  }
+  return true; // unknown format → unsafe
+}
+
+async function isSafePublicUrl(url: string): Promise<boolean> {
+  let host: string;
+  let protocol: string;
+  try {
+    const u = new URL(url);
+    host = u.hostname;
+    protocol = u.protocol;
+  } catch {
+    return false;
+  }
+  if (protocol !== "http:" && protocol !== "https:") return false;
+  const lower = host.toLowerCase();
+  if (
+    lower === "localhost" ||
+    lower.endsWith(".localhost") ||
+    lower.endsWith(".internal") ||
+    lower.endsWith(".local") ||
+    lower === "metadata.google.internal"
+  ) {
+    return false;
+  }
+  if (net.isIP(host)) return !isPrivateIp(host);
+  try {
+    const addrs = await lookup(host, { all: true });
+    return addrs.length > 0 && addrs.every((a) => !isPrivateIp(a.address));
+  } catch {
+    return false;
+  }
+}
 
 /**
  * Gemini client that supports two auth modes:
@@ -29,7 +89,10 @@ function getClient(): GoogleGenAI {
       const path = require("path");
       const keyJson = Buffer.from(process.env.GCP_SERVICE_ACCOUNT_KEY, "base64").toString("utf-8");
       const tmpPath = path.join(os.tmpdir(), "gcp-key.json");
-      fs.writeFileSync(tmpPath, keyJson);
+      // Owner read/write only (0600) — the key file must not be world/group
+      // readable by any other process sharing the tmpdir.
+      fs.writeFileSync(tmpPath, keyJson, { mode: 0o600 });
+      try { fs.chmodSync(tmpPath, 0o600); } catch { /* best-effort on platforms without chmod */ }
       process.env.GOOGLE_APPLICATION_CREDENTIALS = tmpPath;
     }
 
@@ -469,6 +532,7 @@ function stripDeadUrls(obj: any, deadUrls: Set<string>): number {
  * Returns true if URL is reachable (any non-404/410 status).
  */
 async function isUrlReachable(url: string): Promise<boolean> {
+  if (!(await isSafePublicUrl(url))) return false; // SSRF guard — internal target
   try {
     const res = await fetch(url, {
       method: "HEAD",
@@ -498,6 +562,7 @@ async function isUrlReachable(url: string): Promise<boolean> {
  * Must be done soon after Gemini returns — these redirects expire.
  */
 async function resolveRedirectUrl(redirectUrl: string): Promise<string | null> {
+  if (!(await isSafePublicUrl(redirectUrl))) return null; // SSRF guard
   try {
     const res = await fetch(redirectUrl, {
       method: "GET",
