@@ -23,6 +23,16 @@ import { resolveLinkedInUrl } from "./linkedin-url-resolver";
 const LINKEDIN_IN_RE = /linkedin\.com\/in\/([A-Za-z0-9\-_%]+)/i;
 const CONF_RANK: Record<Stakeholder["confidence"], number> = { verified: 3, likely: 2, unverified: 1 };
 
+/** Which stakeholders get the (paid) LinkedIn resolver, prioritised. Others are
+ *  kept with name+title but no /in/ URL. `all`/`0` disables the cap. */
+const TIER_RANK: Record<string, number> = { "Decision Maker": 3, Champion: 2, Influencer: 1 };
+function resolveCap(): number {
+  const raw = (process.env.STAKEHOLDER_LINKEDIN_CAP ?? "3").trim().toLowerCase();
+  if (raw === "all" || raw === "0") return Infinity;
+  const n = Number(raw);
+  return Number.isFinite(n) && n > 0 ? n : 3;
+}
+
 const nameKey = (name: string) => name.trim().toLowerCase().replace(/\s+/g, " ");
 const inSlug = (url: string | undefined) => (url?.match(LINKEDIN_IN_RE)?.[1] || "").toLowerCase().replace(/\/$/, "");
 const hasLinkedIn = (s: Stakeholder) => !!inSlug(s.sourceUrl);
@@ -70,9 +80,20 @@ function mergeStakeholders(...lists: Stakeholder[][]): Stakeholder[] {
  * unverified (kept, but with no broken link) instead of leaving a bad source.
  */
 async function enrichWithLinkedIn(list: Stakeholder[], companyName: string): Promise<Stakeholder[]> {
+  // Only people missing a URL (and not from Lusha) need the paid resolver.
+  // Rank them by tier so the cap spends its budget on Decision Makers first.
+  const cap = resolveCap();
+  const needsResolve = list
+    .map((s, i) => ({ s, i }))
+    .filter(({ s }) => s.source !== "Lusha" && !hasLinkedIn(s))
+    .sort((a, b) => (TIER_RANK[b.s.tier] ?? 0) - (TIER_RANK[a.s.tier] ?? 0));
+  const allowed = new Set(needsResolve.slice(0, cap).map(({ i }) => i));
+
   const resolved = await Promise.all(
-    list.map(async (s): Promise<Stakeholder | null> => {
+    list.map(async (s, i): Promise<Stakeholder | null> => {
       if (s.source === "Lusha" || hasLinkedIn(s)) return s;
+      // Over the cap — keep the person (name + title) but skip the paid lookup.
+      if (!allowed.has(i)) return { ...s, sourceUrl: "", confidence: "unverified" };
       const r = await resolveLinkedInUrl(s.name, companyName, s.title);
       if (r.departed) return null;
       if (r.url) {
