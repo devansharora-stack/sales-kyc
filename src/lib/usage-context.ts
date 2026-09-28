@@ -42,6 +42,10 @@ export function recordLlmUsage(u: RecordUsageInput): void {
   const output = Math.max(0, Math.round(u.outputTokens ?? 0));
   if (input === 0 && output === 0) return;
 
+  // Telemetry must never break the LLM path: if the db handle isn't available
+  // (e.g. a standalone script, or a branch where it's not wired), skip silently.
+  if (!db || typeof (db as { insert?: unknown }).insert !== "function") return;
+
   void db
     .insert(llmUsage)
     .values({
