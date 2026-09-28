@@ -24,6 +24,7 @@ interface ChatContext {
   type: "company" | "project" | "global";
   projectId?: string;
   companySlug?: string;
+  stakeholderId?: string;
 }
 
 // Trim a partial (user-stopped) response back to its last complete sentence so
@@ -47,6 +48,12 @@ function detectContext(pathname: string | null): ChatContext {
   if (companyMatch) {
     return { type: "company", projectId: companyMatch[1], companySlug: companyMatch[2] };
   }
+  // Stakeholder page — keep type "project" (valid persisted context type) but
+  // carry the stakeholderId so the server eager-loads the person + their company.
+  const stakeholderMatch = pathname.match(/\/projects\/([^/]+)\/stakeholder\/([^/]+)/);
+  if (stakeholderMatch) {
+    return { type: "project", projectId: stakeholderMatch[1], stakeholderId: stakeholderMatch[2] };
+  }
   const projectMatch = pathname.match(/\/projects\/([^/]+)/);
   // "new" is the create page, not a real project id — chat there is global.
   if (projectMatch && projectMatch[1] !== "new") {
@@ -65,6 +72,7 @@ export default function ChatPanel() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [isStreaming, setIsStreaming] = useState(false);
   const [streamingText, setStreamingText] = useState("");
+  const [toolStatus, setToolStatus] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isAtBottom, setIsAtBottom] = useState(true);
 
@@ -75,7 +83,7 @@ export default function ChatPanel() {
   const contextKeyRef = useRef<string>("");
 
   const contextKey = context.projectId
-    ? `${context.projectId}:${context.companySlug || ""}`
+    ? `${context.projectId}:${context.companySlug || ""}:${context.stakeholderId || ""}`
     : "global";
 
   useEffect(() => {
@@ -176,6 +184,7 @@ export default function ChatPanel() {
     setMessages((prev) => [...prev, userMsg]);
     setIsStreaming(true);
     setStreamingText("");
+    setToolStatus(null);
 
     const controller = new AbortController();
     abortRef.current = controller;
@@ -223,8 +232,13 @@ export default function ChatPanel() {
               setActiveSessionId(parsed.sessionId);
               continue;
             }
+            if (parsed.type === "tool_status") {
+              setToolStatus(parsed.hint || "Looking things up…");
+              continue;
+            }
             if (parsed.type === "content_block_delta" && parsed.delta?.text) {
               fullResponse += parsed.delta.text;
+              setToolStatus(null);
               setStreamingText(fullResponse);
             }
           } catch {
@@ -258,8 +272,20 @@ export default function ChatPanel() {
         stoppedByUserRef.current = false;
         return;
       }
-      setError(err instanceof Error ? err.message : "Failed to send message");
+      // Unexpected mid-stream drop: keep whatever streamed rather than losing the
+      // answer. The server persists the same partial, so history stays in sync.
+      if (fullResponse) {
+        setMessages((prev) => [
+          ...prev,
+          { role: "assistant", content: fullResponse, timestamp: new Date().toISOString() },
+        ]);
+        setStreamingText("");
+        fetchSessions();
+      } else {
+        setError(err instanceof Error ? err.message : "Failed to send message");
+      }
     } finally {
+      setToolStatus(null);
       setIsStreaming(false);
     }
   }
@@ -389,6 +415,16 @@ export default function ChatPanel() {
                 timestamp={new Date().toISOString()}
                 isStreaming
               />
+            )}
+            {isStreaming && !streamingText && toolStatus && (
+              <div className="flex items-center gap-2 px-1 py-1 text-xs text-slate-400 dark:text-slate-500">
+                <span className="flex gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#3289FF] animate-bounce" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#3289FF] animate-bounce [animation-delay:150ms]" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#3289FF] animate-bounce [animation-delay:300ms]" />
+                </span>
+                {toolStatus}
+              </div>
             )}
             {error && (
               <div className="px-3 py-2 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg">

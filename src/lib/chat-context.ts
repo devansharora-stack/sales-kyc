@@ -2,30 +2,55 @@ import { db } from "@/lib/db";
 import { companyProfiles, stakeholderProfiles } from "@/db/schema";
 import { and, eq, inArray, desc } from "drizzle-orm";
 import type { CompanyDetail, DeepStakeholderProfile } from "@/lib/types";
+import { canonicalName, levenshtein } from "@/lib/company-match";
 import offeringsData from "@/data/offerings-kb.json";
+
+/** Fuzzy relevance 0..1 of a search query against a candidate string.
+ *  Rewards exact/substring/token-overlap, backs off to Levenshtein ratio so
+ *  typos and partial names ("artera" → "Artera Services") still match. */
+function fuzzyScore(query: string, target: string): number {
+  const q = canonicalName(query);
+  const t = canonicalName(target);
+  if (!q || !t) return 0;
+  if (q === t) return 1;
+  if (t.includes(q) || q.includes(t)) return 0.95;
+  const qTokens = q.split(" ").filter(Boolean);
+  const tTokens = new Set(t.split(" ").filter(Boolean));
+  const overlap = qTokens.filter((tok) => tTokens.has(tok)).length;
+  if (overlap) return 0.7 + 0.25 * (overlap / qTokens.length);
+  const max = Math.max(q.length, t.length);
+  return max === 0 ? 0 : 1 - levenshtein(q, t) / max;
+}
 
 const BASE_PREAMBLE = `You are KYC Genie, Techolution's AI sales intelligence assistant. You help sales teams understand company research, identify opportunities, and recommend solutions from Techolution's portfolio.
 
 RESPONSE STYLE:
-- Act as a senior sales analyst, not a database. Synthesize and summarize — never dump raw data.
+- Act as a senior sales advisor, not a database. Synthesize, reason, and recommend — never dump raw data.
 - Lead with the most important insight or takeaway first.
-- Keep responses concise: aim for 3-5 key bullet points for overview questions. Use short paragraphs, not walls of text.
+- Match depth to the question. For quick/overview questions, keep it tight (3-5 bullets). For analytical or opportunity questions ("is there an opportunity to sell X at Y", "how do we win here", "why now", "how should we approach them"), go deeper and actually reason it through — do NOT reduce these to a thin bullet list.
 - Use clear structure: bold headers for sections, bullet points for lists, short sentences.
-- Cover all relevant dimensions (score, pain points, solutions, stakeholders, triggers) but summarize each in 1-2 lines unless the user asks to go deeper.
 - When the user asks about a company, give an executive briefing: who they are, why they matter to us, top opportunities, and recommended next steps.
 - When the user asks to compare companies, use a concise side-by-side format highlighting key differences.
-- Only go into full detail on a specific topic (e.g. all stakeholders, full score breakdown) when the user explicitly asks for it.
-- End with a clear recommendation or suggested next step when relevant.
+- End with a clear recommendation or concrete next step when relevant.
 - Use plain, professional language. Avoid jargon unless the user uses it first.
 
+ADVISOR REASONING (use for analytical / opportunity / "can we sell X" / "how do we approach" questions):
+Reason through the opportunity explicitly, connecting the dots in the research:
+1. Pain point / trigger — what problem or event in the research creates the need?
+2. Solution fit — which Techolution offering maps to it, and why (cite the specific fit)?
+3. Why now — what makes this timely (trigger events, urgency, initiatives)?
+4. Stakeholder angle — who is the buyer/champion, what do they care about, how to open the conversation?
+5. Next step — the concrete recommended play.
+Base every step on the retrieved research; if a step's data is missing, say so rather than inventing it.
+
 STRICT DATA POLICY:
-- You must ONLY use information provided in the context below. Do NOT use your own training data or general knowledge to answer questions.
-- If the answer is not contained in the provided context data, respond with: "I don't have that information in the current research data." Do not guess, speculate, or fill in gaps.
-- If a user asks about a company, project, or topic that does not exist in the provided data, say: "That information is not available on the platform."
+- Ground every answer in the research/context data provided or retrieved via your tools. Do NOT use general knowledge or training data to state facts about a company, person, score, or opportunity.
+- Before saying you don't have information, you MUST call the relevant lookup or search tool (search_companies / search_stakeholders / lookup_company / lookup_stakeholder). Only respond that data is unavailable AFTER a tool has returned nothing. Never refuse without searching first.
+- If, after searching and looking up, the answer is genuinely not in the data, respond with: "I don't have that information in the current research data." Do not guess, speculate, or fill in gaps.
 - Never fabricate data points, statistics, scores, stakeholder names, or company details.
 - When recommending solutions, only cite case studies and clients that appear in the Techolution Solutions Portfolio provided below.
 - When drafting emails or messages, only use stakeholder names, pain points, and solution mappings that exist in the research data.
-- You may rephrase, summarize, or reorganize the provided data, but you must not add information that is not present in it.`;
+- You may rephrase, summarize, reorganize, and REASON OVER the provided data, but you must not add facts that are not present in it.`;
 
 let cachedSolutionsSummary: string | null = null;
 
@@ -271,24 +296,143 @@ export async function fetchStakeholderBundle(
   return sections.join("\n\n---\n\n");
 }
 
+/** Fuzzy server-side search over the user's researched companies. Returns a
+ *  short ranked list (name + slug + brief) the model can then hand to
+ *  lookup_company. Matches name / industry / primary solution / slug so entities
+ *  beyond the pre-injected index — or with typo'd / partial names — are reachable. */
+export async function searchCompanies(userId: string, query: string): Promise<string | null> {
+  const q = (query || "").trim();
+  if (!q) return null;
+
+  const rows = await db
+    .select({
+      slug: companyProfiles.slug,
+      total_score: companyProfiles.totalScore,
+      rating: companyProfiles.rating,
+      industry: companyProfiles.industry,
+      primary_solution: companyProfiles.primarySolution,
+      data: companyProfiles.data,
+    })
+    .from(companyProfiles)
+    .where(eq(companyProfiles.userId, userId));
+  if (!rows.length) return null;
+
+  const scored = rows
+    .map((r) => {
+      const d = (r.data || {}) as Record<string, any>;
+      const name = (d.name as string) || r.slug;
+      const score = Math.max(
+        fuzzyScore(q, name),
+        fuzzyScore(q, r.slug),
+        r.industry ? fuzzyScore(q, r.industry) * 0.8 : 0,
+        r.primary_solution ? fuzzyScore(q, r.primary_solution) * 0.7 : 0,
+      );
+      return { name, slug: r.slug, total_score: r.total_score, rating: r.rating, industry: r.industry, primary_solution: r.primary_solution, exec: typeof d.execSummary === "string" ? d.execSummary : "", score };
+    })
+    .filter((c) => c.score >= 0.5)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8);
+
+  if (!scored.length) return null;
+  const lines = scored.map(
+    (c) => `- **${c.name}** [slug: ${c.slug}]: Score ${c.total_score ?? "N/A"} (${c.rating ?? "N/A"}), ${c.industry ?? ""}, Primary: ${c.primary_solution ?? ""}. ${c.exec.slice(0, 200)}`,
+  );
+  return `Matching companies (use lookup_company with the slug for full data):\n${lines.join("\n")}`;
+}
+
+/** Fuzzy server-side search over the user's deep-analyzed stakeholders. Returns a
+ *  ranked list (name + id + title/company) the model can hand to lookup_stakeholder. */
+export async function searchStakeholders(userId: string, query: string): Promise<string | null> {
+  const q = (query || "").trim();
+  if (!q) return null;
+
+  const rows = await db
+    .select({
+      id: stakeholderProfiles.id,
+      name: stakeholderProfiles.name,
+      company: stakeholderProfiles.company,
+      title: stakeholderProfiles.title,
+    })
+    .from(stakeholderProfiles)
+    .where(and(eq(stakeholderProfiles.userId, userId), eq(stakeholderProfiles.status, "completed")));
+  if (!rows.length) return null;
+
+  const scored = rows
+    .map((r) => ({
+      ...r,
+      score: Math.max(
+        fuzzyScore(q, r.name),
+        r.company ? fuzzyScore(q, r.company) * 0.85 : 0,
+        r.title ? fuzzyScore(q, r.title) * 0.6 : 0,
+      ),
+    }))
+    .filter((s) => s.score >= 0.5)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8);
+
+  if (!scored.length) return null;
+  const lines = scored.map(
+    (s) => `- **${s.name}**${s.title ? ` — ${s.title}` : ""}${s.company ? ` @ ${s.company}` : ""} [id: ${s.id}]`,
+  );
+  return `Matching stakeholders (use lookup_stakeholder with the id for full profile):\n${lines.join("\n")}`;
+}
+
 export async function buildChatSystemPrompt(context: {
   type: "company" | "project" | "global";
   projectId?: string;
   companySlug?: string;
+  stakeholderId?: string;
   userId?: string;
 }): Promise<{ prompt: string; hasCompanyIndex: boolean; hasStakeholderIndex: boolean }> {
   const sections: string[] = [BASE_PREAMBLE, buildSolutionsSummary()];
 
-  if (context.type === "company" && context.companySlug && context.projectId) {
-    const [profile] = await db
-      .select({ data: companyProfiles.data })
-      .from(companyProfiles)
-      .where(and(eq(companyProfiles.projectId, context.projectId), eq(companyProfiles.slug, context.companySlug)))
+  // Page-awareness: when the user is viewing a specific stakeholder, eager-load
+  // that person's FULL profile plus their employer company's bundle so the chat
+  // can answer about the page they're on without a tool round-trip.
+  if (context.stakeholderId && context.userId) {
+    const bundle = await fetchStakeholderBundle(context.userId, [context.stakeholderId]);
+    if (bundle) {
+      sections.push(`## Stakeholder You Are Viewing\n\n${bundle}`);
+    }
+    // Pull the employer company's bundle too, if this person is linked to one.
+    const [stk] = await db
+      .select({ companyProfileId: stakeholderProfiles.companyProfileId })
+      .from(stakeholderProfiles)
+      .where(and(eq(stakeholderProfiles.id, context.stakeholderId), eq(stakeholderProfiles.userId, context.userId)))
       .limit(1);
+    if (stk?.companyProfileId) {
+      const [co] = await db
+        .select({ slug: companyProfiles.slug })
+        .from(companyProfiles)
+        .where(eq(companyProfiles.id, stk.companyProfileId))
+        .limit(1);
+      if (co?.slug) {
+        const coBundle = await fetchCompanySalesBundle(context.userId, [co.slug]);
+        if (coBundle) sections.push(`## Employer Company Research\n\n${coBundle}`);
+      }
+    }
+  }
 
-    if (profile?.data) {
-      const company = cleanCompanyData(profile.data as CompanyDetail);
-      sections.push(`## Company Research Data\n\n${JSON.stringify(company, null, 2)}`);
+  if (context.type === "company" && context.companySlug && context.projectId) {
+    // Use the same clean markdown bundle the lookup tool produces (not a raw
+    // JSON dump) so the model reasons over dense, readable research.
+    let coBundle: string | null = null;
+    if (context.userId) {
+      coBundle = await fetchCompanySalesBundle(context.userId, [context.companySlug]);
+    }
+    if (coBundle) {
+      sections.push(`## Company Research Data\n\n${coBundle}`);
+    } else {
+      // Fallback: company not matched by userId+slug — read by project+slug.
+      const [profile] = await db
+        .select({ data: companyProfiles.data })
+        .from(companyProfiles)
+        .where(and(eq(companyProfiles.projectId, context.projectId), eq(companyProfiles.slug, context.companySlug)))
+        .limit(1);
+      if (profile?.data) {
+        const company = cleanCompanyData(profile.data as CompanyDetail);
+        sections.push(`## Company Research Data\n\n${JSON.stringify(company, null, 2)}`);
+      }
     }
   } else if (context.type === "project" && context.projectId) {
     const rows = await db
@@ -344,7 +488,7 @@ export async function buildChatSystemPrompt(context: {
       .from(companyProfiles)
       .where(eq(companyProfiles.userId, context.userId))
       .orderBy(desc(companyProfiles.totalScore))
-      .limit(30);
+      .limit(200);
 
     if (allProfiles.length) {
       hasCompanyIndex = true;
@@ -362,10 +506,10 @@ export async function buildChatSystemPrompt(context: {
       });
 
       const index = companyIndex.map((p) =>
-        `- **${p.name}** [slug: ${p.slug}]: Score ${p.total_score} (${p.rating}), ${p.industry}, Primary: ${p.primary_solution}. ${p.execSummary.slice(0, 120)}`
+        `- **${p.name}** [slug: ${p.slug}]: Score ${p.total_score} (${p.rating}), ${p.industry}, Primary: ${p.primary_solution}. ${p.execSummary.slice(0, 300)}`
       ).join("\n");
       sections.push(`## Your Researched Companies\n\n${index}`);
-      sections.push(`COMPANY RESEARCH ACCESS:\nYou have a lookup_company tool to retrieve full sales intelligence bundles for any of the researched companies listed above. ALWAYS use this tool when the user asks about a specific company, needs comparisons, stakeholder info, pain points, solution fit, or any company-specific intelligence. Do not answer company-specific questions from the summary list alone — the summaries are too brief. Use the tool to get the complete data first, then synthesize your answer from it.`);
+      sections.push(`COMPANY RESEARCH ACCESS:\nYou have a lookup_company tool to retrieve full sales intelligence bundles for any of the researched companies listed above, and a search_companies tool to find a company by name/industry/solution when it is not obvious in the list above (handles typos and partial names). ALWAYS use these tools when the user asks about a specific company, needs comparisons, stakeholder info, pain points, solution fit, or any company-specific intelligence. If a company name in the question isn't an obvious match above, call search_companies first to resolve it, then lookup_company. Do not answer company-specific questions from the summary list alone — the summaries are too brief.`);
     }
   }
 
@@ -382,7 +526,7 @@ export async function buildChatSystemPrompt(context: {
       .from(stakeholderProfiles)
       .where(and(eq(stakeholderProfiles.userId, context.userId), eq(stakeholderProfiles.status, "completed")))
       .orderBy(desc(stakeholderProfiles.updatedAt))
-      .limit(30);
+      .limit(200);
 
     if (stakeholders.length) {
       hasStakeholderIndex = true;
@@ -390,7 +534,7 @@ export async function buildChatSystemPrompt(context: {
         .map((s) => `- **${s.name}**${s.title ? ` — ${s.title}` : ""}${s.company ? ` @ ${s.company}` : ""} [id: ${s.id}]`)
         .join("\n");
       sections.push(`## Deep-Analyzed Stakeholders\n\n${index}`);
-      sections.push(`STAKEHOLDER INTELLIGENCE ACCESS:\nYou have a lookup_stakeholder tool to retrieve the full deep-analysis profile for any of the people listed above (their LinkedIn experience, priorities, pain points, recommended engagement approach, and post insights). Use this tool whenever the user asks about a specific person, wants help drafting outreach to them, or needs to understand how to approach or sell to them. Pass the id values from the list above. Do not answer person-specific questions from the summary list alone — use the tool to get the complete profile first, then synthesize.`);
+      sections.push(`STAKEHOLDER INTELLIGENCE ACCESS:\nYou have a lookup_stakeholder tool to retrieve the full deep-analysis profile for any of the people listed above (their LinkedIn experience, priorities, pain points, recommended engagement approach, and post insights), and a search_stakeholders tool to find a person by name/company/title when they aren't obvious in the list (handles typos and partial names). Use these whenever the user asks about a specific person, wants help drafting outreach to them, or needs to understand how to approach or sell to them. If the name isn't an obvious match above, call search_stakeholders first, then lookup_stakeholder with the id. Do not answer person-specific questions from the summary list alone — get the complete profile first, then synthesize.`);
     }
   }
 

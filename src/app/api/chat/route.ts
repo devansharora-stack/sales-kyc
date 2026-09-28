@@ -4,7 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
 import { users, projects, chatSessions } from "@/db/schema";
 import { and, eq, desc, isNull } from "drizzle-orm";
-import { buildChatSystemPrompt, fetchCompanySalesBundle, fetchStakeholderBundle } from "@/lib/chat-context";
+import { buildChatSystemPrompt, fetchCompanySalesBundle, fetchStakeholderBundle, searchCompanies, searchStakeholders } from "@/lib/chat-context";
 import { runWithUsageContext, recordLlmUsage } from "@/lib/usage-context";
 
 const LOOKUP_COMPANY_TOOL = {
@@ -39,6 +39,38 @@ const LOOKUP_STAKEHOLDER_TOOL = {
       },
     },
     required: ["stakeholder_ids"],
+  },
+};
+
+const SEARCH_COMPANIES_TOOL = {
+  name: "search_companies",
+  description:
+    "Fuzzy-search the user's researched companies by name, industry, or solution when the company isn't an obvious match in the researched-companies list (handles typos and partial names, e.g. 'artera' → 'Artera Services'). Returns matching companies with their slugs. Follow up with lookup_company using a returned slug to get full data.",
+  input_schema: {
+    type: "object",
+    properties: {
+      query: {
+        type: "string",
+        description: "Company name, industry, or solution to search for (e.g. 'artera', 'healthcare', 'contract ai').",
+      },
+    },
+    required: ["query"],
+  },
+};
+
+const SEARCH_STAKEHOLDERS_TOOL = {
+  name: "search_stakeholders",
+  description:
+    "Fuzzy-search the user's deep-analyzed people by name, company, or title when the person isn't an obvious match in the stakeholders list (handles typos and partial names). Returns matching people with their ids. Follow up with lookup_stakeholder using a returned id to get the full profile.",
+  input_schema: {
+    type: "object",
+    properties: {
+      query: {
+        type: "string",
+        description: "Person name, company, or title to search for (e.g. 'tomer', 'CFO at artera').",
+      },
+    },
+    required: ["query"],
   },
 };
 
@@ -273,8 +305,8 @@ export async function POST(request: Request) {
   });
 
   const toolList = [
-    ...(hasCompanyIndex ? [LOOKUP_COMPANY_TOOL] : []),
-    ...(hasStakeholderIndex ? [LOOKUP_STAKEHOLDER_TOOL] : []),
+    ...(hasCompanyIndex ? [LOOKUP_COMPANY_TOOL, SEARCH_COMPANIES_TOOL] : []),
+    ...(hasStakeholderIndex ? [LOOKUP_STAKEHOLDER_TOOL, SEARCH_STAKEHOLDERS_TOOL] : []),
   ];
   const tools = toolList.length ? toolList : undefined;
   const apiMessages: Array<{ role: string; content: string | unknown[] }> =
@@ -303,6 +335,18 @@ export async function POST(request: Request) {
           `event: session\ndata: ${JSON.stringify({ sessionId: currentSessionId })}\n\n`
         )
       );
+
+      // Heartbeat: emit an SSE comment every 15s so the connection never goes
+      // silent during tool lookups / the follow-up model fetch. Idle sockets get
+      // reaped by proxies mid-answer — this keeps bytes flowing so the stream
+      // doesn't die between rounds. Comment lines are ignored by the SSE parser.
+      const heartbeat = setInterval(() => {
+        try {
+          controller.enqueue(encoder.encode(`: ping\n\n`));
+        } catch {
+          clearInterval(heartbeat);
+        }
+      }, 15000);
 
       let fullResponse = "";
       let currentResponse = firstResponse;
@@ -343,6 +387,26 @@ export async function POST(request: Request) {
           }
         }
         apiMessages.push({ role: "assistant", content: assistantContent });
+
+        // Tell the client what we're doing during the (otherwise silent) tool
+        // gap so the pause reads as progress, not a stall.
+        const toolHint = ((): string => {
+          const names = new Set(result.toolCalls.map((t) => t.name));
+          if (names.has("lookup_company")) return "Pulling company research…";
+          if (names.has("lookup_stakeholder")) return "Pulling stakeholder profile…";
+          if (names.has("search_companies")) return "Searching your companies…";
+          if (names.has("search_stakeholders")) return "Searching your people…";
+          return "Looking things up…";
+        })();
+        try {
+          controller.enqueue(
+            encoder.encode(
+              `event: tool\ndata: ${JSON.stringify({ type: "tool_status", hint: toolHint })}\n\n`
+            )
+          );
+        } catch {
+          // controller closed — ignore
+        }
 
         const toolResults: unknown[] = [];
         for (const tc of result.toolCalls) {
@@ -386,6 +450,40 @@ export async function POST(request: Request) {
                 is_error: true,
               });
             }
+          } else if (tc.name === "search_companies") {
+            try {
+              const input = JSON.parse(tc.input);
+              const results = await searchCompanies(user.id, input.query || "");
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: tc.id,
+                content: results || "No researched companies matched that query.",
+              });
+            } catch {
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: tc.id,
+                content: "Error searching companies.",
+                is_error: true,
+              });
+            }
+          } else if (tc.name === "search_stakeholders") {
+            try {
+              const input = JSON.parse(tc.input);
+              const results = await searchStakeholders(user.id, input.query || "");
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: tc.id,
+                content: results || "No deep-analyzed people matched that query.",
+              });
+            } catch {
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: tc.id,
+                content: "Error searching stakeholders.",
+                is_error: true,
+              });
+            }
           } else {
             toolResults.push({
               type: "tool_result",
@@ -424,6 +522,7 @@ export async function POST(request: Request) {
       } catch {
         // client disconnect / stream error — persist what we have in finally
       } finally {
+        clearInterval(heartbeat);
         if (fullResponse) {
           messages.push({
             role: "assistant",
