@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback } from "react";
+import { usePathname } from "next/navigation";
 import Link from "next/link";
 import type { DeepStakeholderProfile, StakeholderStatus, IntelQuality } from "@/lib/types";
 import { generateStakeholderPDF } from "@/lib/generate-pdf";
@@ -48,6 +49,7 @@ interface DrawerProps {
 }
 
 export default function StakeholderDrawer({ stakeholderId, projectId, fallback, shareToken, onClose }: DrawerProps) {
+  const pathname = usePathname();
   const [s, setS] = useState<StakeholderResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
@@ -369,7 +371,14 @@ export default function StakeholderDrawer({ stakeholderId, projectId, fallback, 
         {/* Footer */}
         <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-700 shrink-0">
           <Link
-            href={`/projects/${projectId}/stakeholder/${stakeholderId}${shareToken ? `?shareToken=${shareToken}` : ""}`}
+            href={(() => {
+              const p = new URLSearchParams();
+              if (shareToken) p.set("shareToken", shareToken);
+              // Return to the page the drawer was opened over (e.g. the company page).
+              if (pathname) p.set("returnTo", pathname);
+              const qs = p.toString();
+              return `/projects/${projectId}/stakeholder/${stakeholderId}${qs ? `?${qs}` : ""}`;
+            })()}
             className="text-xs font-medium text-[#3289FF] hover:underline inline-flex items-center gap-1"
           >
             Open full page ↗

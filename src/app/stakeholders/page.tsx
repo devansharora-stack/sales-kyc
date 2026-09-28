@@ -119,7 +119,7 @@ export default function GlobalStakeholdersPage() {
               {filtered.map((r) => (
                 <tr key={r.id} className="border-b border-[#E2E8F0] dark:border-slate-700 last:border-0 hover:bg-[rgba(50,137,255,0.02)] transition-colors">
                   <td className="p-3">
-                    <Link href={`/projects/${r.project_id}/stakeholder/${r.id}`} className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-[#3289FF] transition-colors">
+                    <Link href={`/projects/${r.project_id}/stakeholder/${r.id}?returnTo=/stakeholders`} className="text-sm font-medium text-slate-700 dark:text-slate-300 hover:text-[#3289FF] transition-colors">
                       {r.name}
                     </Link>
                   </td>
@@ -131,7 +131,7 @@ export default function GlobalStakeholdersPage() {
                   <td className="p-3 text-right">
                     {r.status === "completed" && (
                       <Link
-                        href={`/projects/${r.project_id}/stakeholder/${r.id}`}
+                        href={`/projects/${r.project_id}/stakeholder/${r.id}?returnTo=/stakeholders`}
                         className="text-xs font-medium text-[#3289FF] hover:underline whitespace-nowrap"
                       >
                         View →
@@ -160,7 +160,7 @@ export default function GlobalStakeholdersPage() {
                   {departed.map((r) => (
                     <tr key={r.id} className="border-b border-[#E2E8F0] dark:border-slate-700 last:border-0">
                       <td className="p-3">
-                        <Link href={`/projects/${r.project_id}/stakeholder/${r.id}`} className="text-sm font-medium text-slate-500 dark:text-slate-400 line-through hover:text-[#3289FF] transition-colors">
+                        <Link href={`/projects/${r.project_id}/stakeholder/${r.id}?returnTo=/stakeholders`} className="text-sm font-medium text-slate-500 dark:text-slate-400 line-through hover:text-[#3289FF] transition-colors">
                           {r.name}
                         </Link>
                       </td>

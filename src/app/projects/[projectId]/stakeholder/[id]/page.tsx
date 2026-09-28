@@ -45,14 +45,22 @@ export default function StakeholderDetailPage() {
 function StakeholderDetail() {
   const { projectId, id } = useParams<{ projectId: string; id: string }>();
   const router = useRouter();
+  const searchParams = useSearchParams();
   // When opened from a shared link, carry the token so the read is authorized;
   // without it the API 401s and the page looks broken/not-found.
-  const shareToken = useSearchParams().get("shareToken");
+  const shareToken = searchParams.get("shareToken");
   const shareQ = shareToken ? `?shareToken=${shareToken}` : "";
-  // In a shared context there is no owning "Stakeholders" list to return to and
-  // no re-share; go back to wherever the reader came from and hide the share UI.
-  const goBack = () =>
-    shareToken ? router.back() : router.push(`/projects/${projectId}/stakeholders`);
+  // Where "Back" returns to. Prefer an explicit origin the linker passed in
+  // (?returnTo=…, e.g. the company page or the global list), then a deterministic
+  // fallback. Never use router.back(): on a fresh entry (share link, new tab,
+  // refresh) there is no in-app history, so it dumps the user on the dashboard.
+  const rawReturn = searchParams.get("returnTo");
+  const returnTo = rawReturn && rawReturn.startsWith("/") && !rawReturn.startsWith("//") ? rawReturn : null;
+  const goBack = () => {
+    if (returnTo) router.push(returnTo);
+    else if (shareToken) router.push(`/shared/${shareToken}`);
+    else router.push(`/projects/${projectId}/stakeholders`);
+  };
   const [s, setS] = useState<StakeholderResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
