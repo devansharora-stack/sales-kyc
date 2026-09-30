@@ -117,8 +117,11 @@ export default function StakeholderMatrixPanel({ matrix, deepByName, onDeepResea
                       const deep = deepByName.get(normalizeStakeholderName(row.stakeholderName));
                       if (deep) {
                         const isDone = deep.status === "completed";
+                        const isNeedsConfirm = deep.status === "needs_confirmation";
                         const chipClass = isDone
                           ? "bg-emerald-50 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/40"
+                          : isNeedsConfirm
+                          ? "bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-slate-700 hover:bg-amber-100 dark:hover:bg-amber-900/40"
                           : "bg-[rgba(50,137,255,0.08)] text-[#3289FF] border-[#3289FF]/20 hover:underline";
                         return (
                           <button

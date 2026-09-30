@@ -898,7 +898,8 @@ export default function CompanyPage(props?: {
                       {tierList.map((s, i) => {
                         const deep = deepByName.get(normalizeStakeholderName(s.name));
                         const isAnalyzed = deep?.status === "completed";
-                        const isAnalyzing = deep != null && !isAnalyzed;
+                        const needsConfirm = deep?.status === "needs_confirmation";
+                        const isAnalyzing = deep != null && !isAnalyzed && !needsConfirm;
                         return (
                         <div key={i} className={`${tc.bg} border ${tc.border} rounded-lg p-3`}>
                           <div className="flex items-start justify-between gap-2">
@@ -914,6 +915,8 @@ export default function CompanyPage(props?: {
                                 <span className="mt-0.5 shrink-0 w-4 flex justify-center" aria-hidden="true">
                                   {isAnalyzed ? (
                                     <span className="text-emerald-600 text-sm leading-none">&#10003;</span>
+                                  ) : needsConfirm ? (
+                                    <span className="text-amber-500 text-sm leading-none font-bold" title="Needs a LinkedIn URL to continue">!</span>
                                   ) : (
                                     <span className="inline-block w-3 h-3 rounded-full border-2 border-[#3289FF]/30 border-t-[#3289FF] animate-spin" />
                                   )}
@@ -931,6 +934,14 @@ export default function CompanyPage(props?: {
                                     <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[rgba(50,137,255,0.08)] text-[#3289FF] border border-[#3289FF]/20">
                                       Analyzing&hellip;
                                     </span>
+                                  )}
+                                  {needsConfirm && deep && !readOnly && (
+                                    <button
+                                      onClick={() => openDrawer(deep.id, { name: s.name, title: s.title, company: company.name })}
+                                      className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-slate-700 hover:bg-amber-100 dark:hover:bg-amber-900/40 cursor-pointer"
+                                    >
+                                      Needs LinkedIn URL
+                                    </button>
                                   )}
                                 </div>
                                 <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">{s.title}</p>
@@ -987,6 +998,7 @@ export default function CompanyPage(props?: {
               <div className="grid md:grid-cols-2 gap-2">
                 {manualRows.map((d) => {
                   const done = d.status === "completed";
+                  const needsConfirm = d.status === "needs_confirmation";
                   const tc = done && d.tier ? tierColors[d.tier] : null;
                   return (
                     <div key={d.id} className={`border rounded-lg p-3 ${tc ? `${tc.bg} ${tc.border}` : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900"}`}>
@@ -996,6 +1008,13 @@ export default function CompanyPage(props?: {
                             <p className="text-sm font-semibold text-slate-800 dark:text-slate-100">{formatStakeholderName(d.name)}</p>
                             {done ? (
                               <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-300 dark:border-slate-700">Analyzed &#10003;</span>
+                            ) : needsConfirm ? (
+                              <button
+                                onClick={() => openDrawer(d.id, { name: d.name, title: d.title ?? undefined, company: d.company ?? company.name })}
+                                className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-900/30 dark:text-amber-300 dark:border-slate-700 hover:bg-amber-100 dark:hover:bg-amber-900/40 cursor-pointer"
+                              >
+                                Needs LinkedIn URL
+                              </button>
                             ) : (
                               <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-[rgba(50,137,255,0.08)] text-[#3289FF] border border-[#3289FF]/20">Analyzing&hellip;</span>
                             )}
