@@ -71,7 +71,19 @@ export const analyzeStakeholder = inngest.createFunction(
           updateStakeholderStatus(stakeholderId, { status: "resolving", progress: 10 }),
         );
         const resolved = await step.run("resolve-url", () =>
-          resolveLinkedInUrl(row.name, row.company || undefined, row.title || undefined),
+          // Attribute the resolver's (Opus) spend to this user/company/stakeholder.
+          // Without this scope the call records user_id=null and lands in the
+          // misleading "Local development" usage bucket despite running in prod.
+          runWithUsageContext(
+            {
+              projectId: row.projectId,
+              userId: row.userId,
+              companyProfileId: row.companyProfileId,
+              stakeholderId,
+              phase: "stakeholder",
+            },
+            () => resolveLinkedInUrl(row.name, row.company || undefined, row.title || undefined),
+          ),
         );
         // Not actually at this company (left the role, or never worked here —
         // e.g. a customer reference mistaken for an exec). Remove the row
