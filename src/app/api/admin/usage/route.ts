@@ -13,7 +13,7 @@ import { estimateCostUsd } from "@/lib/pricing";
 type Group = "company" | "stakeholder" | "user" | "project";
 const VALID_GROUPS: Group[] = ["company", "stakeholder", "user", "project"];
 
-const LOCAL = "Local development"; // untagged / no-attribution usage = local/test.
+const LOCAL = "Unattributed (prod)"; // usage recorded with no user_id (missing context wrapper), not necessarily local.
 
 const csv = (v: string | null) =>
   (v || "").split(",").map((s) => s.trim()).filter(Boolean);
@@ -37,13 +37,13 @@ export async function GET(request: Request) {
   // Second users alias for the project's owner (llm_usage.userId already joins users).
   const projectOwner = alias(users, "project_owner");
 
-  // Fallback for rows with no entity attribution. Only NULL user = genuinely
-  // local/test (scripts, no logged-in user) → "Local development". A real user
-  // with no company/project (e.g. chat) is "Untracked", NOT local dev — don't
-  // lump real people's usage into local dev.
+  // Fallback for rows with no entity attribution. NULL user = a call that ran
+  // without a user-scoped usage context → "Unattributed (prod)" (local scripts,
+  // or a prod path missing its runWithUsageContext wrapper). A real user with no
+  // company/project (e.g. chat) is "Untracked" — don't conflate the two.
   // NOTE: must be inlined literals (not bind params) so the expression renders
   // identically in SELECT and GROUP BY (a param mismatch breaks the GROUP BY).
-  const FB = sql`case when ${llmUsage.userId} is null then 'Local development' else 'Untracked' end`;
+  const FB = sql`case when ${llmUsage.userId} is null then 'Unattributed (prod)' else 'Untracked' end`;
   const L = sql.raw(`'${LOCAL}'`);
   const GROUP_LABEL: Record<Group, ReturnType<typeof sql>> = {
     user: sql`coalesce(${users.email}, ${FB})`,

@@ -6,6 +6,7 @@ import { companyProfiles } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { canReadResource } from "@/lib/access";
 import { generateValueFinderCopy } from "@/lib/value-finder-copy";
+import { runWithUsageContext } from "@/lib/usage-context";
 import { computePeerBenchmark } from "@/lib/value-finder-benchmark";
 import type { CompanyDetail } from "@/lib/types";
 
@@ -53,7 +54,12 @@ export async function GET(
   }
 
   try {
-    const copy = await generateValueFinderCopy(data);
+    // Attribute the (Luna) copy generation to the owning user/company/project so
+    // it isn't bucketed as unattributed ("Local development") prod usage.
+    const copy = await runWithUsageContext(
+      { userId: profile.userId, projectId, companyProfileId: profile.id, agent: "value_finder_copy", phase: "company" },
+      () => generateValueFinderCopy(data),
+    );
     // Persist only for owners (share-token readers may lack write intent; the
     // update is harmless but we keep it owner-gated to avoid surprise writes).
     await db

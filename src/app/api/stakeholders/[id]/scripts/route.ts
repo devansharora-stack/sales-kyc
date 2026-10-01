@@ -6,6 +6,7 @@ import { users, stakeholderProfiles } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { resolveScriptOffering } from "@/lib/pick-offering";
 import { writeStakeholderScripts } from "@/agents/stakeholder-script-writer";
+import { runWithUsageContext } from "@/lib/usage-context";
 import type { DeepStakeholderProfile, StakeholderScriptSet } from "@/lib/types";
 
 // Generate (or regenerate) the 3 persona-tone sales scripts for one stakeholder.
@@ -46,7 +47,12 @@ export async function POST(
       row.companyProfileId,
       row.company || profile.experience?.[0]?.company || "the company",
     );
-    scripts = await writeStakeholderScripts({ profile, offering, companyName, industry });
+    // Attribute the (Luna) script generation to this user/company/stakeholder so
+    // it isn't bucketed as unattributed ("Local development") prod usage.
+    scripts = await runWithUsageContext(
+      { userId: user.id, projectId: row.projectId, companyProfileId: row.companyProfileId, stakeholderId: row.id, agent: "stakeholder_scripts", phase: "stakeholder" },
+      () => writeStakeholderScripts({ profile, offering, companyName, industry }),
+    );
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Script generation failed";
     return NextResponse.json({ error: msg }, { status: 502 });

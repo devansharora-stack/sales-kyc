@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { db } from "@/lib/db";
-import { users, projects, chatSessions } from "@/db/schema";
+import { users, projects, chatSessions, companyProfiles } from "@/db/schema";
 import { and, eq, desc, isNull } from "drizzle-orm";
 import { buildChatSystemPrompt, fetchCompanySalesBundle, fetchStakeholderBundle, searchCompanies, searchStakeholders } from "@/lib/chat-context";
 import { runWithUsageContext, recordLlmUsage } from "@/lib/usage-context";
@@ -264,6 +264,19 @@ export async function POST(request: Request) {
     }
   }
 
+  // Resolve entity ids so chat spend attributes to the company/stakeholder it's
+  // about, instead of collapsing into "Untracked" in the company/stakeholder views.
+  let chatCompanyProfileId: string | null = null;
+  const chatStakeholderId: string | null = effectiveContext.stakeholderId ?? null;
+  if (effectiveContext.companySlug && effectiveContext.projectId) {
+    const [cp] = await db
+      .select({ id: companyProfiles.id })
+      .from(companyProfiles)
+      .where(and(eq(companyProfiles.projectId, effectiveContext.projectId), eq(companyProfiles.slug, effectiveContext.companySlug)))
+      .limit(1);
+    chatCompanyProfileId = cp?.id ?? null;
+  }
+
   let currentSessionId = sessionId;
   let messages: { role: string; content: string; timestamp: string }[] = [];
 
@@ -324,7 +337,7 @@ export async function POST(request: Request) {
   const chatModel = process.env.ANTHROPIC_DEFAULT_OPUS_MODEL || "claude-opus-4-6";
   const recordChatUsage = (r: StreamResult) =>
     runWithUsageContext(
-      { userId: user.id, projectId: effectiveContext.projectId ?? null, agent: "chat", phase: "chat" },
+      { userId: user.id, projectId: effectiveContext.projectId ?? null, companyProfileId: chatCompanyProfileId, stakeholderId: chatStakeholderId, agent: "chat", phase: "chat" },
       () => recordLlmUsage({ provider: "claude", model: chatModel, inputTokens: r.inputTokens, outputTokens: r.outputTokens }),
     );
 
