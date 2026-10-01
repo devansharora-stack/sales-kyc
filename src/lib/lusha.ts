@@ -2,10 +2,10 @@
  * Lusha Decision Makers — company-side stakeholder discovery.
  *
  * `POST /v3/contacts/decision-makers` takes a company domain and returns the
- * company's current, ranked decision makers as FREE previews (verified name,
- * title, seniority, department, LinkedIn URL). creditsCharged is 0 for the
- * preview — credits are only spent when revealing emails/phones via Enrich,
- * which we never call here.
+ * company's current, ranked decision makers (verified name, title, seniority,
+ * department, LinkedIn URL). NOTE: on the current plan this endpoint charges
+ * ~1 credit per returned contact (NOT free), so `limit` is kept small (5) to
+ * cap cost per company. Emails/phones via Enrich are never called here.
  *
  * This replaces the Gemini-grounded stakeholder researcher as the PRIMARY
  * source (it returns current people with real LinkedIn URLs), which fixes the
@@ -62,7 +62,7 @@ function seniorityToTier(seniority?: string, title?: string): Stakeholder["tier"
  * Stakeholder shape. Returns [] when the key is missing, the company can't be
  * matched, or no people come back — so callers can fall back cleanly.
  */
-export async function getDecisionMakers(domain: string, limit = 15): Promise<Stakeholder[]> {
+export async function getDecisionMakers(domain: string, limit = 5): Promise<Stakeholder[]> {
   const apiKey = process.env.LUSHA_API_KEY;
   if (!apiKey) {
     console.log("[lusha] LUSHA_API_KEY not set — skipping decision-makers lookup");
