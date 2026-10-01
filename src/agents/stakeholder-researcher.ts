@@ -19,18 +19,42 @@ const agentPrompt = readFileSync(
   "utf-8"
 );
 
-export async function runStakeholderResearcher(companyName: string): Promise<Stakeholder[]> {
+export interface StakeholderResearchContext {
+  /** The company's verified primary domain (e.g. "uti.edu"). Anchors identity so
+   *  acronym/name collisions (e.g. "UTI" the trade school vs UTI the mutual fund)
+   *  don't resolve to the wrong entity. */
+  domain?: string;
+  /** The company's industry/sector, a second disambiguation signal. */
+  industry?: string;
+}
+
+export async function runStakeholderResearcher(
+  companyName: string,
+  ctx: StakeholderResearchContext = {},
+): Promise<Stakeholder[]> {
+  const { domain, industry } = ctx;
+  // Build a hard identity anchor so an ambiguous name/acronym can't drift to a
+  // different same-named company. Omitted cleanly when we have no domain.
+  const idParts = [
+    domain ? `official website ${domain}` : null,
+    industry ? `${industry} sector` : null,
+  ].filter(Boolean);
+  const idLine = idParts.length ? ` (${idParts.join(", ")})` : "";
+  const anchorBlock = domain
+    ? `\n\nCRITICAL — COMPANY IDENTITY: The target is the specific company whose official website is ${domain}${industry ? `, operating in ${industry}` : ""}. Many companies share a name or acronym. You MUST only include people who currently work for THIS company (the one at ${domain}). REJECT anyone employed by a different, similarly-named organization — e.g. a mutual fund, bank, holding company, or a foreign entity that shares the name or acronym but is NOT ${domain}. If a candidate's employer, LinkedIn, or source page points to any domain or organization other than ${domain} (or an obvious sub-brand of it), OMIT them. A shorter, correct list beats a longer list polluted with the wrong company's people.`
+    : "";
+
   const { data, groundingSources } = await callGeminiGrounded<Stakeholder[]>({
     systemPrompt: `${systemPrompt}\n\n${agentPrompt}`,
-    userPrompt: `Research key stakeholders and decision makers at: ${companyName}
+    userPrompt: `Research key stakeholders and decision makers at: ${companyName}${idLine}${anchorBlock}
 
 Search for REAL executives:
-1. "${companyName} leadership team" — company website leadership page (prefer the CURRENT page over cached/old articles)
+1. "${companyName} leadership team"${domain ? ` site:${domain} OR "${domain}"` : ""} — company website leadership page (prefer the CURRENT page over cached/old articles)
 2. "${companyName} CTO CIO CDO CISO" — technology leadership
 3. "${companyName} CEO CFO COO" — C-suite
 4. "${companyName} VP technology engineering" — senior tech leaders
 5. "${companyName} executive appointment 2025 2026" — recent leadership changes
-6. For EACH candidate you find, run a currency check before including them: "{name} ${companyName} current role 2026", "{name} left OR departed OR former ${companyName}", and confirm their LinkedIn/current headline still names ${companyName}.
+6. For EACH candidate you find, run a currency check before including them: "{name} ${companyName} current role 2026", "{name} left OR departed OR former ${companyName}", and confirm their LinkedIn/current headline still names ${companyName}${domain ? ` (the ${domain} company, not a same-named different firm)` : ""}.
 
 CRITICAL: Only include people whose name and title you found on a real page AND who you can verify CURRENTLY hold that role at ${companyName} today. Do NOT guess names. For each stakeholder, set sourceUrl to the actual page where you found their name and title.
 

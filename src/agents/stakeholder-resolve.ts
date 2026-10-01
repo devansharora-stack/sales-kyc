@@ -112,7 +112,9 @@ export async function resolveStakeholders(companyName: string, domain: string): 
   // Free layer 2 — Gemini researcher (0 Lusha credits), targets the C-suite.
   let gemini: Stakeholder[] = [];
   try {
-    gemini = await runStakeholderResearcher(companyName);
+    // Anchor the researcher to the verified domain so an ambiguous name/acronym
+    // (e.g. "UTI") can't drift to a different same-named company.
+    gemini = await runStakeholderResearcher(companyName, { domain });
   } catch (err) {
     console.log(`[stakeholders] gemini researcher failed: ${err instanceof Error ? err.message : err}`);
   }
