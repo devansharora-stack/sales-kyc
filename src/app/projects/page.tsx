@@ -163,7 +163,7 @@ export default function ProjectsPage() {
       {/* Search + controls */}
       {!error && (
         <div className="flex items-center gap-3 mb-5">
-          <div className="relative flex-1">
+          <div className="relative flex-1 min-w-0">
             <svg className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11a6 6 0 11-12 0 6 6 0 0112 0z" />
             </svg>
@@ -179,7 +179,7 @@ export default function ProjectsPage() {
               <select
                 value={sortKey}
                 onChange={(e) => setSortKey(e.target.value as SortKey)}
-                className="input-field text-sm"
+                className="input-field text-sm shrink-0 !w-auto"
                 aria-label="Sort projects"
               >
                 <option value="recent">Recent</option>
