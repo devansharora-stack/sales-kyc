@@ -20,7 +20,7 @@ export default function Navigation() {
             </div>
             <span className="hidden sm:inline">
               <span className="font-semibold text-[#3289FF]" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>KYC</span>
-              <span className="font-medium text-slate-600 ml-1.5">Genie</span>
+              <span className="font-medium text-slate-600 dark:text-slate-300 ml-1.5">Genie</span>
             </span>
           </Link>
 
@@ -58,7 +58,7 @@ export default function Navigation() {
             </div>
 
             {session?.user && (
-              <div className="flex items-center gap-2 ml-3 pl-3 border-l border-slate-200">
+              <div className="flex items-center gap-2 ml-3 pl-3 border-l border-slate-200 dark:border-slate-700">
                 <span className="text-[10px] text-slate-400 hidden lg:inline">{session.user.email}</span>
                 <button
                   onClick={() => signOut({ callbackUrl: "/login" })}
