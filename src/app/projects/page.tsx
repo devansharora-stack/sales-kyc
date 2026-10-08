@@ -171,7 +171,7 @@ export default function ProjectsPage() {
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Search projects or companies…"
-              className="input-field w-full pl-9"
+              className="input-field w-full !pl-10"
             />
           </div>
           {!isSearchMode && (
