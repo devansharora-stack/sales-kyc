@@ -136,19 +136,62 @@ export async function scrapeHarvestProfile(url: string): Promise<Record<string, 
   return first;
 }
 
+/** Extract the LinkedIn handle (the /in/<handle> slug) from a profile URL. */
+export function linkedinHandle(url: string): string | null {
+  const m = String(url || "").match(/\/in\/([^/?#]+)/i);
+  return m ? decodeURIComponent(m[1]).toLowerCase() : null;
+}
+
+/**
+ * True when a post clearly belongs to someone OTHER than `wantHandle`.
+ * apimaestro echoes the post author (author.username / public_identifier /
+ * profile_url, or a top-level profileUrl). If we can read an author handle and
+ * it doesn't match, the actor returned the wrong person's activity — drop it.
+ * If no author handle is present we can't tell, so we keep the post.
+ */
+function postAuthorMismatch(p: any, wantHandle: string | null): boolean {
+  if (!wantHandle) return false;
+  const a = p.author || p.actor || {};
+  const candidate =
+    a.username ||
+    a.public_identifier ||
+    a.publicIdentifier ||
+    linkedinHandle(a.profile_url || a.profileUrl || a.url || "") ||
+    linkedinHandle(p.profileUrl || p.profile_url || p.authorProfileUrl || "");
+  if (!candidate) return false;
+  return String(candidate).toLowerCase() !== wantHandle;
+}
+
 /** Scrape recent posts (full text/dates/engagement), capped to MAX_POSTS. */
 export async function scrapeApifyPosts(url: string): Promise<Record<string, any>[]> {
-  // The actor accepts a few input shapes; `username` (with a full URL) is the
-  // validated one, but try fallbacks defensively.
+  // Pass the HANDLE (not the full URL) as `username` — the validated input.
+  // Passing a full URL here let the actor fuzzy-fall-back to a DIFFERENT
+  // profile's posts, which were then attached to people who have no posts.
+  const handle = linkedinHandle(url);
+  const want = handle; // author-match target
+  // The actor accepts a few input shapes; try handle first, then URL fallbacks.
   // total_posts caps what the actor scrapes (and what we're billed for); limit
   // bounds the first page. Without these the actor defaults to 100/page.
   const cap = { total_posts: MAX_POSTS, limit: MAX_POSTS };
-  for (const input of [{ username: url, ...cap }, { profileUrl: url, ...cap }, { profileUrls: [url], ...cap }, { urls: [url], ...cap }]) {
+  const shapes: Record<string, unknown>[] = [];
+  if (handle) shapes.push({ username: handle, ...cap });
+  shapes.push({ username: url, ...cap }, { profileUrl: url, ...cap }, { profileUrls: [url], ...cap }, { urls: [url], ...cap });
+  for (const input of shapes) {
     try {
       const items = await runApifyActor<Record<string, any>>(APIFY_ACTORS.posts, input);
       // Drop the "no activity" sentinel ({profile_input, message}, no .text).
       const real = (items || []).filter((p) => p && p.text && !p.message && !p.profile_input);
-      if (real.length) return real.slice(0, MAX_POSTS);
+      // IDENTITY GUARD: drop posts whose author handle doesn't match the person
+      // we asked for. Protects against the actor returning a different profile.
+      const mine = real.filter((p) => !postAuthorMismatch(p, want));
+      if (real.length && !mine.length) {
+        console.warn(
+          `[apify] posts actor returned ${real.length} posts for ${url} but NONE matched handle "${want}" — wrong profile, discarding.`,
+        );
+      }
+      if (mine.length) return mine.slice(0, MAX_POSTS);
+      // Actor found the right person with genuinely no posts → stop, return [].
+      if (items && items.length && !real.length) return [];
     } catch {
       /* try next shape */
     }
