@@ -214,6 +214,8 @@ export interface DeepStakeholderProfile {
   headline?: string;
   photoUrl?: string;
   linkedinUrl?: string;
+  email?: string;
+  emailSource?: string;
   location?: string;
   about?: string;
   experience: StakeholderExperience[];

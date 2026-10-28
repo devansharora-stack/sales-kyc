@@ -75,6 +75,11 @@ export default function StakeholderProfileView({ p }: { p: DeepStakeholderProfil
                 <a href={safeHref(p.linkedinUrl)} target="_blank" rel="noopener noreferrer"
                   className="text-xs text-[#3289FF] hover:text-[#1C57FF] ml-2">LinkedIn ↗</a>
               )}
+              {p.email && (
+                <a href={`mailto:${p.email}`}
+                  title={p.emailSource || undefined}
+                  className="text-xs text-[#3289FF] hover:text-[#1C57FF] ml-2">{p.email} ✉</a>
+              )}
             </div>
           </div>
           {richness && (
